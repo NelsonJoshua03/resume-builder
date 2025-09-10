@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .resume-section {
+            transition: all 0.3s ease;
+        }
+        .resume-section:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .edit-mode .view-mode {
+            display: none;
+        }
+        .edit-mode .edit-mode {
+            display: block;
+        }
+        .template-card {
+            transition: all 0.3s ease;
+        }
+        .template-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-800 mb-3">Resume Builder</h1>
+            <p class="text-xl text-gray-600">Create professional resumes in minutes</p>
+        </header>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Left Side - Editing Panel -->
+            <div class="w-full lg:w-2/5 space-y-6">
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-user-edit mr-2 text-blue-500"></i> Edit Your Details
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="John Doe">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Professional Title</label>
+                            <input type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="Software Developer">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="john.doe@email.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                <input type="tel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="(555) 123-4567">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Professional Summary</label>
+                            <textarea class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-32">Full-stack developer with 5+ years of experience in React, Node.js, and cloud technologies. Passionate about building scalable web applications.</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-briefcase mr-2 text-blue-500"></i> Work Experience
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-semibold text-gray-800">Senior Developer</h3>
+                                <button class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="mb-2">
+                                <input type="text" class="w-full px-3 py-1 border border-gray-300 rounded-md mb-2" value="Tech Solutions Inc.">
+                                <input type="text" class="w-full px-3 py-1 border border-gray-300 rounded-md" value="2020 - Present">
+                            </div>
+                            <textarea class="w-full px-3 py-1 border border-gray-300 rounded-md">Led frontend development team and implemented new features</textarea>
+                        </div>
+                        
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-semibold text-gray-800">Junior Developer</h3>
+                                <button class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="mb-2">
+                                <input type="text" class="w-full px-3 py-1 border border-gray-300 rounded-md mb-2" value="StartUp Co.">
+                                <input type="text" class="w-full px-3 py-1 border border-gray-300 rounded-md" value="2018 - 2020">
+                            </div>
+                            <textarea class="w-full px-3 py-1 border border-gray-300 rounded-md">Developed and maintained web applications using React</textarea>
+                        </div>
+                        
+                        <button class="flex items-center text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-plus-circle mr-2"></i> Add Another Position
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-graduation-cap mr-2 text-blue-500"></i> Education
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 border border-gray-200 rounded-lg">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-semibold text-gray-800">Bachelor of Computer Science</h3>
+                                <button class="text-red-500 hover:text-red-700">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="mb-2">
+                                <input type="text" class="w-full px-3 py-1 border border-gray-300 rounded-md mb-2" value="University of Technology">
+                                <input type="text" class="w-full px-3 py-1 border border-gray-300 rounded-md" value="2018">
+                            </div>
+                        </div>
+                        
+                        <button class="flex items-center text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-plus-circle mr-2"></i> Add Another Degree
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
+                        <i class="fas fa-tools mr-2 text-blue-500"></i> Skills
+                    </h2>
+                    
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+                            React
+                            <button class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+                            Node.js
+                            <button class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+                            JavaScript
+                            <button class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+                            HTML/CSS
+                            <button class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+                            MongoDB
+                            <button class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </span>
+                        <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+                            AWS
+                            <button class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </span>
+                    </div>
+                    
+                    <div class="flex">
+                        <input type="text" class="flex-grow px-4 py-2 border border-gray-300 rounded-l-lg" placeholder="Add a skill">
+                        <button class="bg-blue-600 text-white px-4 py-2 rounded-r-lg hover:bg-blue-700">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side - Preview Panel -->
+            <div class="w-full lg:w-3/5">
+                <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">Resume Preview</h2>
+                        <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
+                            <i class="fas fa-download mr-2"></i> Download PDF
+                        </button>
+                    </div>
+
+                    <!-- Resume Preview -->
+                    <div class="border-2 border-gray-200 p-8 rounded-lg">
+                        <div class="text-center mb-6">
+                            <h1 class="text-3xl font-bold text-gray-800">John Doe</h1>
+                            <h2 class="text-xl text-gray-600 mt-1">Software Developer</h2>
+                            <div class="flex justify-center space-x-4 mt-2 text-gray-500">
+                                <span><i class="fas fa-envelope mr-1"></i> john.doe@email.com</span>
+                                <span><i class="fas fa-phone mr-1"></i> (555) 123-4567</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-1 mb-3">Professional Summary</h3>
+                            <p class="text-gray-600">Full-stack developer with 5+ years of experience in React, Node.js, and cloud technologies. Passionate about building scalable web applications.</p>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-1 mb-3">Work Experience</h3>
+                            <div class="mb-4">
+                                <div class="flex justify-between items-start">
+                                    <h4 class="font-semibold text-gray-800">Senior Developer</h4>
+                                    <span class="text-gray-500 text-sm">2020 - Present</span>
+                                </div>
+                                <p class="text-gray-600 text-sm mb-1">Tech Solutions Inc.</p>
+                                <p class="text-gray-500">Led frontend development team and implemented new features</p>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-start">
+                                    <h4 class="font-semibold text-gray-800">Junior Developer</h4>
+                                    <span class="text-gray-500 text-sm">2018 - 2020</span>
+                                </div>
+                                <p class="text-gray-600 text-sm mb-1">StartUp Co.</p>
+                                <p class="text-gray-500">Developed and maintained web applications using React</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-1 mb-3">Education</h3>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800">Bachelor of Computer Science</h4>
+                                    <p class="text-gray-600">University of Technology</p>
+                                </div>
+                                <span class="text-gray-500">2018</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-1 mb-3">Skills</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">React</span>
+                                <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">Node.js</span>
+                                <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">JavaScript</span>
+                                <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">HTML/CSS</span>
+                                <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">MongoDB</span>
+                                <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">AWS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-800">Choose a Template</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="template-card border-2 border-blue-500 rounded-lg p-4 text-center cursor-pointer">
+                            <div class="bg-gray-200 h-32 rounded mb-3 flex items-center justify-center">
+                                <i class="fas fa-file-alt text-4xl text-gray-500"></i>
+                            </div>
+                            <h3 class="font-semibold text-blue-600">Professional</h3>
+                            <p class="text-sm text-gray-500">Clean and traditional</p>
+                        </div>
+                        <div class="template-card border-2 border-gray-300 rounded-lg p-4 text-center cursor-pointer">
+                            <div class="bg-gray-200 h-32 rounded mb-3 flex items-center justify-center">
+                                <i class="fas fa-file-alt text-4xl text-gray-500"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-600">Modern</h3>
+                            <p class="text-sm text-gray-500">Sleek and contemporary</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple JavaScript for interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add skill functionality
+            const skillInput = document.querySelector('input[placeholder="Add a skill"]');
+            const addSkillButton = skillInput.nextElementSibling;
+            
+            addSkillButton.addEventListener('click', function() {
+                if (skillInput.value.trim() !== '') {
+                    const skillsContainer = document.querySelector('.flex-wrap.gap-2');
+                    const newSkill = document.createElement('span');
+                    newSkill.className = 'bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center';
+                    newSkill.innerHTML = `
+                        ${skillInput.value}
+                        <button class="ml-2 text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    
+                    // Add event listener to remove button
+                    newSkill.querySelector('button').addEventListener('click', function() {
+                        newSkill.remove();
+                    });
+                    
+                    skillsContainer.appendChild(newSkill);
+                    skillInput.value = '';
+                }
+            });
+            
+            // Add delete functionality to existing skill buttons
+            document.querySelectorAll('.flex-wrap.gap-2 button').forEach(button => {
+                button.addEventListener('click', function() {
+                    this.parentElement.remove();
+                });
+            });
+            
+            // Template selection
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.template-card').forEach(c => {
+                        c.classList.remove('border-blue-500');
+                        c.classList.add('border-gray-300');
+                        c.querySelector('h3').classList.remove('text-blue-600');
+                        c.querySelector('h3').classList.add('text-gray-600');
+                    });
+                    
+                    this.classList.remove('border-gray-300');
+                    this.classList.add('border-blue-500');
+                    this.querySelector('h3').classList.remove('text-gray-600');
+                    this.querySelector('h3').classList.add('text-blue-600');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
