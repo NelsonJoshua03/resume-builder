@@ -10,6 +10,9 @@ import FileUpload from './FileUpload';
 import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
 import { ResumeData, Template } from './types';
+import Projects from './Projects';
+import Awards from './Awards';
+import CustomFields from './CustomFields';
 
 // Enhanced template configuration with color customization
 const TEMPLATES: Record<string, Template> = {
@@ -106,7 +109,11 @@ const ResumeBuilder = () => {
       title: 'Software Developer',
       email: 'john.doe@email.com',
       phone: '(555) 123-4567',
-      summary: 'Full-stack developer with 5+ years of experience in React, Node.js, and cloud technologies. Passionable about building scalable web applications.'
+      summary: [
+        'Full-stack developer with 5+ years of experience in React, Node.js, and cloud technologies.',
+        'Passionate about building scalable web applications with clean architecture.',
+        'Strong problem-solving skills and experience in agile development environments.'
+      ]
     },
     experiences: [
       {
@@ -140,6 +147,37 @@ const ResumeBuilder = () => {
         year: '2018'
       }
     ],
+    projects: [
+      {
+        id: 1,
+        name: 'E-commerce Platform',
+        description: [
+          'Developed a full-stack e-commerce solution with React and Node.js',
+          'Implemented payment processing with Stripe API',
+          'Designed responsive UI with Tailwind CSS'
+        ],
+        technologies: ['React', 'Node.js', 'MongoDB', 'Stripe'],
+        period: '2022',
+        link: 'https://example.com/ecommerce'
+      }
+    ],
+    awards: [
+      {
+        id: 1,
+        title: 'Best Hackathon Project',
+        issuer: 'Tech Conference 2021',
+        year: '2021',
+        description: 'Awarded for innovative use of AI in healthcare application'
+      }
+    ],
+    customFields: [
+      {
+        id: 1,
+        label: 'Languages',
+        value: 'English (Native), Spanish (Intermediate)',
+        type: 'text'
+      }
+    ],
     skills: ['React', 'Node.js', 'JavaScript', 'HTML/CSS', 'MongoDB', 'AWS'],
     selectedTemplate: 'professional',
     customColors: {}
@@ -155,7 +193,7 @@ const ResumeBuilder = () => {
       scale: 2,
       useCORS: true,
       logging: false
-    }as any).then((canvas) => {
+    } as any).then((canvas) => {
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
@@ -180,7 +218,7 @@ const ResumeBuilder = () => {
     });
   };
 
-  const updatePersonalInfo = (field: string, value: string) => {
+  const updatePersonalInfo = (field: string, value: string | string[]) => {
     setResumeData(prev => ({
       ...prev,
       personalInfo: { ...prev.personalInfo, [field]: value }
@@ -283,6 +321,111 @@ const ResumeBuilder = () => {
     }));
   };
 
+  const updateProject = (id: number, field: string, value: any) => {
+    setResumeData(prev => ({
+      ...prev,
+      projects: prev.projects.map(proj => 
+        proj.id === id ? { ...proj, [field]: value } : proj
+      )
+    }));
+  };
+
+  const addProject = () => {
+    setResumeData(prev => ({
+      ...prev,
+      projects: [
+        ...prev.projects,
+        {
+          id: Date.now(),
+          name: '',
+          description: [''],
+          technologies: [],
+          period: '',
+          link: ''
+        }
+      ]
+    }));
+  };
+
+  const removeProject = (id: number) => {
+    setResumeData(prev => ({
+      ...prev,
+      projects: prev.projects.filter(proj => proj.id !== id)
+    }));
+  };
+
+  const updateAward = (id: number, field: string, value: string) => {
+    setResumeData(prev => ({
+      ...prev,
+      awards: prev.awards.map(award => 
+        award.id === id ? { ...award, [field]: value } : award
+      )
+    }));
+  };
+
+  const addAward = () => {
+    setResumeData(prev => ({
+      ...prev,
+      awards: [
+        ...prev.awards,
+        {
+          id: Date.now(),
+          title: '',
+          issuer: '',
+          year: '',
+          description: ''
+        }
+      ]
+    }));
+  };
+
+  const removeAward = (id: number) => {
+    setResumeData(prev => ({
+      ...prev,
+      awards: prev.awards.filter(award => award.id !== id)
+    }));
+  };
+
+  const updateCustomField = (id: number, field: string, value: string) => {
+    setResumeData(prev => ({
+      ...prev,
+      customFields: prev.customFields.map(cf => 
+        cf.id === id ? { ...cf, [field]: value } : cf
+      )
+    }));
+  };
+
+  const changeCustomFieldType = (id: number, type: string) => {
+    setResumeData(prev => ({
+      ...prev,
+      customFields: prev.customFields.map(cf => 
+        cf.id === id ? { ...cf, type } : cf
+      )
+    }));
+  };
+
+  const addCustomField = () => {
+    setResumeData(prev => ({
+      ...prev,
+      customFields: [
+        ...prev.customFields,
+        {
+          id: Date.now(),
+          label: 'New Section',
+          value: '',
+          type: 'text'
+        }
+      ]
+    }));
+  };
+
+  const removeCustomField = (id: number) => {
+    setResumeData(prev => ({
+      ...prev,
+      customFields: prev.customFields.filter(cf => cf.id !== id)
+    }));
+  };
+
   const handleFileUpload = (file: File) => {
     console.log('File uploaded:', file);
   };
@@ -318,10 +461,29 @@ const ResumeBuilder = () => {
             onAdd={addEducation}
             onRemove={removeEducation}
           />
+          <Projects
+            projects={resumeData.projects}
+            onUpdate={updateProject}
+            onAdd={addProject}
+            onRemove={removeProject}
+          />
+          <Awards
+            awards={resumeData.awards}
+            onUpdate={updateAward}
+            onAdd={addAward}
+            onRemove={removeAward}
+          />
           <Skills 
             skills={resumeData.skills}
             onAdd={addSkill}
             onRemove={removeSkill}
+          />
+          <CustomFields
+            customFields={resumeData.customFields}
+            onUpdate={updateCustomField}
+            onAdd={addCustomField}
+            onRemove={removeCustomField}
+            onChangeType={changeCustomFieldType}
           />
           <FileUpload onUpload={handleFileUpload} />
         </div>

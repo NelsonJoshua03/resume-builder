@@ -4,7 +4,7 @@ export interface PersonalInfo {
   title: string;
   email: string;
   phone: string;
-  summary: string;
+  summary: string[];
 }
 
 export interface Experience {
@@ -48,6 +48,43 @@ export interface ResumeData {
   personalInfo: PersonalInfo;
   experiences: Experience[];
   education: Education[];
+  skills: string[];
+  selectedTemplate: string;
+  customColors: Record<string, any>;
+}
+
+export interface Project {
+  id: number;
+  name: string;
+  description: string[];
+  technologies: string[];
+  period: string;
+  link?: string;
+}
+
+export interface Award {
+  id: number;
+  title: string;
+  issuer: string;
+  year: string;
+  description: string;
+}
+
+export interface CustomField {
+  id: number;
+  label: string;
+  value: string;
+  type: 'text' | 'textarea' | 'date' | 'url';
+}
+
+// Update ResumeData interface
+export interface ResumeData {
+  personalInfo: PersonalInfo;
+  experiences: Experience[];
+  education: Education[];
+  projects: Project[];  // Add this
+  awards: Award[];      // Add this
+  customFields: CustomField[];  // Add this
   skills: string[];
   selectedTemplate: string;
   customColors: Record<string, any>;
@@ -98,4 +135,25 @@ export interface ResumePreviewProps {
   data: ResumeData;
   template: Template;
   customColors: any;
+}
+export interface ProjectsProps {
+  projects: Project[];
+  onUpdate: (id: number, field: string, value: any) => void;
+  onAdd: () => void;
+  onRemove: (id: number) => void;
+}
+
+export interface AwardsProps {
+  awards: Award[];
+  onUpdate: (id: number, field: string, value: string) => void;
+  onAdd: () => void;
+  onRemove: (id: number) => void;
+}
+
+export interface CustomFieldsProps {
+  customFields: CustomField[];
+  onUpdate: (id: number, field: string, value: string) => void;
+  onAdd: () => void;
+  onRemove: (id: number) => void;
+  onChangeType: (id: number, type: string) => void;
 }
