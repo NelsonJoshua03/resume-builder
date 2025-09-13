@@ -9,7 +9,7 @@ import TemplateSelector from './TemplateSelector';
 import FileUpload from './FileUpload';
 import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
-import { ResumeData, Template } from './types';
+import { ResumeData, Template, PersonalInfoData } from './types'; // Import PersonalInfoData
 import Projects from './Projects';
 import Awards from './Awards';
 import CustomFields from './CustomFields';
@@ -218,7 +218,7 @@ const ResumeBuilder = () => {
     });
   };
 
-  const updatePersonalInfo = (field: string, value: string | string[]) => {
+  const updatePersonalInfo = (field: keyof PersonalInfoData, value: string | string[]) => {
     setResumeData(prev => ({
       ...prev,
       personalInfo: { ...prev.personalInfo, [field]: value }
@@ -395,7 +395,7 @@ const ResumeBuilder = () => {
     }));
   };
 
-  const changeCustomFieldType = (id: number, type: string) => {
+  const changeCustomFieldType = (id: number, type: 'text' | 'textarea' | 'date' | 'url') => {
     setResumeData(prev => ({
       ...prev,
       customFields: prev.customFields.map(cf => 

@@ -1,4 +1,12 @@
 // src/components/types.ts
+export interface PersonalInfoData {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  summary: string[];
+}
+
 export interface PersonalInfo {
   name: string;
   title: string;
@@ -44,15 +52,6 @@ export interface Template {
   };
 }
 
-export interface ResumeData {
-  personalInfo: PersonalInfo;
-  experiences: Experience[];
-  education: Education[];
-  skills: string[];
-  selectedTemplate: string;
-  customColors: Record<string, any>;
-}
-
 export interface Project {
   id: number;
   name: string;
@@ -70,11 +69,13 @@ export interface Award {
   description: string;
 }
 
+export type CustomFieldType = 'text' | 'textarea' | 'date' | 'url';
+
 export interface CustomField {
   id: number;
   label: string;
   value: string;
-  type: 'text' | 'textarea' | 'date' | 'url';
+  type: CustomFieldType;
 }
 
 // Update ResumeData interface
@@ -82,9 +83,9 @@ export interface ResumeData {
   personalInfo: PersonalInfo;
   experiences: Experience[];
   education: Education[];
-  projects: Project[];  // Add this
-  awards: Award[];      // Add this
-  customFields: CustomField[];  // Add this
+  projects: Project[];
+  awards: Award[];
+  customFields: CustomField[];
   skills: string[];
   selectedTemplate: string;
   customColors: Record<string, any>;
@@ -123,9 +124,10 @@ export interface SkillsProps {
 }
 
 export interface PersonalInfoProps {
-  data: PersonalInfo;
-  onChange: (field: string, value: string) => void;
+  data: PersonalInfoData;
+  onChange: (field: keyof PersonalInfoData, value: string | string[]) => void;
 }
+
 
 export interface FileUploadProps {
   onUpload: (file: File) => void;
@@ -136,6 +138,7 @@ export interface ResumePreviewProps {
   template: Template;
   customColors: any;
 }
+
 export interface ProjectsProps {
   projects: Project[];
   onUpdate: (id: number, field: string, value: any) => void;
@@ -155,5 +158,5 @@ export interface CustomFieldsProps {
   onUpdate: (id: number, field: string, value: string) => void;
   onAdd: () => void;
   onRemove: (id: number) => void;
-  onChangeType: (id: number, type: string) => void;
+  onChangeType: (id: number, type: CustomFieldType) => void;
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CustomFieldsProps } from './types';
+import { CustomFieldsProps, CustomFieldType } from './types';
 
 const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType }: CustomFieldsProps) => {
   const [newFieldLabel, setNewFieldLabel] = useState('');
@@ -7,6 +7,11 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType }:
   const handleAddField = () => {
     if (newFieldLabel.trim()) {
       onAdd();
+      // Update the label of the newly added field
+      if (customFields.length > 0) {
+        const newFieldId = customFields[customFields.length - 1].id + 1;
+        onUpdate(newFieldId, 'label', newFieldLabel.trim());
+      }
       setNewFieldLabel('');
     }
   };
@@ -14,6 +19,13 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType }:
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleAddField();
+    }
+  };
+
+  const handleTypeChange = (id: number, value: string) => {
+    // Ensure the value is one of the allowed types
+    if (value === 'text' || value === 'textarea' || value === 'date' || value === 'url') {
+      onChangeType(id, value as CustomFieldType);
     }
   };
 
@@ -52,7 +64,7 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType }:
                 <select 
                   className="px-3 py-2 border border-gray-300 rounded-md"
                   value={field.type}
-                  onChange={(e) => onChangeType(field.id, e.target.value)}
+                  onChange={(e) => handleTypeChange(field.id, e.target.value)}
                 >
                   <option value="text">Text</option>
                   <option value="textarea">Paragraph</option>
