@@ -189,11 +189,49 @@ const ResumeBuilder = () => {
     const input = resumeRef.current;
     if (!input) return;
     
+    // Store original styles
+    const originalWidth = input.style.width;
+    const originalHeight = input.style.height;
+    
+    // Set fixed size for PDF generation
+    input.style.width = '794px'; // A4 width in pixels at 96 DPI
+    input.style.height = 'auto';
+    
     html2canvas(input, {
       scale: 2,
       useCORS: true,
-      logging: false
+      logging: false,
+      width: 794,
+      windowWidth: 794,
+      onclone: (clonedDoc: Document) => {
+        // Ensure all images are loaded before capture
+        const images = clonedDoc.querySelectorAll('img');
+        let loadedImages = 0;
+        const totalImages = images.length;
+        
+        if (totalImages === 0) return Promise.resolve();
+        
+        return new Promise<void>((resolve) => {
+          const imageLoaded = () => {
+            loadedImages++;
+            if (loadedImages === totalImages) resolve();
+          };
+          
+          images.forEach((img: HTMLImageElement) => {
+            if (img.complete) {
+              imageLoaded();
+            } else {
+              img.addEventListener('load', imageLoaded);
+              img.addEventListener('error', imageLoaded);
+            }
+          });
+        });
+      }
     } as any).then((canvas) => {
+      // Restore original styles
+      input.style.width = originalWidth;
+      input.style.height = originalHeight;
+      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
@@ -215,6 +253,9 @@ const ResumeBuilder = () => {
       pdf.save(`${resumeData.personalInfo.name}_Resume.pdf`);
     }).catch(error => {
       console.error('Error generating PDF:', error);
+      // Restore original styles even if there's an error
+      input.style.width = originalWidth;
+      input.style.height = originalHeight;
     });
   };
 

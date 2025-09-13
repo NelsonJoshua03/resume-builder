@@ -25,7 +25,7 @@ const Skills = ({ skills, onAdd, onRemove }: SkillsProps) => {
       
       <div className="flex flex-wrap gap-2 mb-4">
         {skills.map((skill, index) => (
-          <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center">
+          <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm flex items-center">
             {skill}
             {index > 0 && (
               <button 

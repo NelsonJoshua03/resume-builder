@@ -113,7 +113,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 <div key={index} className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2">
                     <h4 className="font-semibold text-lg">{exp.title}</h4>
-                    <span className="text-sm px-3 py-1 rounded-full mt-1 sm:mt-0" style={applyCustomStyles('badge')}>
+                    <span className="text-sm px-3 py-1 rounded-md mt-1 sm:mt-0" style={applyCustomStyles('badge')}>
                       {exp.period}
                     </span>
                   </div>
@@ -148,7 +148,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 <div key={index} className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
                   <h4 className="font-semibold">{edu.degree}</h4>
                   <p className="text-sm font-medium mb-1" style={{color: customColors.secondary}}>{edu.institution}</p>
-                  <p className="text-sm px-3 py-1 rounded-full inline-block" style={applyCustomStyles('badge')}>
+                  <p className="text-sm px-3 py-1 rounded-md inline-block" style={applyCustomStyles('badge')}>
                     {edu.year}
                   </p>
                 </div>
@@ -170,7 +170,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
             
             <div className="flex flex-wrap gap-2">
               {skills.map((skill, index) => (
-                <span key={index} className="px-3 py-1.5 rounded-full text-sm" style={applyCustomStyles('skill')}>
+                <span key={index} className="px-3 py-1.5 rounded-md text-sm" style={applyCustomStyles('skill')}>
                   {skill}
                 </span>
               ))}
@@ -300,7 +300,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
               <h3 className="text-lg font-semibold mb-3 border-b border-white border-opacity-30 pb-2">Skills</h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded-full text-xs bg-white bg-opacity-20">
+                  <span key={index} className="px-3 py-1 rounded-md text-xs bg-white bg-opacity-20">
                     {skill}
                   </span>
                 ))}
@@ -346,7 +346,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 <div key={index} className="mb-4">
                   <div className="flex justify-between items-start">
                     <h4 className="font-semibold">{exp.title}</h4>
-                    <span className="text-sm px-2 py-1 rounded" style={applyCustomStyles('badge')}>
+                    <span className="text-sm px-2 py-1 rounded-md" style={applyCustomStyles('badge')}>
                       {exp.period}
                     </span>
                   </div>
@@ -385,7 +385,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                   </ul>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {project.technologies.map((tech, i) => (
-                      <span key={i} className="px-2 py-1 rounded-full text-xs" style={{backgroundColor: customColors.accent + '40', color: customColors.secondary}}>
+                      <span key={i} className="px-2 py-1 rounded-md text-xs" style={{backgroundColor: customColors.accent + '40', color: customColors.secondary}}>
                         {tech}
                       </span>
                     ))}
@@ -472,7 +472,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
               <div key={index} className="mb-4 last:mb-0">
                 <div className="flex justify-between items-start">
                   <h4 className="font-semibold">{exp.title}</h4>
-                  <span className="text-xs px-2 py-1 rounded" style={applyCustomStyles('badge')}>
+                  <span className="text-xs px-2 py-1 rounded-md" style={applyCustomStyles('badge')}>
                     {exp.period}
                   </span>
                 </div>
@@ -511,7 +511,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
             </h3>
             <div className="flex flex-wrap gap-2">
               {skills.map((skill, index) => (
-                <span key={index} className="px-3 py-1 rounded-full text-xs" style={applyCustomStyles('skill')}>
+                <span key={index} className="px-3 py-1 rounded-md text-xs" style={applyCustomStyles('skill')}>
                   {skill}
                 </span>
               ))}
@@ -543,7 +543,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 </ul>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {project.technologies.map((tech, i) => (
-                    <span key={i} className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
+                    <span key={i} className="px-2 py-1 rounded-md text-xs bg-gray-200 text-gray-700">
                       {tech}
                     </span>
                   ))}
@@ -652,7 +652,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
               </h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded text-xs" style={applyCustomStyles('skill')}>
+                  <span key={index} className="px-3 py-1 rounded-md text-xs" style={applyCustomStyles('skill')}>
                     {skill}
                   </span>
                 ))}
@@ -677,7 +677,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                   </ul>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {project.technologies.map((tech, i) => (
-                      <span key={i} className="px-2 py-1 rounded text-xs bg-gray-200 text-gray-700">
+                      <span key={i} className="px-2 py-1 rounded-md text-xs bg-gray-200 text-gray-700">
                         {tech}
                       </span>
                     ))}
@@ -724,7 +724,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
   );
 
   return (
-    <div ref={ref} className="mb-6">
+    <div ref={ref} className="mb-6" style={{ width: '210mm', minHeight: '297mm' }}>
       {renderTemplate()}
     </div>
   );
