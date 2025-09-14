@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { ResumePreviewProps } from './types';
+import { ResumePreviewProps, Skill } from './types';
 
 const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, template, customColors }, ref) => {
   const { personalInfo, experiences, education, projects, awards, customFields, skills } = data;
@@ -36,394 +36,78 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
     return styles;
   };
 
+  // Helper function to convert proficiency to percentage
+  const proficiencyToPercentage = (proficiency: Skill['proficiency']): number => {
+    switch(proficiency) {
+      case 'Beginner': return 25;
+      case 'Intermediate': return 50;
+      case 'Advanced': return 75;
+      case 'Expert': return 100;
+      default: return 0;
+    }
+  };
+
+  // Circular progress component
+  const CircularProgress = ({ percentage, size = 60, strokeWidth = 6 }: { percentage: number, size?: number, strokeWidth?: number }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg className="transform -rotate-90" width={size} height={size}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#e5e7eb"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={customColors.primary}
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold" style={{ color: customColors.primary }}>
+          {percentage}%
+        </div>
+      </div>
+    );
+  };
+
+  // Custom bullet point component for better alignment
+  const BulletList = ({ items }: { items: string[] }) => (
+    <ul className="space-y-1.5">
+      {items.map((item, index) => (
+        <li key={index} className="flex items-start">
+          <span className="mr-2 mt-1.5 text-xs">•</span>
+          <span className="text-sm flex-1">{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+
   // Render different layouts based on template
   const renderTemplate = () => {
     switch(template.layout) {
-      case 'two-column':
-        return renderModernTemplate();
       case 'creative':
         return renderCreativeTemplate();
       case 'minimalist':
         return renderMinimalistTemplate();
+      case 'modern':
+        return renderModernTemplate();
       default:
-        return renderProfessionalTemplate();
+        return renderCreativeTemplate();
     }
   };
-
-  // Professional Template (Single Column)
-  const renderProfessionalTemplate = () => (
-    <div className={`rounded-xl shadow-lg overflow-hidden ${template.background}`} style={{ color: customColors.text, backgroundColor: customColors.background }}>
-      {/* Header */}
-      <div className="p-8 text-center relative" style={applyCustomStyles('header')}>
-        <div className="absolute top-0 left-0 w-full h-full opacity-10">
-          <div className="absolute top-10 left-10 w-20 h-20 rounded-full" style={{backgroundColor: customColors.accent}}></div>
-          <div className="absolute bottom-10 right-10 w-16 h-16 rounded-full" style={{backgroundColor: customColors.accent}}></div>
-        </div>
-        
-        <h1 className="text-3xl font-bold tracking-tight mb-2" style={{ color: '#fff' }}>{personalInfo.name}</h1>
-        <h2 className="text-xl font-medium mb-4 opacity-90" style={{ color: '#fff' }}>{personalInfo.title}</h2>
-        
-        <div className="flex justify-center space-x-6 mt-6 text-sm">
-          <span className="flex items-center">
-            <i className="fas fa-envelope mr-2 text-white opacity-90"></i> 
-            <span style={{ color: '#fff' }}>{personalInfo.email}</span>
-          </span>
-          <span className="flex items-center">
-            <i className="fas fa-phone mr-2 text-white opacity-90"></i> 
-            <span style={{ color: '#fff' }}>{personalInfo.phone}</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="p-8">
-        {/* Summary */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <div className="w-10 h-1 rounded-full mr-3" style={applyCustomStyles('divider')}></div>
-            <h3 className="text-xl font-semibold tracking-wide" style={applyCustomStyles('accent')}>
-              Professional Summary
-            </h3>
-            <div className="flex-grow h-1 rounded-full ml-3" style={applyCustomStyles('divider')}></div>
-          </div>
-          <div className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
-            <ul className="space-y-2">
-              {personalInfo.summary.map((point, i) => (
-                <li key={i} className="flex items-start">
-                  <span className="mr-2 mt-1.5" style={{color: customColors.primary}}>•</span>
-                  <span>{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Experience */}
-        {experiences.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-1 rounded-full mr-3" style={applyCustomStyles('divider')}></div>
-              <h3 className="text-xl font-semibold tracking-wide" style={applyCustomStyles('accent')}>
-                Work Experience
-              </h3>
-              <div className="flex-grow h-1 rounded-full ml-3" style={applyCustomStyles('divider')}></div>
-            </div>
-            
-            <div className="space-y-6">
-              {experiences.map((exp, index) => (
-                <div key={index} className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2">
-                    <h4 className="font-semibold text-lg">{exp.title}</h4>
-                    <span className="text-sm px-3 py-1 rounded-md mt-1 sm:mt-0" style={applyCustomStyles('badge')}>
-                      {exp.period}
-                    </span>
-                  </div>
-                  <p className="text-sm font-medium mb-3" style={{color: customColors.secondary}}>{exp.company}</p>
-                  <ul className="space-y-2">
-                    {exp.description.map((point, i) => (
-                      <li key={i} className="flex items-start">
-                        <span className="mr-2 mt-1.5" style={{color: customColors.primary}}>•</span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Education */}
-        {education.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-1 rounded-full mr-3" style={applyCustomStyles('divider')}></div>
-              <h3 className="text-xl font-semibold tracking-wide" style={applyCustomStyles('accent')}>
-                Education
-              </h3>
-              <div className="flex-grow h-1 rounded-full ml-3" style={applyCustomStyles('divider')}></div>
-            </div>
-            
-            <div className="space-y-4">
-              {education.map((edu, index) => (
-                <div key={index} className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
-                  <h4 className="font-semibold">{edu.degree}</h4>
-                  <p className="text-sm font-medium mb-1" style={{color: customColors.secondary}}>{edu.institution}</p>
-                  <p className="text-sm px-3 py-1 rounded-md inline-block" style={applyCustomStyles('badge')}>
-                    {edu.year}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Skills */}
-        {skills.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-1 rounded-full mr-3" style={applyCustomStyles('divider')}></div>
-              <h3 className="text-xl font-semibold tracking-wide" style={applyCustomStyles('accent')}>
-                Skills
-              </h3>
-              <div className="flex-grow h-1 rounded-full ml-3" style={applyCustomStyles('divider')}></div>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill, index) => (
-                <span key={index} className="px-3 py-1.5 rounded-md text-sm" style={applyCustomStyles('skill')}>
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Projects */}
-        {projects.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-1 rounded-full mr-3" style={applyCustomStyles('divider')}></div>
-              <h3 className="text-xl font-semibold tracking-wide" style={applyCustomStyles('accent')}>
-                Projects
-              </h3>
-              <div className="flex-grow h-1 rounded-full ml-3" style={applyCustomStyles('divider')}></div>
-            </div>
-            
-            <div className="space-y-4">
-              {projects.map((project, index) => (
-                <div key={index} className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold">{project.name}</h4>
-                    {project.link && (
-                      <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm px-2 py-1 rounded-md hover:underline" style={{color: customColors.primary}}>
-                        <i className="fas fa-external-link-alt mr-1"></i> View
-                      </a>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium mb-2" style={{color: customColors.secondary}}>{project.period}</p>
-                  <ul className="space-y-1 mb-2">
-                    {project.description.map((point, i) => (
-                      <li key={i} className="flex items-start text-sm">
-                        <span className="mr-2 mt-1" style={{color: customColors.primary}}>•</span>
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {project.technologies.map((tech, i) => (
-                      <span key={i} className="px-2 py-1 rounded-md text-xs" style={{backgroundColor: customColors.accent + '30', color: customColors.secondary}}>
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Awards */}
-        {awards.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-1 rounded-full mr-3" style={applyCustomStyles('divider')}></div>
-              <h3 className="text-xl font-semibold tracking-wide" style={applyCustomStyles('accent')}>
-                Awards
-              </h3>
-              <div className="flex-grow h-1 rounded-full ml-3" style={applyCustomStyles('divider')}></div>
-            </div>
-            
-            <div className="space-y-4">
-              {awards.map((award, index) => (
-                <div key={index} className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
-                  <h4 className="font-semibold">{award.title}</h4>
-                  <p className="text-sm font-medium mb-1" style={{color: customColors.secondary}}>{award.issuer} • {award.year}</p>
-                  <p className="text-sm">{award.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Custom Fields */}
-        {customFields.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center mb-4">
-              <div className="w-10 h-1 rounded-full mr-3" style={applyCustomStyles('divider')}></div>
-              <h3 className="text-xl font-semibold tracking-wide" style={applyCustomStyles('accent')}>
-                Additional Information
-              </h3>
-              <div className="flex-grow h-1 rounded-full ml-3" style={applyCustomStyles('divider')}></div>
-            </div>
-            
-            <div className="space-y-4">
-              {customFields.map((field, index) => (
-                <div key={index} className="pl-4 border-l-4" style={{borderColor: customColors.primary}}>
-                  <h4 className="font-semibold mb-1">{field.label}</h4>
-                  <p className="text-sm">{field.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // Modern Template (Two Column) - Enhanced version
-  const renderModernTemplate = () => (
-    <div className={`rounded-xl shadow-lg overflow-hidden ${template.background}`} style={{ color: customColors.text }}>
-      <div className="flex flex-col md:flex-row">
-        {/* Left Column - 1/3 width */}
-        <div className="md:w-2/5 p-6" style={{ backgroundColor: customColors.primary, color: '#fff' }}>
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold">{personalInfo.name}</h1>
-            <h2 className="text-lg mt-2 opacity-90">{personalInfo.title}</h2>
-          </div>
-          
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3 border-b border-white border-opacity-30 pb-2">Contact</h3>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <i className="fas fa-envelope mr-2 w-5 text-center opacity-90"></i>
-                <span className="text-sm">{personalInfo.email}</span>
-              </div>
-              <div className="flex items-center">
-                <i className="fas fa-phone mr-2 w-5 text-center opacity-90"></i>
-                <span className="text-sm">{personalInfo.phone}</span>
-              </div>
-            </div>
-          </div>
-
-          {skills.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 border-b border-white border-opacity-30 pb-2">Skills</h3>
-              <div className="flex flex-wrap gap-2">
-                {skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded-md text-xs bg-white bg-opacity-20">
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {education.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 border-b border-white border-opacity-30 pb-2">Education</h3>
-              {education.map((edu, index) => (
-                <div key={index} className="mb-3 last:mb-0">
-                  <h4 className="font-semibold text-sm">{edu.degree}</h4>
-                  <p className="text-xs opacity-90">{edu.institution}</p>
-                  <p className="text-xs opacity-90">{edu.year}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right Column - 3/5 width */}
-        <div className="md:w-3/5 p-6" style={{ backgroundColor: customColors.background }}>
-          {/* Summary */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2 border-b pb-1" style={{borderColor: customColors.primary + '40', color: customColors.primary}}>
-              Professional Summary
-            </h3>
-            <ul className="list-disc list-inside text-sm space-y-1">
-              {personalInfo.summary.map((point, i) => (
-                <li key={i}>{point}</li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Experience */}
-          {experiences.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 border-b pb-1" style={{borderColor: customColors.primary + '40', color: customColors.primary}}>
-                Work Experience
-              </h3>
-              {experiences.map((exp, index) => (
-                <div key={index} className="mb-4">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-semibold">{exp.title}</h4>
-                    <span className="text-sm px-2 py-1 rounded-md" style={applyCustomStyles('badge')}>
-                      {exp.period}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-1">{exp.company}</p>
-                  <ul className="list-disc list-inside text-sm space-y-1">
-                    {exp.description.map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Projects */}
-          {projects.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 border-b pb-1" style={{borderColor: customColors.primary + '40', color: customColors.primary}}>
-                Projects
-              </h3>
-              {projects.map((project, index) => (
-                <div key={index} className="mb-4">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-semibold">{project.name}</h4>
-                    {project.link && (
-                      <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm" style={{color: customColors.primary}}>
-                        View Project
-                      </a>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 mb-1">{project.period}</p>
-                  <ul className="list-disc list-inside text-sm space-y-1">
-                    {project.description.map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {project.technologies.map((tech, i) => (
-                      <span key={i} className="px-2 py-1 rounded-md text-xs" style={{backgroundColor: customColors.accent + '40', color: customColors.secondary}}>
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Awards */}
-          {awards.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 border-b pb-1" style={{borderColor: customColors.primary + '40', color: customColors.primary}}>
-                Awards & Achievements
-              </h3>
-              {awards.map((award, index) => (
-                <div key={index} className="mb-4 last:mb-0">
-                  <h4 className="font-semibold">{award.title}</h4>
-                  <p className="text-sm text-gray-600">{award.issuer} • {award.year}</p>
-                  <p className="text-sm mt-1">{award.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Custom Fields */}
-          {customFields.length > 0 && customFields.map((field, index) => (
-            <div key={index} className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 border-b pb-1" style={{borderColor: customColors.primary + '40', color: customColors.primary}}>
-                {field.label}
-              </h3>
-              <p className="text-sm">{field.value}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 
   // Creative Template (Single Column)
   const renderCreativeTemplate = () => (
@@ -455,11 +139,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
           <h3 className="text-lg font-semibold mb-2 flex items-center" style={applyCustomStyles('accent')}>
             <i className="fas fa-star mr-2"></i> Professional Summary
           </h3>
-          <ul className="list-disc list-inside space-y-2">
-            {personalInfo.summary.map((point, i) => (
-              <li key={i}>{point}</li>
-            ))}
-          </ul>
+          <BulletList items={personalInfo.summary} />
         </div>
 
         {/* Experience */}
@@ -472,16 +152,12 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
               <div key={index} className="mb-4 last:mb-0">
                 <div className="flex justify-between items-start">
                   <h4 className="font-semibold">{exp.title}</h4>
-                  <span className="text-xs px-2 py-1 rounded-md" style={applyCustomStyles('badge')}>
+                  <span className="text-xs px-2 py-1 rounded" style={applyCustomStyles('badge')}>
                     {exp.period}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{exp.company}</p>
-                <ul className="list-disc list-inside text-sm space-y-1">
-                  {exp.description.map((point, i) => (
-                    <li key={i}>{point}</li>
-                  ))}
-                </ul>
+                <BulletList items={exp.description} />
               </div>
             ))}
           </div>
@@ -511,8 +187,8 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
             </h3>
             <div className="flex flex-wrap gap-2">
               {skills.map((skill, index) => (
-                <span key={index} className="px-3 py-1 rounded-md text-xs" style={applyCustomStyles('skill')}>
-                  {skill}
+                <span key={index} className="px-3 py-1 rounded-full text-xs" style={applyCustomStyles('skill')}>
+                  {skill.name} ({skill.proficiency})
                 </span>
               ))}
             </div>
@@ -536,14 +212,10 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                   )}
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{project.period}</p>
-                <ul className="list-disc list-inside text-sm space-y-1">
-                  {project.description.map((point, i) => (
-                    <li key={i}>{point}</li>
-                  ))}
-                </ul>
+                <BulletList items={project.description} />
                 <div className="flex flex-wrap gap-1 mt-2">
                   {project.technologies.map((tech, i) => (
-                    <span key={i} className="px-2 py-1 rounded-md text-xs bg-gray-200 text-gray-700">
+                    <span key={i} className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
                       {tech}
                     </span>
                   ))}
@@ -564,7 +236,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 <h4 className="font-semibold">{award.title}</h4>
                 <p className="text-sm text-gray-600">{award.issuer} • {award.year}</p>
                 <p className="text-sm">{award.description}</p>
-              </div>
+                </div>
             ))}
           </div>
         )}
@@ -596,21 +268,17 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
           </div>
         </div>
 
-        <div className="border-t border-gray-300 pt-6">
+        <div className="space-y-8">
           {/* Summary */}
-          <div className="mb-8">
+          <div>
             <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>Summary</h3>
-            <ul className="list-disc list-inside space-y-2">
-              {personalInfo.summary.map((point, i) => (
-                <li key={i}>{point}</li>
-              ))}
-            </ul>
+            <BulletList items={personalInfo.summary} />
           </div>
 
           {/* Experience */}
           {experiences.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-3 border-b border-gray-300 pb-1" style={applyCustomStyles('accent')}>
+            <div>
+              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
                 Experience
               </h3>
               {experiences.map((exp, index) => (
@@ -618,11 +286,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                   <h4 className="font-semibold">{exp.title}</h4>
                   <p className="text-sm text-gray-600">{exp.company}</p>
                   <p className="text-xs text-gray-500 mb-1">{exp.period}</p>
-                  <ul className="list-disc list-inside space-y-2">
-                    {exp.description.map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
+                  <BulletList items={exp.description} />
                 </div>
               ))}
             </div>
@@ -630,8 +294,8 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
           {/* Education */}
           {education.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-3 border-b border-gray-300 pb-1" style={applyCustomStyles('accent')}>
+            <div>
+              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
                 Education
               </h3>
               {education.map((edu, index) => (
@@ -646,14 +310,14 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
           {/* Skills */}
           {skills.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-3 border-b border-gray-300 pb-1" style={applyCustomStyles('accent')}>
+            <div>
+              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
                 Skills
               </h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded-md text-xs" style={applyCustomStyles('skill')}>
-                    {skill}
+                  <span key={index} className="px-3 py-1 rounded text-xs" style={applyCustomStyles('skill')}>
+                    {skill.name} ({skill.proficiency})
                   </span>
                 ))}
               </div>
@@ -662,22 +326,18 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
           {/* Projects */}
           {projects.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-3 border-b border-gray-300 pb-1" style={applyCustomStyles('accent')}>
+            <div>
+              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
                 Projects
               </h3>
               {projects.map((project, index) => (
                 <div key={index} className="mb-5 last:mb-0">
                   <h4 className="font-semibold">{project.name}</h4>
                   <p className="text-sm text-gray-600">{project.period}</p>
-                  <ul className="list-disc list-inside space-y-2">
-                    {project.description.map((point, i) => (
-                      <li key={i}>{point}</li>
-                    ))}
-                  </ul>
+                  <BulletList items={project.description} />
                   <div className="flex flex-wrap gap-1 mt-2">
                     {project.technologies.map((tech, i) => (
-                      <span key={i} className="px-2 py-1 rounded-md text-xs bg-gray-200 text-gray-700">
+                      <span key={i} className="px-2 py-1 rounded text-xs bg-gray-200 text-gray-700">
                         {tech}
                       </span>
                     ))}
@@ -694,8 +354,8 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
           {/* Awards */}
           {awards.length > 0 && (
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-3 border-b border-gray-300 pb-1" style={applyCustomStyles('accent')}>
+            <div>
+              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
                 Awards
               </h3>
               {awards.map((award, index) => (
@@ -711,8 +371,8 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
           {/* Custom Fields */}
           {customFields.length > 0 && customFields.map((field, index) => (
-            <div key={index} className="mb-8">
-              <h3 className="text-lg font-semibold mb-3 border-b border-gray-300 pb-1" style={applyCustomStyles('accent')}>
+            <div key={index}>
+              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
                 {field.label}
               </h3>
               <p className="text-sm">{field.value}</p>
@@ -723,8 +383,148 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
     </div>
   );
 
+  // Modern Template with Circular Skill Progress Charts (Single Column)
+  const renderModernTemplate = () => (
+    <div className={`rounded-xl shadow-lg overflow-hidden ${template.background}`} style={{ color: customColors.text, backgroundColor: customColors.background }}>
+      {/* Header */}
+      <div className="p-6" style={{ backgroundColor: customColors.primary }}>
+        <h1 className="text-3xl font-bold text-white">{personalInfo.name}</h1>
+        <h2 className="text-xl text-blue-100 mt-1">{personalInfo.title}</h2>
+        <div className="flex flex-wrap gap-4 mt-3 text-blue-100">
+          <span><i className="fas fa-envelope mr-1"></i> {personalInfo.email}</span>
+          <span><i className="fas fa-phone mr-1"></i> {personalInfo.phone}</span>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-8">
+        {/* Summary */}
+        <div>
+          <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+            Professional Summary
+          </h3>
+          <BulletList items={personalInfo.summary} />
+        </div>
+
+        {/* Experience */}
+        {experiences.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              Work Experience
+            </h3>
+            {experiences.map((exp, index) => (
+              <div key={index} className="mb-5 last:mb-0">
+                <div className="flex justify-between items-start">
+                  <h4 className="font-semibold">{exp.title}</h4>
+                  <span className="text-sm px-2 py-1 rounded" style={{ backgroundColor: customColors.accent, color: customColors.primary }}>
+                    {exp.period}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-1">{exp.company}</p>
+                <BulletList items={exp.description} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Education */}
+        {education.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              Education
+            </h3>
+            {education.map((edu, index) => (
+              <div key={index} className="mb-4 last:mb-0">
+                <h4 className="font-semibold">{edu.degree}</h4>
+                <p className="text-sm text-gray-600">{edu.institution}</p>
+                <p className="text-xs" style={{ color: customColors.primary }}>{edu.year}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Skills with circular progress charts */}
+        {skills.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              Skills
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+              {skills.map((skill, index) => {
+                const percentage = proficiencyToPercentage(skill.proficiency);
+                return (
+                  <div key={index} className="flex flex-col items-center">
+                    <CircularProgress percentage={percentage} />
+                    <div className="text-center mt-2">
+                      <div className="text-sm font-medium">{skill.name}</div>
+                      <div className="text-xs text-gray-600">{skill.proficiency}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Projects */}
+        {projects.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              Projects
+            </h3>
+            {projects.map((project, index) => (
+              <div key={index} className="mb-5 last:mb-0">
+                <h4 className="font-semibold">{project.name}</h4>
+                <p className="text-sm text-gray-600">{project.period}</p>
+                <BulletList items={project.description} />
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {project.technologies.map((tech, i) => (
+                    <span key={i} className="px-2 py-1 rounded text-xs bg-gray-200 text-gray-700">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+                {project.link && (
+                  <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-xs" style={{ color: customColors.primary }}>
+                    View Project
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Awards */}
+        {awards.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              Awards
+            </h3>
+            {awards.map((award, index) => (
+              <div key={index} className="mb-3 last:mb-0">
+                <h4 className="font-semibold">{award.title}</h4>
+                <p className="text-sm text-gray-600">{award.issuer}</p>
+                <p className="text-xs" style={{ color: customColors.primary }}>{award.year}</p>
+                <p className="text-sm mt-1">{award.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Custom Fields */}
+        {customFields.length > 0 && customFields.map((field, index) => (
+          <div key={index}>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              {field.label}
+            </h3>
+            <p className="text-sm">{field.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div ref={ref} className="mb-6" style={{ width: '210mm', minHeight: '297mm' }}>
+    <div ref={ref} className="mb-6">
       {renderTemplate()}
     </div>
   );

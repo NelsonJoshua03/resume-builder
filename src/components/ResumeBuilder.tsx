@@ -9,55 +9,13 @@ import TemplateSelector from './TemplateSelector';
 import FileUpload from './FileUpload';
 import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
-import { ResumeData, Template, PersonalInfoData } from './types'; // Import PersonalInfoData
+import { ResumeData, Template, PersonalInfoData, Skill } from './types';
 import Projects from './Projects';
 import Awards from './Awards';
 import CustomFields from './CustomFields';
 
 // Enhanced template configuration with color customization
 const TEMPLATES: Record<string, Template> = {
-  professional: {
-    id: 'professional',
-    name: 'Professional',
-    background: 'bg-white',
-    textColor: 'text-gray-800',
-    accentColor: 'text-blue-600',
-    borderColor: 'border-blue-200',
-    buttonColor: 'bg-blue-600 hover:bg-blue-700',
-    headerBg: 'bg-blue-600',
-    headerText: 'text-white',
-    sectionBg: 'bg-blue-50',
-    description: 'Clean and traditional design for corporate environments',
-    layout: 'single-column',
-    colors: {
-      primary: '#2563eb', // blue-600
-      secondary: '#1e40af', // blue-800
-      accent: '#93c5fd', // blue-300
-      background: '#ffffff',
-      text: '#1f2937'
-    }
-  },
-  modern: {
-    id: 'modern',
-    name: 'Modern',
-    background: 'bg-gradient-to-br from-gray-50 to-gray-100',
-    textColor: 'text-gray-900',
-    accentColor: 'text-teal-600',
-    borderColor: 'border-teal-300',
-    buttonColor: 'bg-teal-600 hover:bg-teal-700',
-    headerBg: 'bg-gradient-to-r from-teal-500 to-cyan-600',
-    headerText: 'text-white',
-    sectionBg: 'bg-white bg-opacity-80',
-    description: 'Sleek contemporary design with subtle gradients',
-    layout: 'two-column',
-    colors: {
-      primary: '#0d9488', // teal-600
-      secondary: '0f766e', // teal-700
-      accent: '#5eead4', // teal-300
-      background: '#f9fafb',
-      text: '#111827'
-    }
-  },
   creative: {
     id: 'creative',
     name: 'Creative',
@@ -98,6 +56,27 @@ const TEMPLATES: Record<string, Template> = {
       accent: '#d1d5db', // gray-300
       background: '#ffffff',
       text: '#111827'
+    }
+  },
+  modern: {
+    id: 'modern',
+    name: 'Modern',
+    background: 'bg-gradient-to-br from-blue-50 to-cyan-50',
+    textColor: 'text-gray-900',
+    accentColor: 'text-blue-600',
+    borderColor: 'border-blue-300',
+    buttonColor: 'bg-blue-600 hover:bg-blue-700',
+    headerBg: 'bg-gradient-to-r from-blue-500 to-cyan-500',
+    headerText: 'text-white',
+    sectionBg: 'bg-white bg-opacity-80',
+    description: 'Clean modern design with skill proficiency charts',
+    layout: 'modern',
+    colors: {
+      primary: '#2563eb', // blue-600
+      secondary: '#1d4ed8', // blue-700
+      accent: '#93c5fd', // blue-300
+      background: '#eff6ff',
+      text: '#1f2937'
     }
   }
 };
@@ -178,8 +157,15 @@ const ResumeBuilder = () => {
         type: 'text'
       }
     ],
-    skills: ['React', 'Node.js', 'JavaScript', 'HTML/CSS', 'MongoDB', 'AWS'],
-    selectedTemplate: 'professional',
+    skills: [
+      { name: 'React', proficiency: 'Advanced' },
+      { name: 'Node.js', proficiency: 'Intermediate' },
+      { name: 'JavaScript', proficiency: 'Advanced' },
+      { name: 'HTML/CSS', proficiency: 'Expert' },
+      { name: 'MongoDB', proficiency: 'Intermediate' },
+      { name: 'AWS', proficiency: 'Beginner' }
+    ],
+    selectedTemplate: 'creative',
     customColors: {}
   });
 
@@ -329,8 +315,8 @@ const ResumeBuilder = () => {
     }));
   };
 
-  const addSkill = (skill: string) => {
-    if (skill && !resumeData.skills.includes(skill)) {
+  const addSkill = (skill: Skill) => {
+    if (skill.name && !resumeData.skills.some(s => s.name === skill.name)) {
       setResumeData(prev => ({
         ...prev,
         skills: [...prev.skills, skill]
@@ -338,10 +324,19 @@ const ResumeBuilder = () => {
     }
   };
 
-  const removeSkill = (skill: string) => {
+  const removeSkill = (index: number) => {
     setResumeData(prev => ({
       ...prev,
-      skills: prev.skills.filter(s => s !== skill)
+      skills: prev.skills.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSkillProficiency = (index: number, proficiency: Skill['proficiency']) => {
+    setResumeData(prev => ({
+      ...prev,
+      skills: prev.skills.map((skill, i) => 
+        i === index ? { ...skill, proficiency } : skill
+      )
     }));
   };
 
@@ -472,7 +467,7 @@ const ResumeBuilder = () => {
   };
 
   // Get the current template configuration
-  const currentTemplate = TEMPLATES[resumeData.selectedTemplate] || TEMPLATES.professional;
+  const currentTemplate = TEMPLATES[resumeData.selectedTemplate] || TEMPLATES.creative;
   
   // Get custom colors for the current template if they exist
   const customColors = resumeData.customColors[resumeData.selectedTemplate] || currentTemplate.colors;
@@ -518,6 +513,7 @@ const ResumeBuilder = () => {
             skills={resumeData.skills}
             onAdd={addSkill}
             onRemove={removeSkill}
+            onUpdateProficiency={updateSkillProficiency}
           />
           <CustomFields
             customFields={resumeData.customFields}

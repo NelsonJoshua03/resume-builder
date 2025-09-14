@@ -30,6 +30,11 @@ export interface Education {
   year: string;
 }
 
+export interface Skill {
+  name: string;
+  proficiency: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+}
+
 export interface Template {
   id: string;
   name: string;
@@ -86,11 +91,10 @@ export interface ResumeData {
   projects: Project[];
   awards: Award[];
   customFields: CustomField[];
-  skills: string[];
+  skills: Skill[]; // Changed from string[] to Skill[]
   selectedTemplate: string;
   customColors: Record<string, any>;
 }
-
 export interface ColorCustomizerProps {
   template: Template;
   colors: any;
@@ -118,9 +122,10 @@ export interface EducationProps {
 }
 
 export interface SkillsProps {
-  skills: string[];
-  onAdd: (skill: string) => void;
-  onRemove: (skill: string) => void;
+  skills: Skill[];
+  onAdd: (skill: Skill) => void;
+  onRemove: (index: number) => void;
+  onUpdateProficiency: (index: number, proficiency: Skill['proficiency']) => void;
 }
 
 export interface PersonalInfoProps {
