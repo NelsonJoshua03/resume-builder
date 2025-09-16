@@ -480,49 +480,54 @@ const ResumeBuilder = () => {
       </header>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        <div className="w-full lg:w-2/5 space-y-6">
+        <div className="w-full lg:w-2/5">
+          {/* Fixed PersonalInfo section */}
           <PersonalInfo 
             data={resumeData.personalInfo} 
             onChange={updatePersonalInfo} 
           />
-          <Experience 
-            experiences={resumeData.experiences}
-            onUpdate={updateExperience}
-            onAdd={addExperience}
-            onRemove={removeExperience}
-          />
-          <Education 
-            education={resumeData.education}
-            onUpdate={updateEducation}
-            onAdd={addEducation}
-            onRemove={removeEducation}
-          />
-          <Projects
-            projects={resumeData.projects}
-            onUpdate={updateProject}
-            onAdd={addProject}
-            onRemove={removeProject}
-          />
-          <Awards
-            awards={resumeData.awards}
-            onUpdate={updateAward}
-            onAdd={addAward}
-            onRemove={removeAward}
-          />
-          <Skills 
-            skills={resumeData.skills}
-            onAdd={addSkill}
-            onRemove={removeSkill}
-            onUpdateProficiency={updateSkillProficiency}
-          />
-          <CustomFields
-            customFields={resumeData.customFields}
-            onUpdate={updateCustomField}
-            onAdd={addCustomField}
-            onRemove={removeCustomField}
-            onChangeType={changeCustomFieldType}
-          />
-          <FileUpload onUpload={handleFileUpload} />
+          
+          {/* Static sections without drag-and-drop */}
+          <div className="space-y-6">
+            <Experience 
+              experiences={resumeData.experiences}
+              onUpdate={updateExperience}
+              onAdd={addExperience}
+              onRemove={removeExperience}
+            />
+            <Education 
+              education={resumeData.education}
+              onUpdate={updateEducation}
+              onAdd={addEducation}
+              onRemove={removeEducation}
+            />
+            <Projects
+              projects={resumeData.projects}
+              onUpdate={updateProject}
+              onAdd={addProject}
+              onRemove={removeProject}
+            />
+            <Awards
+              awards={resumeData.awards}
+              onUpdate={updateAward}
+              onAdd={addAward}
+              onRemove={removeAward}
+            />
+            <Skills 
+              skills={resumeData.skills}
+              onAdd={addSkill}
+              onRemove={removeSkill}
+              onUpdateProficiency={updateSkillProficiency}
+            />
+            <CustomFields
+              customFields={resumeData.customFields}
+              onUpdate={updateCustomField}
+              onAdd={addCustomField}
+              onRemove={removeCustomField}
+              onChangeType={changeCustomFieldType}
+            />
+            <FileUpload onUpload={handleFileUpload} />
+          </div>
         </div>
 
         <div className="w-full lg:w-3/5">

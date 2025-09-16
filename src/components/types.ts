@@ -142,6 +142,7 @@ export interface ResumePreviewProps {
   data: ResumeData;
   template: Template;
   customColors: any;
+  
 }
 
 export interface ProjectsProps {

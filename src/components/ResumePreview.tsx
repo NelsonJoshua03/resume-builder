@@ -179,22 +179,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
           </div>
         )}
 
-        {/* Skills */}
-        {skills.length > 0 && (
-          <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
-            <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
-              <i className="fas fa-tools mr-2"></i> Skills
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill, index) => (
-                <span key={index} className="px-3 py-1 rounded-full text-xs" style={applyCustomStyles('skill')}>
-                  {skill.name} ({skill.proficiency})
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Projects */}
         {projects.length > 0 && (
           <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
@@ -236,20 +220,57 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 <h4 className="font-semibold">{award.title}</h4>
                 <p className="text-sm text-gray-600">{award.issuer} • {award.year}</p>
                 <p className="text-sm">{award.description}</p>
-                </div>
+              </div>
             ))}
           </div>
         )}
 
-        {/* Custom Fields */}
-        {customFields.length > 0 && customFields.map((field, index) => (
-          <div key={index} className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+        {/* Skills */}
+        {skills.length > 0 && (
+          <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
             <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
-              {field.label}
+              <i className="fas fa-tools mr-2"></i> Skills
             </h3>
-            <p className="text-sm">{field.value}</p>
+            {template.layout === 'modern' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+                {skills.map((skill, index) => {
+                  const percentage = proficiencyToPercentage(skill.proficiency);
+                  return (
+                    <div key={index} className="flex flex-col items-center">
+                      <CircularProgress percentage={percentage} />
+                      <div className="text-center mt-2">
+                        <div className="text-sm font-medium">{skill.name}</div>
+                        <div className="text-xs text-gray-600">{skill.proficiency}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {skills.map((skill, index) => (
+                  <span key={index} className="px-3 py-1 rounded-full text-xs" style={applyCustomStyles('skill')}>
+                    {skill.name} ({skill.proficiency})
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
+        )}
+
+        {/* Custom Fields */}
+        {customFields.length > 0 && (
+          <div>
+            {customFields.map((field, index) => (
+              <div key={index} className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+                <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
+                  {field.label}
+                </h3>
+                <p className="text-sm">{field.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -278,14 +299,16 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
           {/* Experience */}
           {experiences.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                Experience
-              </h3>
+              <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>Work Experience</h3>
               {experiences.map((exp, index) => (
-                <div key={index} className="mb-5 last:mb-0">
-                  <h4 className="font-semibold">{exp.title}</h4>
-                  <p className="text-sm text-gray-600">{exp.company}</p>
-                  <p className="text-xs text-gray-500 mb-1">{exp.period}</p>
+                <div key={index} className="mb-4 last:mb-0">
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-semibold">{exp.title}</h4>
+                    <span className="text-xs px-2 py-1 rounded" style={applyCustomStyles('badge')}>
+                      {exp.period}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">{exp.company}</p>
                   <BulletList items={exp.description} />
                 </div>
               ))}
@@ -295,58 +318,40 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
           {/* Education */}
           {education.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                Education
-              </h3>
+              <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>Education</h3>
               {education.map((edu, index) => (
-                <div key={index} className="mb-4 last:mb-0">
+                <div key={index} className="mb-3 last:mb-0">
                   <h4 className="font-semibold">{edu.degree}</h4>
                   <p className="text-sm text-gray-600">{edu.institution}</p>
-                  <p className="text-xs text-gray-500">{edu.year}</p>
+                  <p className="text-xs" style={applyCustomStyles('accent')}>{edu.year}</p>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Skills */}
-          {skills.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                Skills
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded text-xs" style={applyCustomStyles('skill')}>
-                    {skill.name} ({skill.proficiency})
-                  </span>
-                ))}
-              </div>
             </div>
           )}
 
           {/* Projects */}
           {projects.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                Projects
-              </h3>
+              <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>Projects</h3>
               {projects.map((project, index) => (
                 <div key={index} className="mb-5 last:mb-0">
-                  <h4 className="font-semibold">{project.name}</h4>
-                  <p className="text-sm text-gray-600">{project.period}</p>
+                  <div className="flex justify-between items-start">
+                    <h4 className="font-semibold">{project.name}</h4>
+                    {project.link && (
+                      <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm" style={{color: customColors.primary}}>
+                        View
+                      </a>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">{project.period}</p>
                   <BulletList items={project.description} />
                   <div className="flex flex-wrap gap-1 mt-2">
                     {project.technologies.map((tech, i) => (
-                      <span key={i} className="px-2 py-1 rounded text-xs bg-gray-200 text-gray-700">
+                      <span key={i} className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
                         {tech}
                       </span>
                     ))}
                   </div>
-                  {project.link && (
-                    <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline mt-2 inline-block">
-                      View Project
-                    </a>
-                  )}
                 </div>
               ))}
             </div>
@@ -355,29 +360,42 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
           {/* Awards */}
           {awards.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                Awards
-              </h3>
+              <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>Awards</h3>
               {awards.map((award, index) => (
-                <div key={index} className="mb-4 last:mb-0">
+                <div key={index} className="mb-3 last:mb-0">
                   <h4 className="font-semibold">{award.title}</h4>
-                  <p className="text-sm text-gray-600">{award.issuer}</p>
-                  <p className="text-xs text-gray-500">{award.year}</p>
-                  <p className="text-sm mt-1">{award.description}</p>
+                  <p className="text-sm text-gray-600">{award.issuer} • {award.year}</p>
+                  <p className="text-sm">{award.description}</p>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Custom Fields */}
-          {customFields.length > 0 && customFields.map((field, index) => (
-            <div key={index}>
-              <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                {field.label}
-              </h3>
-              <p className="text-sm">{field.value}</p>
+          {/* Skills */}
+          {skills.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>Skills</h3>
+              <div className="flex flex-wrap gap-2">
+                {skills.map((skill, index) => (
+                  <span key={index} className="px-3 py-1 rounded-full text-xs" style={applyCustomStyles('skill')}>
+                    {skill.name} ({skill.proficiency})
+                  </span>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {/* Custom Fields */}
+          {customFields.length > 0 && (
+            <div>
+              {customFields.map((field, index) => (
+                <div key={index}>
+                  <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>{field.label}</h3>
+                  <p className="text-sm">{field.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -412,10 +430,10 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
               Work Experience
             </h3>
             {experiences.map((exp, index) => (
-              <div key={index} className="mb-5 last:mb-0">
+              <div key={index} className="mb-4 last:mb-0">
                 <div className="flex justify-between items-start">
                   <h4 className="font-semibold">{exp.title}</h4>
-                  <span className="text-sm px-2 py-1 rounded" style={{ backgroundColor: customColors.accent, color: customColors.primary }}>
+                  <span className="text-xs px-2 py-1 rounded" style={applyCustomStyles('badge')}>
                     {exp.period}
                   </span>
                 </div>
@@ -433,16 +451,62 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
               Education
             </h3>
             {education.map((edu, index) => (
-              <div key={index} className="mb-4 last:mb-0">
+              <div key={index} className="mb-3 last:mb-0">
                 <h4 className="font-semibold">{edu.degree}</h4>
                 <p className="text-sm text-gray-600">{edu.institution}</p>
-                <p className="text-xs" style={{ color: customColors.primary }}>{edu.year}</p>
+                <p className="text-xs" style={applyCustomStyles('accent')}>{edu.year}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* Skills with circular progress charts */}
+        {/* Projects */}
+        {projects.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              Projects
+            </h3>
+            {projects.map((project, index) => (
+              <div key={index} className="mb-5 last:mb-0">
+                <div className="flex justify-between items-start">
+                  <h4 className="font-semibold">{project.name}</h4>
+                  {project.link && (
+                    <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-sm" style={{color: customColors.primary}}>
+                      View
+                    </a>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 mb-1">{project.period}</p>
+                <BulletList items={project.description} />
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {project.technologies.map((tech, i) => (
+                    <span key={i} className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Awards */}
+        {awards.length > 0 && (
+          <div>
+            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+              Awards
+            </h3>
+            {awards.map((award, index) => (
+              <div key={index} className="mb-3 last:mb-0">
+                <h4 className="font-semibold">{award.title}</h4>
+                <p className="text-sm text-gray-600">{award.issuer} • {award.year}</p>
+                <p className="text-sm">{award.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Skills */}
         {skills.length > 0 && (
           <div>
             <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
@@ -465,60 +529,19 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
           </div>
         )}
 
-        {/* Projects */}
-        {projects.length > 0 && (
-          <div>
-            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
-              Projects
-            </h3>
-            {projects.map((project, index) => (
-              <div key={index} className="mb-5 last:mb-0">
-                <h4 className="font-semibold">{project.name}</h4>
-                <p className="text-sm text-gray-600">{project.period}</p>
-                <BulletList items={project.description} />
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {project.technologies.map((tech, i) => (
-                    <span key={i} className="px-2 py-1 rounded text-xs bg-gray-200 text-gray-700">
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-                {project.link && (
-                  <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-xs" style={{ color: customColors.primary }}>
-                    View Project
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Awards */}
-        {awards.length > 0 && (
-          <div>
-            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
-              Awards
-            </h3>
-            {awards.map((award, index) => (
-              <div key={index} className="mb-3 last:mb-0">
-                <h4 className="font-semibold">{award.title}</h4>
-                <p className="text-sm text-gray-600">{award.issuer}</p>
-                <p className="text-xs" style={{ color: customColors.primary }}>{award.year}</p>
-                <p className="text-sm mt-1">{award.description}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Custom Fields */}
-        {customFields.length > 0 && customFields.map((field, index) => (
-          <div key={index}>
-            <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
-              {field.label}
-            </h3>
-            <p className="text-sm">{field.value}</p>
+        {customFields.length > 0 && (
+          <div>
+            {customFields.map((field, index) => (
+              <div key={index}>
+                <h3 className="text-xl font-semibold mb-3" style={{ color: customColors.primary }}>
+                  {field.label}
+                </h3>
+                <p className="text-sm">{field.value}</p>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
