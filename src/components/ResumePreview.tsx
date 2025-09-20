@@ -22,10 +22,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
         styles.backgroundColor = customColors.accent + '40';
         styles.color = customColors.primary;
         break;
-      case 'skill':
-        styles.backgroundColor = customColors.accent + '40';
-        styles.color = customColors.secondary;
-        break;
+      // Removed the 'skill' case to remove the oval background
       case 'divider':
         styles.backgroundColor = customColors.primary + '40';
         break;
@@ -249,7 +246,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
             ) : (
               <div className="flex flex-wrap gap-2">
                 {skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded-full text-xs" style={applyCustomStyles('skill')}>
+                  <span key={index} className="px-3 py-1 text-xs" style={{ color: customColors.secondary }}>
                     {skill.name} ({skill.proficiency})
                   </span>
                 ))}
@@ -377,7 +374,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
               <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>Skills</h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map((skill, index) => (
-                  <span key={index} className="px-3 py-1 rounded-full text-xs" style={applyCustomStyles('skill')}>
+                  <span key={index} className="px-3 py-1 text-xs" style={{ color: customColors.secondary }}>
                     {skill.name} ({skill.proficiency})
                   </span>
                 ))}

@@ -17,6 +17,19 @@ body {
   min-height: 100vh;
 }
 
+/* Mobile-specific styles for PDF generation */
+@media (max-width: 768px) {
+  #resume-preview {
+    font-family: 'Arial', 'Helvetica', sans-serif !important;
+    letter-spacing: 0.3px !important;
+  }
+  
+  #resume-preview * {
+    font-family: inherit !important;
+    letter-spacing: inherit !important;
+  }
+}
+
 /* Professional Template Specific Styles */
 .professional-template {
   font-family: 'Georgia', 'Times New Roman', serif;

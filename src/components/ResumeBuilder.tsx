@@ -1,6 +1,4 @@
 import { useState, useRef } from 'react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import PersonalInfo from './PersonalInfo';
 import Experience from './Experience';
 import Education from './Education';
@@ -13,6 +11,7 @@ import { ResumeData, Template, PersonalInfoData, Skill } from './types';
 import Projects from './Projects';
 import Awards from './Awards';
 import CustomFields from './CustomFields';
+import MobilePDFGenerator from './MobilePDFGenerator';
 
 // Enhanced template configuration with color customization
 const TEMPLATES: Record<string, Template> = {
@@ -170,80 +169,6 @@ const ResumeBuilder = () => {
   });
 
   const resumeRef = useRef<HTMLDivElement>(null);
-  
-  const downloadPDF = () => {
-    const input = resumeRef.current;
-    if (!input) return;
-    
-    // Store original styles
-    const originalWidth = input.style.width;
-    const originalHeight = input.style.height;
-    
-    // Set fixed size for PDF generation
-    input.style.width = '794px'; // A4 width in pixels at 96 DPI
-    input.style.height = 'auto';
-    
-    html2canvas(input, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      width: 794,
-      windowWidth: 794,
-      onclone: (clonedDoc: Document) => {
-        // Ensure all images are loaded before capture
-        const images = clonedDoc.querySelectorAll('img');
-        let loadedImages = 0;
-        const totalImages = images.length;
-        
-        if (totalImages === 0) return Promise.resolve();
-        
-        return new Promise<void>((resolve) => {
-          const imageLoaded = () => {
-            loadedImages++;
-            if (loadedImages === totalImages) resolve();
-          };
-          
-          images.forEach((img: HTMLImageElement) => {
-            if (img.complete) {
-              imageLoaded();
-            } else {
-              img.addEventListener('load', imageLoaded);
-              img.addEventListener('error', imageLoaded);
-            }
-          });
-        });
-      }
-    } as any).then((canvas) => {
-      // Restore original styles
-      input.style.width = originalWidth;
-      input.style.height = originalHeight;
-      
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`${resumeData.personalInfo.name}_Resume.pdf`);
-    }).catch(error => {
-      console.error('Error generating PDF:', error);
-      // Restore original styles even if there's an error
-      input.style.width = originalWidth;
-      input.style.height = originalHeight;
-    });
-  };
 
   const updatePersonalInfo = (field: keyof PersonalInfoData, value: string | string[]) => {
     setResumeData(prev => ({
@@ -327,7 +252,7 @@ const ResumeBuilder = () => {
   const removeSkill = (index: number) => {
     setResumeData(prev => ({
       ...prev,
-      skills: prev.skills.filter((_, i) => i !== index)
+        skills: prev.skills.filter((_, i) => i !== index)
     }));
   };
 
@@ -538,14 +463,11 @@ const ResumeBuilder = () => {
             customColors={customColors}
           />
           
-          <div className="flex justify-center mt-6">
-            <button 
-              onClick={downloadPDF}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center transition-colors shadow-md"
-            >
-              <i className="fas fa-download mr-2"></i> Download PDF
-            </button>
-          </div>
+          {/* Replace the old download button with the MobilePDFGenerator */}
+          <MobilePDFGenerator 
+  resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
+  personalInfo={resumeData.personalInfo}
+/>
           
           <TemplateSelector 
             selectedTemplate={resumeData.selectedTemplate}
