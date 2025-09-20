@@ -17,6 +17,17 @@ body {
   min-height: 100vh;
 }
 
+/* Ensure circular elements are preserved in PDF */
+.rounded-full {
+  border-radius: 50% !important;
+}
+
+/* Force circular shape for avatar in creative template */
+.avatar-circle {
+  border-radius: 50% !important;
+  overflow: hidden !important;
+}
+
 /* Mobile-specific styles for PDF generation */
 @media (max-width: 768px) {
   #resume-preview {
@@ -27,6 +38,12 @@ body {
   #resume-preview * {
     font-family: inherit !important;
     letter-spacing: inherit !important;
+  }
+  
+  /* Ensure circular avatar stays circular on mobile */
+  #resume-preview .avatar-circle {
+    border-radius: 50% !important;
+    overflow: hidden !important;
   }
 }
 
@@ -71,6 +88,13 @@ body {
   .print-bg-fix {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+  
+  /* Force circular elements to stay circular in print/PDF */
+  .rounded-full,
+  .avatar-circle {
+    border-radius: 50% !important;
+    overflow: hidden !important;
   }
 }
 

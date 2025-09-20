@@ -108,14 +108,20 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
   // Creative Template (Single Column)
   const renderCreativeTemplate = () => (
-    <div className={`rounded-xl shadow-lg overflow-hidden ${template.background}`} style={{ color: customColors.text, backgroundColor: customColors.background }}>
-      {/* Decorative header */}
-      <div className="relative">
-        <div className="h-24" style={{ backgroundColor: customColors.primary }}></div>
-        <div className="absolute top-12 left-6 w-24 h-24 bg-white rounded-full shadow-md border-4 border-white overflow-hidden">
-          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: customColors.accent }}>
-            <span className="text-xl font-bold" style={{ color: customColors.primary }}>
-              {personalInfo.name.split(' ').map(n => n[0]).join('')}
+  <div className={`rounded-xl shadow-lg overflow-hidden ${template.background}`} style={{ color: customColors.text, backgroundColor: customColors.background }}>
+    {/* Decorative header */}
+    <div className="relative">
+      <div className="h-24" style={{ backgroundColor: customColors.primary }}></div>
+      <div 
+        className="absolute top-12 left-6 w-24 h-24 bg-white shadow-md border-4 border-white overflow-hidden"
+        style={{ 
+          borderRadius: '50%', // Force circular shape with inline style
+          backgroundColor: customColors.accent 
+        }}
+      >
+        <div className="w-full h-full flex items-center justify-center">
+          <span className="text-xl font-bold" style={{ color: customColors.primary }}>
+            {personalInfo.name.split(' ').map(n => n[0]).join('')}
             </span>
           </div>
         </div>
