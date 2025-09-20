@@ -37,22 +37,6 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
     }
   };
 
-  const addTechnology = (projectId: number, tech: string) => {
-    const project = projects.find(proj => proj.id === projectId);
-    if (project && tech.trim()) {
-      const updatedTechs = [...project.technologies, tech.trim()];
-      onUpdate(projectId, 'technologies', updatedTechs);
-    }
-  };
-
-  const removeTechnology = (projectId: number, index: number) => {
-    const project = projects.find(proj => proj.id === projectId);
-    if (project) {
-      const updatedTechs = project.technologies.filter((_, i) => i !== index);
-      onUpdate(projectId, 'technologies', updatedTechs);
-    }
-  };
-
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
       <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
@@ -141,49 +125,6 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
                       onClick={() => addBulletPoint(project.id)}
                     >
                       <i className="fas fa-plus-circle mr-1"></i> Add Another Point
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <h4 className="font-medium text-gray-700 mb-2">Technologies Used</h4>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {project.technologies.map((tech, techIndex) => (
-                      <span key={techIndex} className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs flex items-center">
-                        {tech}
-                        <button
-                          type="button"
-                          className="ml-1 text-red-500 hover:text-red-700"
-                          onClick={() => removeTechnology(project.id, techIndex)}
-                          title="Remove technology"
-                        >
-                          <i className="fas fa-times"></i>
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md"
-                      placeholder="Add a technology"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          addTechnology(project.id, (e.target as HTMLInputElement).value);
-                          (e.target as HTMLInputElement).value = '';
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="bg-blue-600 text-white px-3 py-2 rounded-r-md hover:bg-blue-700"
-                      onClick={(e) => {
-                        const input = (e.target as HTMLButtonElement).previousElementSibling as HTMLInputElement;
-                        addTechnology(project.id, input.value);
-                        input.value = '';
-                      }}
-                    >
-                      <i className="fas fa-plus"></i>
                     </button>
                   </div>
                 </div>

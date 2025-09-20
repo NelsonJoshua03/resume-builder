@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SkillsProps, Skill } from './types'; // Add Skill to the import
+import { SkillsProps, Skill } from './types';
 
 const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) => {
   const [newSkill, setNewSkill] = useState('');
@@ -48,15 +48,13 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) =
                   </option>
                 ))}
               </select>
-              {index > 0 && (
-                <button 
-                  className="text-red-500 hover:text-red-700"
-                  onClick={() => onRemove(index)}
-                  title="Remove skill"
-                >
-                  <i className="fas fa-times-circle"></i>
-                </button>
-              )}
+              <button 
+                className="text-red-500 hover:text-red-700"
+                onClick={() => onRemove(index)}
+                title="Remove skill"
+              >
+                <i className="fas fa-times-circle"></i>
+              </button>
             </div>
           </div>
         ))}
