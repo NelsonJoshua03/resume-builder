@@ -1,16 +1,38 @@
-import  { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { FileUploadProps } from './types';
 
 const FileUpload = ({ onUpload }: FileUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {  
-  const files = e.target.files;
-  if (files && files.length > 0) {
-    const file = files[0];
-    onUpload(file);
-  }
-};
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {  
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setError(null);
+      
+      // Validate file type
+      const validTypes = ['.pdf', '.doc', '.docx'];
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (!fileExtension || !validTypes.includes(`.${fileExtension}`)) {
+        setError('Please upload a PDF, DOC, or DOCX file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('File size must be less than 5MB');
+        return;
+      }
+      
+      // Pass the file to the parent component
+      onUpload(file);
+      
+      // Show success message
+      alert('File uploaded successfully! For now, please fill in your information manually.');
+    }
+  };
 
   const handleClick = () => {
     fileInputRef.current?.click();
@@ -19,6 +41,12 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
       <h2 className="text-2xl font-semibold mb-4 text-gray-800">Upload Your CV</h2>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
       
       <div 
         className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
@@ -31,6 +59,7 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
         </div>
         
         <p className="text-gray-600 mb-4">Drag & drop your CV file here or click to browse</p>
+        <p className="text-sm text-gray-500 mb-4">Supported formats: PDF, DOC, DOCX (max 5MB)</p>
         
         <input 
           type="file" 
@@ -40,9 +69,16 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
           accept=".pdf,.doc,.docx"
         />
         
-        <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+        <button 
+          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
           Choose File
         </button>
+      </div>
+      
+      <div className="mt-4 text-sm text-gray-600">
+        <p className="font-semibold">Note:</p>
+        <p>Resume parsing is temporarily unavailable. Please fill in your information manually after uploading your file.</p>
       </div>
     </div>
   );

@@ -389,6 +389,7 @@ const ResumeBuilder = () => {
 
   const handleFileUpload = (file: File) => {
     console.log('File uploaded:', file);
+    alert('File uploaded successfully! For now, please fill in your information manually.');
   };
 
   // Get the current template configuration
@@ -451,7 +452,9 @@ const ResumeBuilder = () => {
               onRemove={removeCustomField}
               onChangeType={changeCustomFieldType}
             />
-            <FileUpload onUpload={handleFileUpload} />
+            <FileUpload 
+              onUpload={handleFileUpload}
+            />
           </div>
         </div>
 
@@ -465,9 +468,9 @@ const ResumeBuilder = () => {
           
           {/* Replace the old download button with the MobilePDFGenerator */}
           <MobilePDFGenerator 
-  resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
-  personalInfo={resumeData.personalInfo}
-/>
+            resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
+            personalInfo={resumeData.personalInfo}
+          />
           
           <TemplateSelector 
             selectedTemplate={resumeData.selectedTemplate}

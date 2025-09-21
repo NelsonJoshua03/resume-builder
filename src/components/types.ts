@@ -91,10 +91,11 @@ export interface ResumeData {
   projects: Project[];
   awards: Award[];
   customFields: CustomField[];
-  skills: Skill[]; // Changed from string[] to Skill[]
+  skills: Skill[];
   selectedTemplate: string;
   customColors: Record<string, any>;
 }
+
 export interface ColorCustomizerProps {
   template: Template;
   colors: any;
@@ -133,7 +134,6 @@ export interface PersonalInfoProps {
   onChange: (field: keyof PersonalInfoData, value: string | string[]) => void;
 }
 
-
 export interface FileUploadProps {
   onUpload: (file: File) => void;
 }
@@ -142,7 +142,6 @@ export interface ResumePreviewProps {
   data: ResumeData;
   template: Template;
   customColors: any;
-  
 }
 
 export interface ProjectsProps {

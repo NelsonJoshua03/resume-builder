@@ -22,7 +22,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
         styles.backgroundColor = customColors.accent + '40';
         styles.color = customColors.primary;
         break;
-      // Removed the 'skill' case to remove the oval background
       case 'divider':
         styles.backgroundColor = customColors.primary + '40';
         break;
@@ -108,20 +107,20 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
   // Creative Template (Single Column)
   const renderCreativeTemplate = () => (
-  <div className={`rounded-xl shadow-lg overflow-hidden ${template.background}`} style={{ color: customColors.text, backgroundColor: customColors.background }}>
-    {/* Decorative header */}
-    <div className="relative">
-      <div className="h-24" style={{ backgroundColor: customColors.primary }}></div>
-      <div 
-        className="absolute top-12 left-6 w-24 h-24 bg-white shadow-md border-4 border-white overflow-hidden"
-        style={{ 
-          borderRadius: '50%', // Force circular shape with inline style
-          backgroundColor: customColors.accent 
-        }}
-      >
-        <div className="w-full h-full flex items-center justify-center">
-          <span className="text-xl font-bold" style={{ color: customColors.primary }}>
-            {personalInfo.name.split(' ').map(n => n[0]).join('')}
+    <div className="rounded-xl shadow-lg overflow-hidden bg-white" style={{ color: customColors.text }}>
+      {/* Decorative header */}
+      <div className="relative">
+        <div className="h-24" style={{ backgroundColor: customColors.primary }}></div>
+        <div 
+          className="absolute top-12 left-6 w-24 h-24 bg-white shadow-md border-4 border-white overflow-hidden"
+          style={{ 
+            borderRadius: '50%',
+            backgroundColor: customColors.accent 
+          }}
+        >
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-xl font-bold" style={{ color: customColors.primary }}>
+              {personalInfo.name.split(' ').map(n => n[0]).join('')}
             </span>
           </div>
         </div>
@@ -200,13 +199,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{project.period}</p>
                 <BulletList items={project.description} />
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {project.technologies.map((tech, i) => (
-                    <span key={i} className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
-                      {tech}
-                    </span>
-                  ))}
-                </div>
               </div>
             ))}
           </div>
@@ -280,7 +272,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
   // Minimalist Template (Single Column)
   const renderMinimalistTemplate = () => (
-    <div className={`rounded-xl overflow-hidden ${template.background}`} style={{ color: customColors.text, backgroundColor: customColors.background }}>
+    <div className="rounded-xl overflow-hidden bg-white" style={{ color: customColors.text }}>
       <div className="p-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -348,13 +340,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                   </div>
                   <p className="text-sm text-gray-600 mb-1">{project.period}</p>
                   <BulletList items={project.description} />
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {project.technologies.map((tech, i) => (
-                      <span key={i} className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
-                        {tech}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               ))}
             </div>
@@ -406,7 +391,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
 
   // Modern Template with Circular Skill Progress Charts (Single Column)
   const renderModernTemplate = () => (
-    <div className={`rounded-xl shadow-lg overflow-hidden ${template.background}`} style={{ color: customColors.text, backgroundColor: customColors.background }}>
+    <div className="rounded-xl shadow-lg overflow-hidden bg-white" style={{ color: customColors.text }}>
       {/* Header */}
       <div className="p-6" style={{ backgroundColor: customColors.primary }}>
         <h1 className="text-3xl font-bold text-white">{personalInfo.name}</h1>
@@ -481,13 +466,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ data, te
                 </div>
                 <p className="text-sm text-gray-600 mb-1">{project.period}</p>
                 <BulletList items={project.description} />
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {project.technologies.map((tech, i) => (
-                    <span key={i} className="px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-700">
-                      {tech}
-                    </span>
-                  ))}
-                </div>
               </div>
             ))}
           </div>
