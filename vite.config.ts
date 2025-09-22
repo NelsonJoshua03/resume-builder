@@ -8,6 +8,11 @@ export default defineConfig({
     react(),
     Sitemap({ 
       hostname: 'https://resumecvforge.netlify.app',
+      // Optional: Add more specific configurations if needed
+      // dynamicRoutes: ['/'], // If you have multiple routes, add them here
+      // generateRobotsTxt: true, // Enabled by default
+      // changefreq: 'weekly', // Default change frequency
+      // priority: 1.0, // Default priority
     }),
   ],
   resolve: {
@@ -20,8 +25,20 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
-    // Ensure public files are copied
+    // Ensure public files are copied (this is default behavior)
     copyPublicDir: true,
+    // Optional: Optimize build size
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console logs in production
+      },
+    },
   },
   publicDir: 'public',
+  // Optional: Server configuration for development
+  server: {
+    port: 3000,
+    open: true, // Automatically open browser when running dev server
+  },
 })

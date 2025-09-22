@@ -1,0 +1,6 @@
+# public/robots.txt
+User-agent: *
+Allow: /
+
+# Point to your sitemap. Use your full URL.
+Sitemap: https://resumecvforge.netlify.app/sitemap.xml
