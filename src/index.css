@@ -17,6 +17,21 @@ body {
   min-height: 100vh;
 }
 
+/* Line clamp utility for job descriptions */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 /* Ensure circular elements are preserved in PDF */
 .rounded-full {
   border-radius: 50% !important;
@@ -150,4 +165,44 @@ body {
   font-weight: 500;
   color: rgb(55 65 81);
   margin-bottom: 0.25rem;
+}
+
+/* Job applications page specific styles */
+.job-card {
+  transition: all 0.3s ease;
+}
+
+.job-card:hover {
+  transform: translateY(-2px);
+}
+
+.featured-job {
+  border-left: 4px solid #3b82f6;
+}
+
+.job-type-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.job-sector-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.salary-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+/* Sticky sidebar for job filters */
+.sticky-sidebar {
+  position: sticky;
+  top: 6rem;
 }

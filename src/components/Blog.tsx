@@ -1,6 +1,7 @@
 // src/components/Blog.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 const Blog: React.FC = () => {
   const blogPosts = [
@@ -34,21 +35,11 @@ const Blog: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <nav className="flex justify-between items-center">
-            <Link to="/" className="text-2xl font-bold text-blue-600">ResumeCVForge</Link>
-            <div className="flex space-x-6">
-              <Link to="/job-disciplines" className="text-gray-700 hover:text-blue-600">Job Disciplines</Link>
-              <Link to="/blog" className="text-blue-600 font-semibold">Blog</Link>
-              <Link to="/about" className="text-gray-700 hover:text-blue-600">About</Link>
-              <Link to="/builder" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Build Resume</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+    <>
+      <Helmet>
+        <title>ResumeCVForge Blog - Career Advice & Resume Tips</title>
+        <meta name="description" content="Expert advice, tips, and insights to help you create the perfect resume and land your dream job. ATS-friendly resume guidance and career strategies." />
+      </Helmet>
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
@@ -96,7 +87,7 @@ const Blog: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

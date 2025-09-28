@@ -1,24 +1,15 @@
 // src/components/About.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 const About: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <nav className="flex justify-between items-center">
-            <Link to="/" className="text-2xl font-bold text-blue-600">ResumeCVForge</Link>
-            <div className="flex space-x-6">
-              <Link to="/job-disciplines" className="text-gray-700 hover:text-blue-600">Job Disciplines</Link>
-              <Link to="/blog" className="text-gray-700 hover:text-blue-600">Blog</Link>
-              <Link to="/about" className="text-blue-600 font-semibold">About</Link>
-              <Link to="/builder" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Build Resume</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+    <>
+      <Helmet>
+        <title>About ResumeCVForge - Free Online Resume Builder</title>
+        <meta name="description" content="Learn about ResumeCVForge's mission to help job seekers create professional, ATS-friendly resumes for free. No sign-up required." />
+      </Helmet>
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
@@ -71,7 +62,7 @@ const About: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
