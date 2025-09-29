@@ -17,6 +17,7 @@ import ElectricalEngineering from "./components/job-pages/ElectricalEngineering"
 import SoftwareDevelopment from "./components/job-pages/SoftwareDevelopment";
 import DataScience from "./components/job-pages/DataScience";
 import Cybersecurity from "./components/job-pages/Cybersecurity";
+import AdminJobPosting from "./components/AdminJobPosting";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/admin/job-posting" element={<AdminJobPosting />} />
 
             {/* Job Discipline Pages - Engineering */}
             <Route path="/job-disciplines/engineering" element={<JobDisciplines />} />

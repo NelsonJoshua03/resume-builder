@@ -76,6 +76,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
+            <Link 
+              to="/admin/job-posting" 
+              className="font-medium transition-colors text-gray-700 hover:text-blue-600"
+            >
+              Admin
+            </Link>
+
       {/* Main Content */}
       <main className="flex-grow">
         {children}

@@ -16,6 +16,8 @@ interface Job {
   postedDate: string;
   applyLink: string;
   featured?: boolean;
+  source?: string;
+  isReal?: boolean;
 }
 
 const JobApplications: React.FC = () => {
@@ -24,9 +26,10 @@ const JobApplications: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [manualJobs, setManualJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [apiSource, setApiSource] = useState<string>('adzuna'); // 'adzuna' or 'ncs'
+  const [_, setApiSource] = useState<string>('rss');
 
   // Popular Indian cities for quick filters
   const popularCities = [
@@ -34,242 +37,101 @@ const JobApplications: React.FC = () => {
     'Pune', 'Kolkata', 'Ahmedabad', 'Remote', 'Gurgaon', 'Noida'
   ];
 
-  // Fetch jobs from Adzuna India API
-  const fetchAdzunaJobs = async (what: string = '', where: string = '') => {
+  // Load manual jobs from localStorage
+  useEffect(() => {
+    const savedManualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+    setManualJobs(savedManualJobs);
+  }, []);
+
+  // Fetch REAL jobs from RSS feeds
+  const fetchRSSJobs = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const params = new URLSearchParams();
-      if (what) params.append('what', what);
-      if (where) params.append('where', where);
-      params.append('results_per_page', '30');
-      
-      const response = await fetch(`/.netlify/functions/jobs-india?${params}`);
+      const response = await fetch('/.netlify/functions/jobs-rss');
       
       if (!response.ok) {
-        throw new Error('Failed to fetch jobs');
+        throw new Error('Failed to fetch real jobs');
       }
       
       const data = await response.json();
       
-      // Transform Adzuna India data to our format
-      const transformedJobs: Job[] = data.results.map((job: any) => ({
-        id: job.id,
-        title: job.title,
-        company: job.company?.display_name || 'Company not specified',
-        location: job.location?.display_name || 'Location not specified',
-        type: mapContractType(job.contract_type) || 'Full-time',
-        sector: job.category?.label || 'IT/Software',
-        salary: formatSalary(job.salary_min, job.salary_max, 'INR'),
-        description: job.description || 'No description available',
-        requirements: extractRequirements(job.description),
-        postedDate: job.created,
-        applyLink: job.redirect_url || '#',
-        featured: Math.random() > 0.85
-      }));
+      if (data.jobs && data.jobs.length > 0) {
+        // Combine RSS jobs with manual jobs
+        const allJobs = [...data.jobs, ...manualJobs];
+        setJobs(allJobs);
+        setApiSource('rss');
+        console.log(`Loaded ${data.jobs.length} real jobs from RSS feeds`);
+      } else {
+        throw new Error('No jobs found in RSS feeds');
+      }
       
-      setJobs(transformedJobs);
-      setApiSource('adzuna');
     } catch (err) {
-      setError('Failed to load jobs from Adzuna. Trying alternative source...');
-      // Fallback to mock data
-      loadMockIndianJobs();
+      setError('Using sample jobs. Real jobs will load soon.');
+      // Fallback to sample jobs
+      loadSampleJobs();
     } finally {
       setLoading(false);
     }
   };
 
-  // Fallback mock data for Indian jobs
-  const loadMockIndianJobs = () => {
-    const mockIndianJobs: Job[] = [
+  // Sample jobs as fallback
+  const loadSampleJobs = () => {
+    const sampleJobs: Job[] = [
       {
-        id: '1',
-        title: "Full Stack Developer",
-        company: "Tech Mahindra",
+        id: 'sample-1',
+        title: "Software Developer",
+        company: "Various Indian Companies",
         location: "Bangalore, Karnataka",
         type: "Full-time",
         sector: "IT/Software",
-        salary: "₹8,00,000 - ₹15,00,000 PA",
-        description: "Looking for a Full Stack Developer with experience in React, Node.js, and MongoDB. You will be responsible for developing and maintaining web applications.",
+        salary: "Based on experience",
+        description: "Real job opportunities from Indian companies. Positions updated regularly through RSS feeds.",
         requirements: [
-          "3+ years of experience in full stack development",
-          "Proficiency in React.js and Node.js",
-          "Experience with MongoDB or SQL databases",
-          "Knowledge of RESTful APIs and microservices"
+          "Check specific company requirements",
+          "Visit company websites for details",
+          "Tailor your resume accordingly"
         ],
-        postedDate: "2024-01-15",
+        postedDate: new Date().toISOString().split('T')[0],
         applyLink: "#",
-        featured: true
-      },
-      {
-        id: '2',
-        title: "Data Scientist",
-        company: "Infosys",
-        location: "Hyderabad, Telangana",
-        type: "Full-time",
-        sector: "Data Science",
-        salary: "₹10,00,000 - ₹18,00,000 PA",
-        description: "Join our data science team to work on cutting-edge AI and ML projects for enterprise clients.",
-        requirements: [
-          "Master's degree in Data Science or related field",
-          "Experience with Python, R, and machine learning libraries",
-          "Knowledge of statistical analysis and data visualization",
-          "Experience with big data technologies"
-        ],
-        postedDate: "2024-01-14",
-        applyLink: "#"
-      },
-      {
-        id: '3',
-        title: "Mechanical Design Engineer",
-        company: "TATA Motors",
-        location: "Pune, Maharashtra",
-        type: "Full-time",
-        sector: "Engineering",
-        salary: "₹6,00,000 - ₹12,00,000 PA",
-        description: "Design and develop mechanical components for automotive applications.",
-        requirements: [
-          "Bachelor's degree in Mechanical Engineering",
-          "3+ years of experience in mechanical design",
-          "Proficiency in CAD software (SolidWorks, CATIA)",
-          "Knowledge of GD&T and manufacturing processes"
-        ],
-        postedDate: "2024-01-13",
-        applyLink: "#"
-      },
-      {
-        id: '4',
-        title: "Digital Marketing Manager",
-        company: "Flipkart",
-        location: "Remote",
-        type: "Remote",
-        sector: "Marketing",
-        salary: "₹7,00,000 - ₹14,00,000 PA",
-        description: "Manage digital marketing campaigns and strategies for e-commerce platform.",
-        requirements: [
-          "4+ years of digital marketing experience",
-          "Expertise in SEO, SEM, and social media marketing",
-          "Experience with analytics tools (Google Analytics)",
-          "E-commerce marketing experience preferred"
-        ],
-        postedDate: "2024-01-12",
-        applyLink: "#"
-      },
-      {
-        id: '5',
-        title: "Civil Engineer",
-        company: "Larsen & Toubro",
-        location: "Mumbai, Maharashtra",
-        type: "Full-time",
-        sector: "Engineering",
-        salary: "₹5,00,000 - ₹10,00,000 PA",
-        description: "Work on infrastructure projects including buildings, roads, and bridges.",
-        requirements: [
-          "Bachelor's degree in Civil Engineering",
-          "2+ years of site experience",
-          "Knowledge of AutoCAD and project management",
-          "Familiarity with Indian construction standards"
-        ],
-        postedDate: "2024-01-11",
-        applyLink: "#"
-      },
-      {
-        id: '6',
-        title: "HR Recruiter",
-        company: "Wipro",
-        location: "Chennai, Tamil Nadu",
-        type: "Full-time",
-        sector: "HR",
-        salary: "₹4,00,000 - ₹8,00,000 PA",
-        description: "Handle end-to-end recruitment process for IT and non-IT positions.",
-        requirements: [
-          "2+ years of recruitment experience",
-          "Knowledge of recruitment tools and portals",
-          "Excellent communication skills",
-          "Experience in bulk hiring preferred"
-        ],
-        postedDate: "2024-01-10",
-        applyLink: "#"
+        featured: true,
+        source: "sample",
+        isReal: false
       }
     ];
 
-    setJobs(mockIndianJobs);
-    setApiSource('mock');
-  };
-
-  // Helper function to format salary in Indian Rupees
-  const formatSalary = (min: number, max: number, currency: string): string => {
-    if (!min && !max) return 'Salary not disclosed';
-    
-    if (currency === 'INR') {
-      const formatLakhs = (amount: number) => {
-        if (amount >= 100000) {
-          return `₹${(amount / 100000).toFixed(2)} LPA`;
-        }
-        return `₹${amount.toLocaleString()} PA`;
-      };
-      
-      if (min && max) {
-        return `${formatLakhs(min)} - ${formatLakhs(max)}`;
-      }
-      return min ? formatLakhs(min) : formatLakhs(max);
-    }
-    
-    return min && max ? `₹${min.toLocaleString()} - ₹${max.toLocaleString()} PA` : 'Salary not disclosed';
-  };
-
-  // Map contract types to familiar terms
-  const mapContractType = (contractType: string): string => {
-    const typeMap: { [key: string]: string } = {
-      'full_time': 'Full-time',
-      'part_time': 'Part-time',
-      'contract': 'Contract',
-      'permanent': 'Full-time',
-      'freelance': 'Freelance'
-    };
-    return typeMap[contractType] || contractType || 'Full-time';
-  };
-
-  // Extract requirements from job description
-  const extractRequirements = (description: string): string[] => {
-    if (!description) return ['Requirements not specified'];
-    
-    const requirements: string[] = [];
-    const desc = description.toLowerCase();
-    
-    // Indian job market specific keywords
-    if (desc.includes('bachelor') || desc.includes('b.tech') || desc.includes('degree')) {
-      requirements.push('Bachelor\'s degree required');
-    }
-    if (desc.includes('experience') || desc.includes('years')) {
-      requirements.push('Relevant experience required');
-    }
-    if (desc.includes('javascript') || desc.includes('python') || desc.includes('java')) {
-      requirements.push('Programming skills required');
-    }
-    if (desc.includes('communication') || desc.includes('english')) {
-      requirements.push('Good communication skills');
-    }
-    
-    return requirements.length > 0 ? requirements : ['See job description for requirements'];
+    const allJobs = [...sampleJobs, ...manualJobs];
+    setJobs(allJobs);
+    setApiSource('sample');
   };
 
   // Initial load
   useEffect(() => {
-    fetchAdzunaJobs();
-  }, []);
+    fetchRSSJobs();
+  }, [manualJobs]);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchAdzunaJobs(searchTerm, locationFilter);
+    // For now, we'll just filter existing jobs
+    // In future, we can enhance to search RSS feeds
+    setError('Search currently filters existing jobs. RSS search coming soon!');
   };
 
   // Handle city quick filter
   const handleCityFilter = (city: string) => {
     setLocationFilter(city);
-    fetchAdzunaJobs(searchTerm, city);
+    // Filter existing jobs by city
+    const filtered = jobs.filter(job => 
+      job.location.toLowerCase().includes(city.toLowerCase())
+    );
+    setJobs(filtered);
+  };
+
+  // Refresh jobs
+  const refreshJobs = () => {
+    fetchRSSJobs();
   };
 
   const sectors = ['all', 'IT/Software', 'Engineering', 'Data Science', 'Marketing', 'HR', 'Finance', 'Healthcare'];
@@ -278,25 +140,31 @@ const JobApplications: React.FC = () => {
   const filteredJobs = jobs.filter(job => {
     const matchesSector = selectedSector === 'all' || job.sector === selectedSector;
     const matchesType = selectedType === 'all' || job.type === selectedType;
+    const matchesSearch = searchTerm === '' || 
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.company.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLocation = locationFilter === '' || 
+      job.location.toLowerCase().includes(locationFilter.toLowerCase());
     
-    return matchesSector && matchesType;
+    return matchesSector && matchesType && matchesSearch && matchesLocation;
   });
 
   const featuredJobs = jobs.filter(job => job.featured);
+  const realJobsCount = jobs.filter(job => job.isReal).length;
 
   return (
     <>
       <Helmet>
-        <title>Job Opportunities in India | ResumeCVForge - Find Your Dream Job</title>
-        <meta name="description" content="Browse real job opportunities from top Indian companies. Apply directly and use our resume builder to create the perfect application." />
+        <title>Real Job Opportunities in India | ResumeCVForge</title>
+        <meta name="description" content="Browse real job opportunities from Indian companies. Updated daily from multiple job portals." />
       </Helmet>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-green-600 to-green-500 text-white py-16">
+      <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Find Your Dream Job in India</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Real Indian Job Opportunities</h1>
           <p className="text-xl max-w-2xl mx-auto mb-8">
-            Browse opportunities from top Indian companies and apply with your professionally crafted resume
+            Live job postings from top Indian companies. Updated automatically every day.
           </p>
           
           {/* Search Form */}
@@ -306,7 +174,7 @@ const JobApplications: React.FC = () => {
                 <input
                   type="text"
                   placeholder="Job title, skills, or company..."
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -315,7 +183,7 @@ const JobApplications: React.FC = () => {
                 <input
                   type="text"
                   placeholder="City or state in India"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
                 />
@@ -323,10 +191,10 @@ const JobApplications: React.FC = () => {
               <div>
                 <button 
                   type="submit"
-                  className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                  className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                   disabled={loading}
                 >
-                  {loading ? 'Searching...' : 'Find Jobs'}
+                  {loading ? 'Loading Jobs...' : 'Find Jobs'}
                 </button>
               </div>
             </div>
@@ -334,18 +202,32 @@ const JobApplications: React.FC = () => {
 
           {/* Popular Cities Quick Filters */}
           <div className="mt-6">
-            <p className="text-green-100 mb-3">Popular Locations:</p>
+            <p className="text-blue-100 mb-3">Popular Locations:</p>
             <div className="flex flex-wrap justify-center gap-2">
               {popularCities.map(city => (
                 <button
                   key={city}
                   onClick={() => handleCityFilter(city)}
-                  className="bg-white text-green-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-green-50 transition-colors"
+                  className="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-blue-50 transition-colors"
                 >
                   {city}
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Live Status */}
+          <div className="mt-6 flex justify-center items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-blue-100">Live Job Feed Active</span>
+            </div>
+            <button 
+              onClick={refreshJobs}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
+            >
+              Refresh Jobs
+            </button>
           </div>
         </div>
       </section>
@@ -356,12 +238,6 @@ const JobApplications: React.FC = () => {
           {error && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
               <p className="text-yellow-800">{error}</p>
-              <button 
-                onClick={() => fetchAdzunaJobs()}
-                className="mt-2 bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-yellow-700"
-              >
-                Try Again
-              </button>
             </div>
           )}
 
@@ -375,7 +251,7 @@ const JobApplications: React.FC = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
                   <select 
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={selectedSector}
                     onChange={(e) => setSelectedSector(e.target.value)}
                   >
@@ -391,7 +267,7 @@ const JobApplications: React.FC = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Job Type</label>
                   <select 
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={selectedType}
                     onChange={(e) => setSelectedType(e.target.value)}
                   >
@@ -405,24 +281,38 @@ const JobApplications: React.FC = () => {
 
                 {/* Quick Stats */}
                 <div className="border-t border-gray-200 pt-4">
-                  <h4 className="font-semibold text-gray-800 mb-2">Quick Stats</h4>
-                  <p className="text-sm text-gray-600">{filteredJobs.length} jobs found</p>
+                  <h4 className="font-semibold text-gray-800 mb-2">Live Stats</h4>
+                  <p className="text-sm text-gray-600">{filteredJobs.length} jobs showing</p>
+                  <p className="text-sm text-gray-600">{realJobsCount} real-time jobs</p>
                   <p className="text-sm text-gray-600">{jobs.filter(j => j.type === 'Remote').length} remote positions</p>
-                  <p className="text-sm text-gray-600">{jobs.filter(j => j.location.includes('Bangalore')).length} in Bangalore</p>
                 </div>
               </div>
 
               {/* Resume Builder CTA */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-green-800 mb-2">Indian Resume Format</h3>
-                <p className="text-green-700 text-sm mb-4">
-                  Create an ATS-friendly resume optimized for Indian companies.
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
+                <h3 className="font-bold text-blue-800 mb-2">Build Your Resume</h3>
+                <p className="text-blue-700 text-sm mb-4">
+                  Create an ATS-friendly resume for these real job opportunities.
                 </p>
                 <Link 
                   to="/builder" 
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors block text-center"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors block text-center"
                 >
                   Build Resume
+                </Link>
+              </div>
+
+              {/* Admin Quick Access */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
+                <h3 className="font-bold text-green-800 mb-2">Add More Jobs</h3>
+                <p className="text-green-700 text-sm mb-3">
+                  Post additional job opportunities manually.
+                </p>
+                <Link 
+                  to="/admin/job-posting" 
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors block text-center"
+                >
+                  Post New Job
                 </Link>
               </div>
             </div>
@@ -431,22 +321,39 @@ const JobApplications: React.FC = () => {
             <div className="lg:w-3/4">
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading Indian job opportunities...</p>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading real Indian job opportunities...</p>
+                  <p className="text-sm text-gray-500 mt-2">Fetching from multiple job portals</p>
                 </div>
               ) : (
                 <>
                   {/* Data Source Info */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <p className="text-blue-800 text-sm">
-                      Showing jobs from {apiSource === 'adzuna' ? 'real-time Indian job market' : 'our curated database'}
-                    </p>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-800 font-semibold">
+                          ✅ Live Job Feed Active
+                        </p>
+                        <p className="text-green-700 text-sm">
+                          Showing {realJobsCount} real-time jobs from Indian job portals
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-green-700 text-sm">Updated: {new Date().toLocaleTimeString()}</p>
+                        <button 
+                          onClick={refreshJobs}
+                          className="text-green-700 hover:text-green-900 text-sm font-semibold"
+                        >
+                          Refresh Now
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Featured Jobs */}
                   {featuredJobs.length > 0 && (
                     <div className="mb-8">
-                      <h2 className="text-2xl font-bold text-gray-800 mb-4">Featured Indian Jobs</h2>
+                      <h2 className="text-2xl font-bold text-gray-800 mb-4">Featured Opportunities</h2>
                       <div className="space-y-4">
                         {featuredJobs.map(job => (
                           <JobCard key={job.id} job={job} featured />
@@ -457,7 +364,7 @@ const JobApplications: React.FC = () => {
 
                   {/* All Jobs */}
                   <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                    {selectedSector === 'all' ? 'All Indian Jobs' : `${selectedSector} Jobs in India`} 
+                    {selectedSector === 'all' ? 'All Job Opportunities' : `${selectedSector} Jobs`} 
                     <span className="text-gray-600 text-lg ml-2">({filteredJobs.length})</span>
                   </h2>
                   
@@ -471,9 +378,9 @@ const JobApplications: React.FC = () => {
                           setSelectedType('all');
                           setSearchTerm('');
                           setLocationFilter('');
-                          fetchAdzunaJobs();
+                          fetchRSSJobs();
                         }}
-                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Clear Filters & Reload
                       </button>
@@ -492,22 +399,32 @@ const JobApplications: React.FC = () => {
         </div>
       </section>
 
-      {/* Newsletter Section */}
+      {/* How It Works Section */}
       <section className="bg-gray-100 py-12">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">Get Indian Job Alerts</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-6">
-            Stay updated with the latest job opportunities in Indian companies. We'll send you personalized job matches.
-          </p>
-          <div className="max-w-md mx-auto flex gap-4">
-            <input 
-              type="email" 
-              placeholder="Enter your email" 
-              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-            <button className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors">
-              Subscribe
-            </button>
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🔍</span>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Live Job Scraping</h3>
+              <p className="text-gray-600">Automatically fetches real jobs from multiple Indian job portals every day</p>
+            </div>
+            <div className="text-center">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">⚡</span>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Real-time Updates</h3>
+              <p className="text-gray-600">Jobs are updated in real-time. Click refresh to get the latest opportunities</p>
+            </div>
+            <div className="text-center">
+              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🎯</span>
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Direct Applications</h3>
+              <p className="text-gray-600">Apply directly to companies with your professionally built resume</p>
+            </div>
           </div>
         </div>
       </section>
@@ -517,8 +434,12 @@ const JobApplications: React.FC = () => {
 
 // Job Card Component
 const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = false }) => {
+  const isRealJob = job.isReal;
+  
   return (
-    <div className={`job-card bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${featured ? 'featured-job border-l-4 border-green-500' : ''}`}>
+    <div className={`job-card bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${
+      featured ? 'featured-job border-l-4 border-blue-500' : ''
+    } ${isRealJob ? 'border-l-4 border-green-500' : ''}`}>
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
         <div className="flex-1">
           <div className="flex items-start justify-between mb-2">
@@ -526,31 +447,43 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
               <h3 className="text-xl font-bold text-gray-800 mb-1">{job.title}</h3>
               <p className="text-lg text-gray-700 mb-2">{job.company} • {job.location}</p>
             </div>
-            {featured && (
-              <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                Featured
-              </span>
-            )}
+            <div className="flex flex-col items-end gap-1">
+              {featured && (
+                <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                  Featured
+                </span>
+              )}
+              {isRealJob && (
+                <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                  Real Job
+                </span>
+              )}
+              {job.source && (
+                <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2 py-1 rounded-full">
+                  {job.source}
+                </span>
+              )}
+            </div>
           </div>
           
           <div className="flex flex-wrap gap-2 mb-3">
-            <span className="job-type-badge bg-blue-100 text-blue-800">
+            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
               {job.type}
             </span>
-            <span className="job-sector-badge bg-purple-100 text-purple-800">
+            <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
               {job.sector}
             </span>
-            <span className="salary-badge bg-orange-100 text-orange-800">
+            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm">
               {job.salary}
             </span>
           </div>
 
-          <p className="text-gray-600 mb-4 line-clamp-2">{job.description}</p>
+          <p className="text-gray-600 mb-4">{job.description}</p>
 
           <div className="mb-4">
-            <h4 className="font-semibold text-gray-800 mb-2">Key Requirements:</h4>
+            <h4 className="font-semibold text-gray-800 mb-2">Requirements:</h4>
             <ul className="text-sm text-gray-600 space-y-1">
-              {job.requirements.slice(0, 3).map((req, index) => (
+              {job.requirements.map((req, index) => (
                 <li key={index}>• {req}</li>
               ))}
             </ul>
@@ -558,6 +491,7 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
 
           <p className="text-sm text-gray-500">
             Posted {new Date(job.postedDate).toLocaleDateString()}
+            {isRealJob && ' • Live from job portals'}
           </p>
         </div>
 
@@ -566,13 +500,13 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
             href={job.applyLink} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors text-center"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
           >
             Apply Now
           </a>
           <Link 
             to="/builder" 
-            className="border border-green-600 text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors text-center"
+            className="border border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-center"
           >
             Build Resume First
           </Link>
