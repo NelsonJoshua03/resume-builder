@@ -1,0 +1,50 @@
+// test-function.js
+const { handler } = require('./netlify/functions/jobs-rss');
+
+// Mock Netlify function event
+const mockEvent = {
+  httpMethod: 'GET',
+  path: '/.netlify/functions/jobs-rss',
+  queryStringParameters: {},
+  headers: {},
+  body: null
+};
+
+const mockContext = {};
+
+async function testFunction() {
+  console.log('🧪 Testing jobs-rss function...\n');
+  
+  try {
+    const result = await handler(mockEvent, mockContext);
+    
+    console.log('✅ Function executed successfully!');
+    console.log('Status Code:', result.statusCode);
+    console.log('Headers:', result.headers);
+    
+    const body = JSON.parse(result.body);
+    console.log('\n📊 Response Data:');
+    console.log('Total jobs:', body.total);
+    console.log('Successful feeds:', body.successfulFeeds);
+    console.log('Jobs found:', body.jobs.length);
+    
+    if (body.jobs.length > 0) {
+      console.log('\n📝 Sample job:');
+      console.log('Title:', body.jobs[0].title);
+      console.log('Company:', body.jobs[0].company);
+      console.log('Location:', body.jobs[0].location);
+    } else {
+      console.log('\n❌ No jobs found in response');
+    }
+    
+    if (body.note) {
+      console.log('\nℹ️ Note:', body.note);
+    }
+    
+  } catch (error) {
+    console.error('❌ Function failed:');
+    console.error(error);
+  }
+}
+
+testFunction();
