@@ -1,0 +1,48 @@
+{
+  "posts": [
+    {
+      "id": 1,
+      "title": "How to Create an ATS-Friendly Resume in 2024",
+      "excerpt": "Learn the secrets to making your resume pass through Applicant Tracking Systems and reach human recruiters. Our comprehensive guide covers keywords, formatting, and ATS best practices.",
+      "category": "ats-optimization",
+      "date": "2024-01-15",
+      "readTime": "5 min read",
+      "slug": "ats-friendly-resume-guide",
+      "author": "Career Experts Team",
+      "authorBio": "Certified Professional Resume Writers with 10+ years experience"
+    },
+    {
+      "id": 2,
+      "title": "10 Resume Mistakes That Cost You Interviews in 2024",
+      "excerpt": "Avoid these common resume pitfalls that could be costing you interviews. Learn how to fix them with our expert tips and real examples.",
+      "category": "resume-tips",
+      "date": "2024-01-10",
+      "readTime": "7 min read",
+      "slug": "resume-mistakes-2024",
+      "author": "Sarah Johnson",
+      "authorBio": "Professional Resume Writer with 8+ years experience at Fortune 500 companies"
+    },
+    {
+      "id": 3,
+      "title": "Best Resume Templates for Engineering & Tech Roles",
+      "excerpt": "Industry-specific templates that highlight technical skills and project experience. Perfect for software developers, engineers, and IT professionals.",
+      "category": "industry-specific",
+      "date": "2024-01-05",
+      "readTime": "6 min read",
+      "slug": "engineering-resume-templates",
+      "author": "Mike Chen",
+      "authorBio": "Former Tech Recruiter at Google & Career Advisor"
+    },
+    {
+      "id": 4,
+      "title": "How to Write a Resume With No Experience: Fresh Graduate Guide",
+      "excerpt": "Step-by-step guide for students and fresh graduates to create a compelling resume that gets noticed by employers, even without work experience.",
+      "category": "fresh-graduate",
+      "date": "2024-01-20",
+      "readTime": "8 min read",
+      "slug": "resume-no-experience",
+      "author": "Dr. Emily Roberts",
+      "authorBio": "University Career Center Director & Career Counseling Expert"
+    }
+  ]
+}
