@@ -18,6 +18,7 @@ interface Job {
   featured?: boolean;
   source?: string;
   isReal?: boolean;
+  addedTimestamp?: number; // New field to track when job was added
 }
 
 const JobApplications: React.FC = () => {
@@ -36,6 +37,26 @@ const JobApplications: React.FC = () => {
     'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 
     'Pune', 'Kolkata', 'Ahmedabad', 'Remote', 'Gurgaon', 'Noida'
   ];
+
+  // Load all jobs from localStorage
+  const loadAllJobsFromStorage = (): Job[] => {
+    try {
+      const storedJobs = localStorage.getItem('allJobs');
+      return storedJobs ? JSON.parse(storedJobs) : [];
+    } catch (error) {
+      console.error('Error loading jobs from storage:', error);
+      return [];
+    }
+  };
+
+  // Save all jobs to localStorage
+  const saveAllJobsToStorage = (jobs: Job[]) => {
+    try {
+      localStorage.setItem('allJobs', JSON.stringify(jobs));
+    } catch (error) {
+      console.error('Error saving jobs to storage:', error);
+    }
+  };
 
   // Load manual jobs from localStorage
   useEffect(() => {
@@ -58,21 +79,88 @@ const JobApplications: React.FC = () => {
       const data = await response.json();
       
       if (data.jobs && data.jobs.length > 0) {
-        // Combine RSS jobs with manual jobs
-        const allJobs = [...data.jobs, ...manualJobs];
-        setJobs(allJobs);
+        // Add timestamp to RSS jobs
+        const rssJobsWithTimestamp = data.jobs.map((job: Job) => ({
+          ...job,
+          addedTimestamp: job.addedTimestamp || Date.now(),
+          isReal: true
+        }));
+
+        // Load existing jobs from storage
+        const existingJobs = loadAllJobsFromStorage();
+        
+        // Create a map of existing jobs by ID for quick lookup
+        const existingJobsMap = new Map(existingJobs.map(job => [job.id, job]));
+        
+        // Merge jobs: keep existing jobs, add new RSS jobs, update existing RSS jobs
+        const mergedJobs = [...existingJobs];
+        
+        rssJobsWithTimestamp.forEach((rssJob: Job) => {
+          const existingJob = existingJobsMap.get(rssJob.id);
+          if (existingJob) {
+            // Update existing job but preserve manual additions
+            Object.assign(existingJob, {
+              ...rssJob,
+              // Don't overwrite manual fields if this was a manually added job
+              addedTimestamp: existingJob.addedTimestamp || rssJob.addedTimestamp
+            });
+          } else {
+            // Add new RSS job
+            mergedJobs.push(rssJob);
+          }
+        });
+
+        // Add manual jobs that aren't already in the list
+        manualJobs.forEach(manualJob => {
+          if (!existingJobsMap.has(manualJob.id)) {
+            mergedJobs.push({
+              ...manualJob,
+              addedTimestamp: manualJob.addedTimestamp || Date.now()
+            });
+          }
+        });
+
+        // Sort by timestamp (newest first)
+        mergedJobs.sort((a, b) => {
+          const timeA = a.addedTimestamp || new Date(a.postedDate).getTime();
+          const timeB = b.addedTimestamp || new Date(b.postedDate).getTime();
+          return timeB - timeA;
+        });
+
+        // Save to storage
+        saveAllJobsToStorage(mergedJobs);
+        setJobs(mergedJobs);
         setApiSource('rss');
-        console.log(`Loaded ${data.jobs.length} real jobs from RSS feeds`);
+        console.log(`Loaded ${mergedJobs.length} jobs (${rssJobsWithTimestamp.length} from RSS)`);
       } else {
         throw new Error('No jobs found in RSS feeds');
       }
       
     } catch (err) {
-      setError('Using sample jobs. Real jobs will load soon.');
-      // Fallback to sample jobs
-      loadSampleJobs();
+      setError('Using stored jobs. Real jobs will load soon.');
+      // Fallback to stored jobs or sample jobs
+      loadStoredJobs();
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load jobs from storage as fallback
+  const loadStoredJobs = () => {
+    const storedJobs = loadAllJobsFromStorage();
+    
+    if (storedJobs.length > 0) {
+      // Sort by timestamp (newest first)
+      const sortedJobs = [...storedJobs].sort((a, b) => {
+        const timeA = a.addedTimestamp || new Date(a.postedDate).getTime();
+        const timeB = b.addedTimestamp || new Date(b.postedDate).getTime();
+        return timeB - timeA;
+      });
+      setJobs(sortedJobs);
+      setApiSource('storage');
+      console.log(`Loaded ${sortedJobs.length} jobs from storage`);
+    } else {
+      loadSampleJobs();
     }
   };
 
@@ -97,11 +185,19 @@ const JobApplications: React.FC = () => {
         applyLink: "#",
         featured: true,
         source: "sample",
-        isReal: false
+        isReal: false,
+        addedTimestamp: Date.now()
       }
     ];
 
-    const allJobs = [...sampleJobs, ...manualJobs];
+    // Combine with manual jobs and sort
+    const allJobs = [...sampleJobs, ...manualJobs].map(job => ({
+      ...job,
+      addedTimestamp: job.addedTimestamp || Date.now()
+    })).sort((a, b) => b.addedTimestamp! - a.addedTimestamp!);
+
+    // Save to storage
+    saveAllJobsToStorage(allJobs);
     setJobs(allJobs);
     setApiSource('sample');
   };
@@ -122,16 +218,19 @@ const JobApplications: React.FC = () => {
   // Handle city quick filter
   const handleCityFilter = (city: string) => {
     setLocationFilter(city);
-    // Filter existing jobs by city
-    const filtered = jobs.filter(job => 
-      job.location.toLowerCase().includes(city.toLowerCase())
-    );
-    setJobs(filtered);
   };
 
   // Refresh jobs
   const refreshJobs = () => {
     fetchRSSJobs();
+  };
+
+  // Clear all stored jobs (useful for debugging)
+  const clearStoredJobs = () => {
+    if (window.confirm('Are you sure you want to clear all stored jobs? This will reset to RSS feeds only.')) {
+      localStorage.removeItem('allJobs');
+      fetchRSSJobs();
+    }
   };
 
   const sectors = ['all', 'IT/Software', 'Engineering', 'Data Science', 'Marketing', 'HR', 'Finance', 'Healthcare'];
@@ -285,6 +384,14 @@ const JobApplications: React.FC = () => {
                   <p className="text-sm text-gray-600">{filteredJobs.length} jobs showing</p>
                   <p className="text-sm text-gray-600">{realJobsCount} real-time jobs</p>
                   <p className="text-sm text-gray-600">{jobs.filter(j => j.type === 'Remote').length} remote positions</p>
+                  <p className="text-sm text-gray-600">{jobs.length} total stored jobs</p>
+                  <button 
+                    onClick={clearStoredJobs}
+                    className="text-xs text-red-600 hover:text-red-800 mt-2"
+                    title="Clear all stored jobs"
+                  >
+                    Clear Storage
+                  </button>
                 </div>
               </div>
 
@@ -336,6 +443,9 @@ const JobApplications: React.FC = () => {
                         </p>
                         <p className="text-green-700 text-sm">
                           Showing {realJobsCount} real-time jobs from Indian job portals
+                        </p>
+                        <p className="text-green-700 text-sm">
+                          {jobs.length} total jobs stored • Sorted by newest first
                         </p>
                       </div>
                       <div className="text-right">
@@ -413,10 +523,10 @@ const JobApplications: React.FC = () => {
             </div>
             <div className="text-center">
               <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">⚡</span>
+                <span className="text-2xl">💾</span>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Real-time Updates</h3>
-              <p className="text-gray-600">Jobs are updated in real-time. Click refresh to get the latest opportunities</p>
+              <h3 className="text-xl font-semibold mb-2">Smart Storage</h3>
+              <p className="text-gray-600">Jobs are stored locally and sorted with newest opportunities first</p>
             </div>
             <div className="text-center">
               <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -435,6 +545,7 @@ const JobApplications: React.FC = () => {
 // Job Card Component
 const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = false }) => {
   const isRealJob = job.isReal;
+  const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000; // New if less than 24 hours old
   
   return (
     <div className={`job-card bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${
@@ -448,6 +559,11 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
               <p className="text-lg text-gray-700 mb-2">{job.company} • {job.location}</p>
             </div>
             <div className="flex flex-col items-end gap-1">
+              {isNewJob && (
+                <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                  NEW
+                </span>
+              )}
               {featured && (
                 <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                   Featured
@@ -492,6 +608,7 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
           <p className="text-sm text-gray-500">
             Posted {new Date(job.postedDate).toLocaleDateString()}
             {isRealJob && ' • Live from job portals'}
+            {job.addedTimestamp && ` • Added ${new Date(job.addedTimestamp).toLocaleDateString()}`}
           </p>
         </div>
 

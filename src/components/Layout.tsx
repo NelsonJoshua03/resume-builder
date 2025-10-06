@@ -1,22 +1,16 @@
 // src/components/Layout.tsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const location = useLocation(); // This will now work because it's inside Router
+  const location = useLocation();
   
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Helmet>
-        <title>ResumeCVForge - Free Online Resume Builder</title>
-        <meta name="description" content="Create ATS-friendly professional resumes in minutes. Choose from templates, customize your CV, and download as PDF instantly." />
-      </Helmet>
-
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -75,13 +69,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </nav>
         </div>
       </header>
-
-            <Link 
-              to="/admin/job-posting" 
-              className="font-medium transition-colors text-gray-700 hover:text-blue-600"
-            >
-              Admin
-            </Link>
 
       {/* Main Content */}
       <main className="flex-grow">

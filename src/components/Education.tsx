@@ -1,4 +1,3 @@
-
 import { EducationProps } from './types';
 
 const Education = ({ education, onUpdate, onAdd, onRemove }: EducationProps) => {
@@ -40,10 +39,17 @@ const Education = ({ education, onUpdate, onAdd, onRemove }: EducationProps) => 
               />
               <input 
                 type="text" 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2" 
                 placeholder="Year"
                 value={edu.year}
                 onChange={(e) => onUpdate(edu.id, 'year', e.target.value)}
+              />
+              <input 
+                type="text" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md" 
+                placeholder="GPA/Percentage (optional)"
+                value={edu.gpa || ''}
+                onChange={(e) => onUpdate(edu.id, 'gpa', e.target.value)}
               />
             </div>
           </div>

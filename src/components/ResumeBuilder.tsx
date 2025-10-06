@@ -7,11 +7,13 @@ import TemplateSelector from './TemplateSelector';
 import FileUpload from './FileUpload';
 import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
-import { ResumeData, Template, PersonalInfoData, Skill } from './types';
+import { ResumeData, Template, PersonalInfoData, Skill, SectionItem } from './types';
 import Projects from './Projects';
 import Awards from './Awards';
 import CustomFields from './CustomFields';
 import MobilePDFGenerator from './MobilePDFGenerator';
+import SEO from './SEO';
+import SectionOrderCustomizer from './SectionOrderCustomizer';
 
 // Enhanced template configuration with color customization
 const TEMPLATES: Record<string, Template> = {
@@ -122,7 +124,8 @@ const ResumeBuilder = () => {
         id: 1,
         degree: 'Bachelor of Computer Science',
         institution: 'University of Technology',
-        year: '2018'
+        year: '2018',
+        gpa: '3.8/4.0'
       }
     ],
     projects: [
@@ -167,6 +170,16 @@ const ResumeBuilder = () => {
     selectedTemplate: 'creative',
     customColors: {}
   });
+
+  const [sectionOrder, setSectionOrder] = useState<SectionItem[]>([
+    { id: 'summary', label: 'Professional Summary', enabled: true, order: 0 },
+    { id: 'experience', label: 'Work Experience', enabled: true, order: 1 },
+    { id: 'education', label: 'Education', enabled: true, order: 2 },
+    { id: 'projects', label: 'Projects', enabled: true, order: 3 },
+    { id: 'skills', label: 'Skills', enabled: true, order: 4 },
+    { id: 'awards', label: 'Awards', enabled: true, order: 5 },
+    { id: 'custom', label: 'Additional Sections', enabled: true, order: 6 }
+  ]);
 
   const resumeRef = useRef<HTMLDivElement>(null);
 
@@ -227,7 +240,8 @@ const ResumeBuilder = () => {
           id: Date.now(),
           degree: '',
           institution: '',
-          year: ''
+          year: '',
+          gpa: ''
         }
       ]
     }));
@@ -392,6 +406,10 @@ const ResumeBuilder = () => {
     alert('File uploaded successfully! For now, please fill in your information manually.');
   };
 
+  const handleSectionReorder = (reorderedSections: SectionItem[]) => {
+    setSectionOrder(reorderedSections);
+  };
+
   // Get the current template configuration
   const currentTemplate = TEMPLATES[resumeData.selectedTemplate] || TEMPLATES.creative;
   
@@ -399,93 +417,108 @@ const ResumeBuilder = () => {
   const customColors = resumeData.customColors[resumeData.selectedTemplate] || currentTemplate.colors;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <header className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-gray-800 mb-3">Resume Builder</h1>
-        <p className="text-xl text-gray-600">Create professional resumes in minutes</p>
-      </header>
+    <>
+      <SEO
+        title="Free Resume Builder - Create ATS-Friendly CV Online"
+        description="Build professional, ATS-optimized resumes with our free online builder. 10+ templates for engineers, developers, and IT professionals. Download PDF instantly."
+        keywords="free resume builder, online CV maker, ATS resume template, professional resume download, resume builder no sign up, create resume free"
+        canonicalUrl="https://resumecvforge.netlify.app/builder"
+      />
+      
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <header className="text-center mb-10">
+          <h1 className="text-4xl font-bold text-gray-800 mb-3">Resume Builder</h1>
+          <p className="text-xl text-gray-600">Create professional resumes in minutes</p>
+        </header>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="w-full lg:w-2/5">
-          {/* Fixed PersonalInfo section */}
-          <PersonalInfo 
-            data={resumeData.personalInfo} 
-            onChange={updatePersonalInfo} 
-          />
-          
-          {/* Static sections without drag-and-drop */}
-          <div className="space-y-6">
-            <Experience 
-              experiences={resumeData.experiences}
-              onUpdate={updateExperience}
-              onAdd={addExperience}
-              onRemove={removeExperience}
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="w-full lg:w-2/5">
+            {/* Fixed PersonalInfo section */}
+            <PersonalInfo 
+              data={resumeData.personalInfo} 
+              onChange={updatePersonalInfo} 
             />
-            <Education 
-              education={resumeData.education}
-              onUpdate={updateEducation}
-              onAdd={addEducation}
-              onRemove={removeEducation}
+            
+            {/* Static sections without drag-and-drop */}
+            <div className="space-y-6">
+              <Experience 
+                experiences={resumeData.experiences}
+                onUpdate={updateExperience}
+                onAdd={addExperience}
+                onRemove={removeExperience}
+              />
+              <Education 
+                education={resumeData.education}
+                onUpdate={updateEducation}
+                onAdd={addEducation}
+                onRemove={removeEducation}
+              />
+              <Projects
+                projects={resumeData.projects}
+                onUpdate={updateProject}
+                onAdd={addProject}
+                onRemove={removeProject}
+              />
+              <Awards
+                awards={resumeData.awards}
+                onUpdate={updateAward}
+                onAdd={addAward}
+                onRemove={removeAward}
+              />
+              <Skills 
+                skills={resumeData.skills}
+                onAdd={addSkill}
+                onRemove={removeSkill}
+                onUpdateProficiency={updateSkillProficiency}
+              />
+              <CustomFields
+                customFields={resumeData.customFields}
+                onUpdate={updateCustomField}
+                onAdd={addCustomField}
+                onRemove={removeCustomField}
+                onChangeType={changeCustomFieldType}
+              />
+              <FileUpload 
+                onUpload={handleFileUpload}
+              />
+            </div>
+          </div>
+
+          <div className="w-full lg:w-3/5">
+            <ResumePreview 
+              ref={resumeRef} 
+              data={resumeData} 
+              template={currentTemplate}
+              customColors={customColors}
+              sectionOrder={sectionOrder}
             />
-            <Projects
-              projects={resumeData.projects}
-              onUpdate={updateProject}
-              onAdd={addProject}
-              onRemove={removeProject}
+            
+            {/* Replace the old download button with the MobilePDFGenerator */}
+            <MobilePDFGenerator 
+              resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
+              personalInfo={resumeData.personalInfo}
             />
-            <Awards
-              awards={resumeData.awards}
-              onUpdate={updateAward}
-              onAdd={addAward}
-              onRemove={removeAward}
+            
+            <TemplateSelector 
+              selectedTemplate={resumeData.selectedTemplate}
+              onSelect={selectTemplate}
+              templates={TEMPLATES}
             />
-            <Skills 
-              skills={resumeData.skills}
-              onAdd={addSkill}
-              onRemove={removeSkill}
-              onUpdateProficiency={updateSkillProficiency}
+            
+            <ColorCustomizer
+              template={currentTemplate}
+              colors={customColors}
+              onUpdate={updateTemplateColors}
             />
-            <CustomFields
-              customFields={resumeData.customFields}
-              onUpdate={updateCustomField}
-              onAdd={addCustomField}
-              onRemove={removeCustomField}
-              onChangeType={changeCustomFieldType}
-            />
-            <FileUpload 
-              onUpload={handleFileUpload}
+
+            <SectionOrderCustomizer 
+              sections={sectionOrder}
+              onReorder={handleSectionReorder}
             />
           </div>
         </div>
-
-        <div className="w-full lg:w-3/5">
-          <ResumePreview 
-            ref={resumeRef} 
-            data={resumeData} 
-            template={currentTemplate}
-            customColors={customColors}
-          />
-          
-          {/* Replace the old download button with the MobilePDFGenerator */}
-          <MobilePDFGenerator 
-            resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
-            personalInfo={resumeData.personalInfo}
-          />
-          
-          <TemplateSelector 
-            selectedTemplate={resumeData.selectedTemplate}
-            onSelect={selectTemplate}
-            templates={TEMPLATES}
-          />
-          
-          <ColorCustomizer
-            template={currentTemplate}
-            colors={customColors}
-            onUpdate={updateTemplateColors}
-          />
-        </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -16,10 +16,13 @@ interface Job {
   postedDate: string;
   applyLink: string;
   featured?: boolean;
+  addedTimestamp?: number;
+  isReal?: boolean;
+  source?: string;
 }
 
 const AdminJobPosting: React.FC = () => {
-  const [job, setJob] = useState<Omit<Job, 'id' | 'postedDate'>>({
+  const [job, setJob] = useState<Omit<Job, 'id' | 'postedDate' | 'addedTimestamp'>>({
     title: '',
     company: '',
     location: '',
@@ -51,6 +54,57 @@ const AdminJobPosting: React.FC = () => {
     setManualJobs(savedJobs);
   }, []);
 
+  // Load all jobs from storage
+  const loadAllJobsFromStorage = (): Job[] => {
+    try {
+      const storedJobs = localStorage.getItem('allJobs');
+      return storedJobs ? JSON.parse(storedJobs) : [];
+    } catch (error) {
+      console.error('Error loading jobs from storage:', error);
+      return [];
+    }
+  };
+
+  // Save all jobs to storage
+  const saveAllJobsToStorage = (jobs: Job[]) => {
+    try {
+      localStorage.setItem('allJobs', JSON.stringify(jobs));
+    } catch (error) {
+      console.error('Error saving jobs to storage:', error);
+    }
+  };
+
+  // Update all jobs storage when manual jobs change
+  const updateAllJobsStorage = (newManualJobs: Job[]) => {
+    const existingJobs = loadAllJobsFromStorage();
+    const manualJobsMap = new Map(newManualJobs.map(job => [job.id, job]));
+    
+    // Update existing jobs with manual jobs data
+    const updatedJobs = existingJobs.map(existingJob => {
+      const manualJob = manualJobsMap.get(existingJob.id);
+      if (manualJob) {
+        return { ...existingJob, ...manualJob };
+      }
+      return existingJob;
+    });
+
+    // Add new manual jobs that don't exist in storage
+    newManualJobs.forEach(manualJob => {
+      if (!updatedJobs.some(job => job.id === manualJob.id)) {
+        updatedJobs.push(manualJob);
+      }
+    });
+
+    // Sort by timestamp (newest first)
+    updatedJobs.sort((a, b) => {
+      const timeA = a.addedTimestamp || new Date(a.postedDate).getTime();
+      const timeB = b.addedTimestamp || new Date(b.postedDate).getTime();
+      return timeB - timeA;
+    });
+
+    saveAllJobsToStorage(updatedJobs);
+  };
+
   // Single job submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,14 +113,20 @@ const AdminJobPosting: React.FC = () => {
       ...job,
       id: `manual-${Date.now()}`,
       postedDate: new Date().toISOString().split('T')[0],
+      addedTimestamp: Date.now(),
       requirements: requirementsInput.split('\n')
         .filter(req => req.trim() !== '')
-        .map(req => req.trim())
+        .map(req => req.trim()),
+      isReal: false,
+      source: 'manual'
     };
 
     const updatedJobs = [...manualJobs, newJob];
     setManualJobs(updatedJobs);
     localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+    
+    // Update the main jobs storage
+    updateAllJobsStorage(updatedJobs);
     
     setShowSuccess(true);
     // Reset form
@@ -124,7 +184,10 @@ const AdminJobPosting: React.FC = () => {
               : (jobData.requirements ? [jobData.requirements] : ['See job description for requirements']),
             applyLink: jobData.applyLink || '#',
             featured: jobData.featured || false,
-            postedDate: new Date().toISOString().split('T')[0]
+            postedDate: new Date().toISOString().split('T')[0],
+            addedTimestamp: Date.now(),
+            isReal: false,
+            source: 'manual-bulk'
           };
 
           successCount++;
@@ -140,6 +203,9 @@ const AdminJobPosting: React.FC = () => {
         const updatedJobs = [...manualJobs, ...newJobs];
         setManualJobs(updatedJobs);
         localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+        
+        // Update the main jobs storage
+        updateAllJobsStorage(updatedJobs);
       }
 
       setBulkUploadResults({
@@ -250,13 +316,28 @@ const AdminJobPosting: React.FC = () => {
     const updatedJobs = manualJobs.filter(job => job.id !== jobId);
     setManualJobs(updatedJobs);
     localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+    
+    // Update the main jobs storage
+    updateAllJobsStorage(updatedJobs);
   };
 
   const clearAllJobs = () => {
     if (window.confirm('Are you sure you want to delete all manually posted jobs? This action cannot be undone.')) {
       setManualJobs([]);
       localStorage.setItem('manualJobs', '[]');
+      
+      // Remove manual jobs from main storage
+      const existingJobs = loadAllJobsFromStorage();
+      const filteredJobs = existingJobs.filter(job => !job.id.startsWith('manual-'));
+      saveAllJobsToStorage(filteredJobs);
     }
+  };
+
+  // Sync with main storage (useful for debugging)
+  const syncWithMainStorage = () => {
+    updateAllJobsStorage(manualJobs);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 2000);
   };
 
   const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Remote', 'Internship', 'Freelance'];
@@ -270,6 +351,9 @@ const AdminJobPosting: React.FC = () => {
     'Chennai, Tamil Nadu', 'Pune, Maharashtra', 'Kolkata, West Bengal', 
     'Ahmedabad, Gujarat', 'Remote', 'Gurgaon, Haryana', 'Noida, Uttar Pradesh'
   ];
+
+  // Load total jobs count from main storage
+  const totalJobsCount = loadAllJobsFromStorage().length;
 
   return (
     <>
@@ -294,6 +378,24 @@ const AdminJobPosting: React.FC = () => {
               Job posted successfully! It will now appear on the Job Applications page.
             </div>
           )}
+
+          {/* Storage Info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-semibold text-blue-800">Storage Status</h3>
+                <p className="text-blue-700 text-sm">
+                  Manual Jobs: {manualJobs.length} | Total Stored Jobs: {totalJobsCount}
+                </p>
+              </div>
+              <button
+                onClick={syncWithMainStorage}
+                className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+              >
+                Sync Storage
+              </button>
+            </div>
+          </div>
 
           {/* Tab Navigation */}
           <div className="bg-white rounded-lg shadow-lg mb-6">
@@ -637,36 +739,48 @@ Bachelor's degree in Computer Science..."
                   <p className="text-gray-500 text-sm">No jobs posted yet</p>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {manualJobs.map(manualJob => (
-                      <div key={manualJob.id} className="border border-gray-200 rounded-lg p-3">
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-800">{manualJob.title}</h4>
-                            <p className="text-sm text-gray-600">{manualJob.company}</p>
-                            <p className="text-xs text-gray-500">{manualJob.location}</p>
-                            <div className="flex gap-1 mt-1">
-                              {manualJob.featured && (
-                                <span className="inline-block bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
-                                  Featured
-                                </span>
-                              )}
-                              {manualJob.id.startsWith('manual-bulk-') && (
-                                <span className="inline-block bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">
-                                  Bulk
-                                </span>
-                              )}
+                    {manualJobs.map(manualJob => {
+                      const isNew = manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) < 24 * 60 * 60 * 1000;
+                      
+                      return (
+                        <div key={manualJob.id} className="border border-gray-200 rounded-lg p-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-800">{manualJob.title}</h4>
+                              <p className="text-sm text-gray-600">{manualJob.company}</p>
+                              <p className="text-xs text-gray-500">{manualJob.location}</p>
+                              <div className="flex gap-1 mt-1">
+                                {isNew && (
+                                  <span className="inline-block bg-red-100 text-red-800 text-xs px-1 py-0.5 rounded">
+                                    NEW
+                                  </span>
+                                )}
+                                {manualJob.featured && (
+                                  <span className="inline-block bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
+                                    Featured
+                                  </span>
+                                )}
+                                {manualJob.id.startsWith('manual-bulk-') && (
+                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">
+                                    Bulk
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1">
+                                Added: {manualJob.addedTimestamp ? new Date(manualJob.addedTimestamp).toLocaleDateString() : 'Recently'}
+                              </p>
                             </div>
+                            <button
+                              onClick={() => deleteJob(manualJob.id)}
+                              className="text-red-600 hover:text-red-800 ml-2"
+                              title="Delete job"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
                           </div>
-                          <button
-                            onClick={() => deleteJob(manualJob.id)}
-                            className="text-red-600 hover:text-red-800 ml-2"
-                            title="Delete job"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -683,6 +797,7 @@ Bachelor's degree in Computer Science..."
                     <li>• Provide realistic salary ranges</li>
                     <li>• Use "mailto:" links for email applications</li>
                     <li>• Mark high-priority roles as "Featured"</li>
+                    <li>• Jobs are automatically timestamped and sorted</li>
                   </ul>
                 ) : (
                   <ul className="text-sm text-blue-700 space-y-1">
@@ -691,6 +806,7 @@ Bachelor's degree in Computer Science..."
                     <li>• Required fields: title, company, location</li>
                     <li>• Use arrays for requirements field</li>
                     <li>• Validate JSON before uploading</li>
+                    <li>• Jobs get automatic timestamps</li>
                   </ul>
                 )}
               </div>
@@ -699,10 +815,12 @@ Bachelor's degree in Computer Science..."
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h4 className="font-semibold text-green-800 mb-2">Quick Stats</h4>
                 <div className="text-sm text-green-700 space-y-1">
-                  <p>• Total Jobs: {manualJobs.length}</p>
+                  <p>• Manual Jobs: {manualJobs.length}</p>
                   <p>• Featured Jobs: {manualJobs.filter(j => j.featured).length}</p>
                   <p>• Bulk Uploaded: {manualJobs.filter(j => j.id.startsWith('manual-bulk-')).length}</p>
                   <p>• Single Posted: {manualJobs.filter(j => !j.id.startsWith('manual-bulk-')).length}</p>
+                  <p>• New Today: {manualJobs.filter(j => j.addedTimestamp && (Date.now() - j.addedTimestamp) < 24 * 60 * 60 * 1000).length}</p>
+                  <p>• Total Stored: {totalJobsCount}</p>
                 </div>
               </div>
             </div>

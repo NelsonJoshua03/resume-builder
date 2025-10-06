@@ -1,15 +1,17 @@
 // src/components/About.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import SEO from './SEO';
 
 const About: React.FC = () => {
   return (
     <>
-      <Helmet>
-        <title>About ResumeCVForge - Free Online Resume Builder</title>
-        <meta name="description" content="Learn about ResumeCVForge's mission to help job seekers create professional, ATS-friendly resumes for free. No sign-up required." />
-      </Helmet>
+      <SEO
+        title="About ResumeCVForge - Free Online Resume Builder"
+        description="Learn about ResumeCVForge's mission to help job seekers create professional, ATS-friendly resumes for free. No sign-up required, privacy-first approach."
+        keywords="about ResumeCVForge, free resume builder story, mission, privacy-focused resume tool, no registration required"
+        canonicalUrl="https://resumecvforge.netlify.app/about"
+      />
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">

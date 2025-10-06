@@ -1,15 +1,17 @@
 // src/components/JobDisciplines.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import SEO from './SEO';
 
 const JobDisciplines: React.FC = () => {
   return (
     <>
-      <Helmet>
-        <title>Job-Specific Resume Advice | ResumeCVForge</title>
-        <meta name="description" content="Get tailored resume tips for engineering, technology, healthcare and more. Industry-specific advice to make your CV stand out." />
-      </Helmet>
+      <SEO
+        title="Job-Specific Resume Advice for Engineers & Developers"
+        description="Get tailored resume tips for mechanical engineering, software development, cybersecurity and more. Industry-specific advice to make your CV stand out."
+        keywords="engineering resume tips, software developer CV, mechanical engineering resume, cybersecurity resume, job-specific resume advice, ATS optimization by industry"
+        canonicalUrl="https://resumecvforge.netlify.app/job-disciplines"
+      />
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-16">
@@ -51,6 +53,23 @@ const JobDisciplines: React.FC = () => {
                   </Link>
                 </div>
               </div>
+
+              {/* Fresh Graduate Section */}
+<div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-8 rounded-lg mb-8">
+  <div className="text-center">
+    <h2 className="text-3xl font-bold mb-4">🎓 Recently Graduated?</h2>
+    <p className="text-xl mb-6 max-w-2xl mx-auto">
+      Learn how to create a standout resume when you have little to no work experience. 
+      Transform your academic achievements into professional credentials.
+    </p>
+    <Link 
+      to="/fresh-graduate-guide" 
+      className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-block"
+    >
+      Fresh Graduate Resume Guide
+    </Link>
+  </div>
+</div>
               
               {/* Civil Engineering Card */}
               <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">

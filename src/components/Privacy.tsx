@@ -1,24 +1,16 @@
 // src/components/Privacy.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
+import SEO from './SEO';
 
 const Privacy: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <nav className="flex justify-between items-center">
-            <Link to="/" className="text-2xl font-bold text-blue-600">ResumeCVForge</Link>
-            <div className="flex space-x-6">
-              <Link to="/job-disciplines" className="text-gray-700 hover:text-blue-600">Job Disciplines</Link>
-              <Link to="/blog" className="text-gray-700 hover:text-blue-600">Blog</Link>
-              <Link to="/about" className="text-gray-700 hover:text-blue-600">About</Link>
-              <Link to="/builder" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Build Resume</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
+    <>
+      <SEO
+        title="Privacy Policy - ResumeCVForge"
+        description="ResumeCVForge privacy policy. We respect your privacy and do not store your personal data. Your resume information stays on your device."
+        keywords="resume builder privacy policy, data protection, privacy-focused resume tool, no data storage"
+        canonicalUrl="https://resumecvforge.netlify.app/privacy"
+      />
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
@@ -82,7 +74,7 @@ const Privacy: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -3,6 +3,12 @@
   publish = "dist"
   functions = "netlify/functions"
 
+[dev]
+  # Match the port that Vite is actually using
+  targetPort = 3001
+  # Optional: You can also specify the framework
+  framework = "vite"
+
 # Priority redirects for SEO files (must come first)
 [[redirects]]
   from = "/sitemap.xml"

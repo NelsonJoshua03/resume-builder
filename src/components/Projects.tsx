@@ -40,7 +40,7 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
       <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i className="fas fa-code mr-2 text-blue-500"></i> Projects
+        <i className="fas fa-laptop-code mr-2 text-blue-500"></i> Projects & Portfolio
       </h2>
       
       <div className="space-y-4">

@@ -36,9 +36,15 @@ export default defineConfig({
     },
   },
   publicDir: 'public',
-  // Optional: Server configuration for development
+  // Updated Server configuration for development
   server: {
-    port: 3000,
+    port: 3001, // Changed from 3000 to 3001 to match what Vite is actually using
+    host: true, // Allow external access if needed
     open: true, // Automatically open browser when running dev server
   },
+  // Optional: Preview configuration (for 'npm run preview')
+  preview: {
+    port: 3001,
+    host: true,
+  }
 })

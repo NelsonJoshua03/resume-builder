@@ -1,0 +1,16 @@
+{
+  "posts": [
+    {
+      "id": 1,
+      "title": "How to Create an ATS-Friendly Resume",
+      "excerpt": "Learn the secrets to making your resume pass through Applicant Tracking Systems...",
+      "category": "ats-optimization",
+      "date": "2024-01-15",
+      "readTime": "5 min read",
+      "slug": "ats-friendly-resume-guide",
+      "author": "Career Experts Team",
+      "authorBio": "Our team of certified career coaches",
+      "content": "<h2>What is an ATS?</h2><p>Applicant Tracking Systems are software used by companies...</p>"
+    }
+  ]
+}

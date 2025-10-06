@@ -1,7 +1,7 @@
 // src/components/BlogPost.tsx
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import SEO from './SEO';
 
 const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -11,6 +11,7 @@ const BlogPost: React.FC = () => {
     const posts = {
       "ats-friendly-resume-guide": {
         title: "How to Create an ATS-Friendly Resume",
+        excerpt: "Learn the secrets to making your resume pass through Applicant Tracking Systems and reach human recruiters.",
         content: `
           <h2>Understanding Applicant Tracking Systems</h2>
           <p>Applicant Tracking Systems (ATS) are software used by employers to manage job applications. They scan resumes for keywords and qualifications before they reach human recruiters.</p>
@@ -33,6 +34,7 @@ const BlogPost: React.FC = () => {
       },
       "resume-mistakes-2024": {
         title: "10 Resume Mistakes to Avoid in 2024",
+        excerpt: "Common pitfalls that could be costing you interviews and how to fix them.",
         content: `
           <h2>Common Resume Pitfalls That Cost You Interviews</h2>
           <p>Avoid these common mistakes to ensure your resume gets noticed by recruiters and hiring managers.</p>
@@ -57,6 +59,7 @@ const BlogPost: React.FC = () => {
       },
       "engineering-resume-templates": {
         title: "Best Resume Templates for Engineering Roles",
+        excerpt: "Industry-specific templates that highlight technical skills and project experience.",
         content: `
           <h2>Engineering Resume Essentials</h2>
           <p>Engineering resumes need to highlight technical skills, project experience, and problem-solving abilities in a clear, professional format.</p>
@@ -87,10 +90,15 @@ const BlogPost: React.FC = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{currentPost.title} | ResumeCVForge Blog</title>
-        <meta name="description" content={`Learn how to create resumes that pass through Applicant Tracking Systems. ATS-friendly resume tips and optimization strategies.`} />
-      </Helmet>
+      <SEO
+        title={currentPost.title}
+        description={`${currentPost.excerpt} Learn professional resume writing and ATS optimization strategies.`}
+        keywords={`${currentPost.category.toLowerCase()} resume tips, ATS optimization, ${currentPost.title.toLowerCase()}`}
+        canonicalUrl={`https://resumecvforge.netlify.app/blog/${slug}`}
+        type="article"
+        publishedTime={currentPost.date}
+        author="ResumeCVForge"
+      />
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">

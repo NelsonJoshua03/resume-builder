@@ -96,6 +96,26 @@ export interface ResumeData {
   customColors: Record<string, any>;
 }
 
+export interface SectionOrderCustomizerProps {
+  sections: SectionItem[];
+  onReorder: (sections: SectionItem[]) => void;
+}
+
+export interface SectionItem {
+  id: string;
+  label: string;
+  enabled: boolean;
+  order: number;
+}
+
+export interface Education {
+  id: number;
+  degree: string;
+  institution: string;
+  year: string;
+  gpa?: string; // Add this line
+}
+
 export interface ColorCustomizerProps {
   template: Template;
   colors: any;
@@ -164,4 +184,11 @@ export interface CustomFieldsProps {
   onAdd: () => void;
   onRemove: (id: number) => void;
   onChangeType: (id: number, type: CustomFieldType) => void;
+}
+
+export interface ResumePreviewProps {
+  data: ResumeData;
+  template: Template;
+  customColors: any;
+  sectionOrder?: SectionItem[]; // Add this optional prop
 }
