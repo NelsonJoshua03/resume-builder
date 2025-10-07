@@ -11,6 +11,33 @@ interface MobilePDFGeneratorProps {
   onDownloadEnd?: () => void;
 }
 
+// Track download function
+const trackDownload = (fileName: string) => {
+  // Track in Google Analytics
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'download', {
+      'event_category': 'resume',
+      'event_label': fileName,
+      'value': 1
+    });
+  }
+  
+  // Track in localStorage for simple counter
+  try {
+    const currentDownloads = parseInt(localStorage.getItem('resumeDownloads') || '0');
+    localStorage.setItem('resumeDownloads', (currentDownloads + 1).toString());
+    
+    // Also track total downloads by template type if available
+    const templateType = localStorage.getItem('currentTemplate') || 'default';
+    const templateDownloads = parseInt(localStorage.getItem(`downloads_${templateType}`) || '0');
+    localStorage.setItem(`downloads_${templateType}`, (templateDownloads + 1).toString());
+  } catch (error) {
+    console.log('LocalStorage tracking failed:', error);
+  }
+  
+  console.log(`📊 Download tracked: ${fileName}`);
+};
+
 const MobilePDFGenerator = ({ 
   resumeRef, 
   personalInfo, 
@@ -132,8 +159,14 @@ const MobilePDFGenerator = ({
         if (pageCount > 10) break;
       }
       
+      // Generate filename
+      const fileName = `${personalInfo.name.replace(/\s+/g, '_')}_Resume.pdf`;
+      
+      // Track the download BEFORE saving
+      trackDownload(fileName);
+      
       // Save the PDF
-      pdf.save(`${personalInfo.name.replace(/\s+/g, '_')}_Resume.pdf`);
+      pdf.save(fileName);
       
     } catch (error) {
       console.error('Error generating PDF:', error);
