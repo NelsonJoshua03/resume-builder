@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import PersonalInfo from './PersonalInfo';
 import Experience from './Experience';
 import Education from './Education';
@@ -7,7 +7,7 @@ import TemplateSelector from './TemplateSelector';
 import FileUpload from './FileUpload';
 import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
-import { ResumeData, Template, PersonalInfoData, Skill, SectionItem } from './types';
+import { ResumeData, Template, PersonalInfoData, Skill, SectionItem, ParsedResumeData } from './types';
 import Projects from './Projects';
 import Awards from './Awards';
 import CustomFields from './CustomFields';
@@ -181,7 +181,17 @@ const ResumeBuilder = () => {
     { id: 'custom', label: 'Additional Sections', enabled: true, order: 6 }
   ]);
 
+  const [formKey, setFormKey] = useState(0); // Add this key to force re-render
   const resumeRef = useRef<HTMLDivElement>(null);
+
+  // Debug effect to log state changes
+  useEffect(() => {
+    console.log('ResumeData updated:', resumeData);
+    console.log('Personal Info:', resumeData.personalInfo);
+    console.log('Experiences:', resumeData.experiences);
+    console.log('Education:', resumeData.education);
+    console.log('Skills:', resumeData.skills);
+  }, [resumeData]);
 
   const updatePersonalInfo = (field: keyof PersonalInfoData, value: string | string[]) => {
     setResumeData(prev => ({
@@ -200,12 +210,13 @@ const ResumeBuilder = () => {
   };
 
   const addExperience = () => {
+    const newId = Date.now();
     setResumeData(prev => ({
       ...prev,
       experiences: [
         ...prev.experiences,
         {
-          id: Date.now(),
+          id: newId,
           title: '',
           company: '',
           period: '',
@@ -213,6 +224,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    return newId;
   };
 
   const removeExperience = (id: number) => {
@@ -232,12 +244,13 @@ const ResumeBuilder = () => {
   };
 
   const addEducation = () => {
+    const newId = Date.now();
     setResumeData(prev => ({
       ...prev,
       education: [
         ...prev.education,
         {
-          id: Date.now(),
+          id: newId,
           degree: '',
           institution: '',
           year: '',
@@ -245,6 +258,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    return newId;
   };
 
   const removeEducation = (id: number) => {
@@ -306,12 +320,13 @@ const ResumeBuilder = () => {
   };
 
   const addProject = () => {
+    const newId = Date.now();
     setResumeData(prev => ({
       ...prev,
       projects: [
         ...prev.projects,
         {
-          id: Date.now(),
+          id: newId,
           name: '',
           description: [''],
           technologies: [],
@@ -320,6 +335,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    return newId;
   };
 
   const removeProject = (id: number) => {
@@ -339,12 +355,13 @@ const ResumeBuilder = () => {
   };
 
   const addAward = () => {
+    const newId = Date.now();
     setResumeData(prev => ({
       ...prev,
       awards: [
         ...prev.awards,
         {
-          id: Date.now(),
+          id: newId,
           title: '',
           issuer: '',
           year: '',
@@ -352,6 +369,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    return newId;
   };
 
   const removeAward = (id: number) => {
@@ -380,18 +398,20 @@ const ResumeBuilder = () => {
   };
 
   const addCustomField = () => {
+    const newId = Date.now();
     setResumeData(prev => ({
       ...prev,
       customFields: [
         ...prev.customFields,
         {
-          id: Date.now(),
+          id: newId,
           label: 'New Section',
           value: '',
           type: 'text'
         }
       ]
     }));
+    return newId;
   };
 
   const removeCustomField = (id: number) => {
@@ -401,9 +421,94 @@ const ResumeBuilder = () => {
     }));
   };
 
-  const handleFileUpload = (file: File) => {
-    console.log('File uploaded:', file);
-    alert('File uploaded successfully! For now, please fill in your information manually.');
+  const handleFileUpload = (parsedData: ParsedResumeData) => {
+    console.log('Parsed resume data:', parsedData);
+    console.log('Parsed data details:', {
+      personalInfo: parsedData.personalInfo,
+      experiences: parsedData.experiences,
+      education: parsedData.education,
+      skills: parsedData.skills,
+      projects: parsedData.projects
+    });
+    
+    // Create a completely new state with parsed data
+    const newResumeData: ResumeData = {
+      personalInfo: {
+        name: parsedData.personalInfo.name || 'Your Name',
+        title: parsedData.personalInfo.title || 'Your Title',
+        email: parsedData.personalInfo.email || 'your.email@example.com',
+        phone: parsedData.personalInfo.phone || '(555) 123-4567',
+        summary: parsedData.personalInfo.summary.length > 0 
+          ? parsedData.personalInfo.summary 
+          : ['Professional summary will appear here.']
+      },
+      experiences: parsedData.experiences.length > 0 
+        ? parsedData.experiences.map((exp, index) => ({
+            ...exp,
+            id: Date.now() + index,
+            description: exp.description.length > 0 ? exp.description : ['']
+          }))
+        : [{
+            id: Date.now(),
+            title: '',
+            company: '',
+            period: '',
+            description: ['']
+          }],
+      education: parsedData.education.length > 0 
+        ? parsedData.education.map((edu, index) => ({
+            ...edu,
+            id: Date.now() + index,
+            gpa: edu.gpa || ''
+          }))
+        : [{
+            id: Date.now(),
+            degree: '',
+            institution: '',
+            year: '',
+            gpa: ''
+          }],
+      skills: parsedData.skills.length > 0 
+        ? parsedData.skills 
+        : [{ name: 'JavaScript', proficiency: 'Intermediate' }],
+      projects: parsedData.projects.length > 0 
+        ? parsedData.projects.map((proj, index) => ({
+            ...proj,
+            id: Date.now() + index,
+            description: proj.description.length > 0 ? proj.description : [''],
+            technologies: proj.technologies || []
+          }))
+        : [{
+            id: Date.now(),
+            name: '',
+            description: [''],
+            technologies: [],
+            period: '',
+            link: ''
+          }],
+      awards: [{
+        id: Date.now(),
+        title: '',
+        issuer: '',
+        year: '',
+        description: ''
+      }],
+      customFields: [{
+        id: Date.now(),
+        label: 'Languages',
+        value: '',
+        type: 'text'
+      }],
+      selectedTemplate: 'creative',
+      customColors: {}
+    };
+
+    console.log('New resume data to set:', newResumeData);
+    
+    setResumeData(newResumeData);
+    setFormKey(prev => prev + 1); // Force re-render of form components
+    
+    alert('Resume information has been auto-filled! Please review and make any necessary edits.');
   };
 
   const handleSectionReorder = (reorderedSections: SectionItem[]) => {
@@ -432,7 +537,7 @@ const ResumeBuilder = () => {
         </header>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          <div className="w-full lg:w-2/5">
+          <div className="w-full lg:w-2/5" key={formKey}>
             {/* Fixed PersonalInfo section */}
             <PersonalInfo 
               data={resumeData.personalInfo} 
