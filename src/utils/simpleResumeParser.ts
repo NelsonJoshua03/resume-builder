@@ -165,7 +165,6 @@ export class SimpleResumeParser {
     // Extract professional title - look for "WEB DESIGNER" or similar
     for (let i = 0; i < Math.min(15, this.lines.length); i++) {
       const line = this.lines[i];
-      const lower = line.toLowerCase();
       
       if (line === info.name || this.hasEmail(line) || this.hasPhone(line)) {
         continue;
