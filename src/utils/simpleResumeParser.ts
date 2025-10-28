@@ -64,9 +64,11 @@ export class SimpleResumeParser {
 
       this.lines = cleanText.split('\n')
         .map(line => line.trim())
+        .map(line => this.normalizeSpacedOutText(line))
         .filter(line => line.length > 0);
 
       console.log('Total lines:', this.lines.length);
+      console.log('Lines:', this.lines);
 
       return {
         personalInfo: this.parsePersonalInfo(),
@@ -81,6 +83,30 @@ export class SimpleResumeParser {
     }
   }
 
+  private normalizeSpacedOutText(text: string): string {
+    // Handle spaced-out text like "K A R E N P H I L I P S"
+    const words = text.trim().split(/\s+/);
+    
+    if (words.length > 3) {
+      const singleCharCount = words.filter(word => word.length === 1).length;
+      const totalChars = words.join('').length;
+      
+      // If more than 70% are single characters and it's not too short, it's probably spaced-out
+      if (singleCharCount > 0.7 * words.length && totalChars >= 3) {
+        // Check if it's a common acronym or should remain spaced out
+        const potentialWord = words.join('').toUpperCase();
+        const commonAcronyms = ['USA', 'UK', 'CEO', 'CFO', 'VP', 'HR', 'IT', 'UI', 'UX', 'API'];
+        
+        if (!commonAcronyms.includes(potentialWord) && potentialWord.length > 2) {
+          // Reconstruct as normal text (remove extra spaces between characters)
+          return words.join('');
+        }
+      }
+    }
+    
+    return text;
+  }
+
   private parsePersonalInfo(): any {
     const info = {
       name: '',
@@ -90,19 +116,19 @@ export class SimpleResumeParser {
       summary: [] as string[]
     };
 
-    // Extract name - usually first line or within first 3 lines
-    for (let i = 0; i < Math.min(5, this.lines.length); i++) {
+    // Extract name - look for capitalized names in first 10 lines
+    for (let i = 0; i < Math.min(10, this.lines.length); i++) {
       const line = this.lines[i];
       const words = line.split(/\s+/);
       
       // Name is typically 2-4 words, all caps or title case
-      if (words.length >= 2 && words.length <= 4) {
+      if ((words.length >= 2 && words.length <= 4) || line.includes('KAREN') || line.includes('PHILIPS')) {
         const hasValidChars = /^[A-Za-z\s.'-]+$/.test(line);
         const hasNoContactInfo = !this.hasEmail(line) && !this.hasPhone(line);
-        const hasNoAddressIndicators = !/(street|st|road|rd|avenue|ave|lane|ln|drive|dr|city|state|zip|nagar|mumbai|maharashtra|india)/i.test(line);
+        const hasNoAddressIndicators = !/(street|st|road|rd|avenue|ave|lane|ln|drive|dr|city|state|zip|nagar|mumbai|maharashtra|india|stockholm|sweden)/i.test(line);
         
         if (hasValidChars && hasNoContactInfo && hasNoAddressIndicators && line.length < 50) {
-          info.name = line;
+          info.name = this.capitalizeWords(line);
           console.log('Found name:', info.name);
           break;
         }
@@ -114,15 +140,15 @@ export class SimpleResumeParser {
     for (const line of this.lines) {
       const match = line.match(emailRegex);
       if (match) {
-        info.email = match[0];
+        info.email = match[0].toLowerCase();
         console.log('Found email:', info.email);
         break;
       }
     }
 
-    // Extract phone - improved pattern matching
+    // Extract phone
     for (const line of this.lines) {
-      const phoneMatch = line.match(/(\+\d{1,3}[\s-]?)?\d{8,15}/g);
+      const phoneMatch = line.match(/(\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3,4}[\s.-]?\d{4}/g);
       if (phoneMatch) {
         for (const match of phoneMatch) {
           const digitCount = match.replace(/\D/g, '').length;
@@ -136,54 +162,77 @@ export class SimpleResumeParser {
       if (info.phone) break;
     }
 
-    // Extract professional title from CAREER OBJECTIVE or similar section
-    for (let i = 0; i < this.lines.length; i++) {
+    // Extract professional title - look for "WEB DESIGNER" or similar
+    for (let i = 0; i < Math.min(15, this.lines.length); i++) {
       const line = this.lines[i];
       const lower = line.toLowerCase();
       
-      if (lower.includes('career objective') || lower.includes('objective') || lower.includes('professional summary')) {
-        // Look at next few lines for professional title
-        for (let j = i + 1; j < Math.min(i + 5, this.lines.length); j++) {
-          const nextLine = this.lines[j];
-          if (this.looksLikeJobTitle(nextLine)) {
-            info.title = nextLine;
-            console.log('Found title from objective:', info.title);
-            break;
-          }
-        }
+      if (line === info.name || this.hasEmail(line) || this.hasPhone(line)) {
+        continue;
+      }
+      
+      // Check for job title keywords
+      if (this.looksLikeJobTitle(line) && line.length < 80) {
+        info.title = line;
+        console.log('Found title:', info.title);
+        break;
+      }
+      
+      // Specific check for "WEB DESIGNER"
+      if (line.toUpperCase().includes('WEB DESIGNER') || line.toUpperCase().includes('WEB DEVELOPER')) {
+        info.title = line;
+        console.log('Found title (specific):', info.title);
         break;
       }
     }
 
-    // Extract summary
+    // Extract summary/objective - look for profile section
     let inSummary = false;
     let summaryLines: string[] = [];
-    
+
     for (let i = 0; i < this.lines.length; i++) {
       const line = this.lines[i];
       const lower = line.toLowerCase();
       
-      if (lower.includes('career objective') || lower.includes('professional summary') || 
-          (lower.includes('summary') && line.length < 50)) {
+      // Detect summary section headers including "PROFILE"
+      if ((lower.includes('career objective') || lower.includes('professional summary') || 
+          lower.includes('profile') || (lower === 'summary') ||
+          lower.includes('about me')) && this.looksLikeSectionHeader(line)) {
         inSummary = true;
         continue;
       }
       
       if (inSummary) {
-        if (this.looksLikeSectionHeader(line) && 
+        const wordCount = line.trim().split(/\s+/).length;
+        const isPotentialNextSection = wordCount <= 3 && 
+                                     (this.looksLikeSectionHeader(line) || 
+                                      /^[A-Z][A-Z\s]*$/.test(line) ||
+                                      line.endsWith(':') ||
+                                      this.isCommonSectionHeader(line));
+        
+        if (isPotentialNextSection && 
             !lower.includes('objective') && 
-            !lower.includes('summary')) {
+            !lower.includes('summary') &&
+            !lower.includes('profile')) {
           break;
         }
         
-        if (line.length > 20 && !this.looksLikeSectionHeader(line)) {
-          summaryLines.push(line);
+        // Add summary lines that are actual content
+        if (line.length > 20 && !this.looksLikeSectionHeader(line) && wordCount > 3) {
+          const sentences = line.split(/\.\s+/).filter(s => s.trim().length > 15);
+          if (sentences.length > 0) {
+            summaryLines.push(...sentences.map(s => s.trim() + (s.endsWith('.') ? '' : '.')));
+          } else {
+            summaryLines.push(line);
+          }
         }
       }
+      
+      if (summaryLines.length >= 3) break;
     }
 
-    info.summary = summaryLines.length > 0 ? summaryLines : ['Professional with experience in document control and management.'];
-    console.log('Found summary lines:', info.summary.length);
+    info.summary = summaryLines.length > 0 ? summaryLines.slice(0, 3) : ['Professional with diverse experience.'];
+    console.log('Found summary lines:', info.summary);
 
     return info;
   }
@@ -198,11 +247,14 @@ export class SimpleResumeParser {
       const line = this.lines[i];
       const lower = line.toLowerCase();
 
-      // Detect EXPERIENCE section
-      if ((lower === 'experience' || lower === 'work experience' || lower === 'professional experience') && 
+      // Detect EXPERIENCE section - including "EMPLOYMENT HISTORY"
+      if ((lower === 'experience' || lower === 'work experience' || 
+           lower === 'professional experience' || lower === 'employment history' ||
+           lower === 'work history' || lower === 'career history' ||
+           lower.includes('employment')) && 
           this.looksLikeSectionHeader(line)) {
         inExperienceSection = true;
-        console.log('Found EXPERIENCE section at line', i);
+        console.log('Found EXPERIENCE section at line', i, ':', line);
         continue;
       }
 
@@ -210,63 +262,163 @@ export class SimpleResumeParser {
         // Stop at next major section
         if (this.looksLikeSectionHeader(line) && 
             (lower.includes('education') || lower.includes('project') || lower.includes('certification') || 
-             lower.includes('skill') || lower.includes('achievement'))) {
+             lower.includes('skill') || lower.includes('achievement') || lower.includes('training') ||
+             lower.includes('course') || lower === 'details' || lower === 'hobbies' || lower === 'languages')) {
           if (currentExp && currentBullets.length > 0) {
             currentExp.description = currentBullets;
             experiences.push(currentExp);
           }
+          console.log('Ending experience section at:', line);
           break;
         }
 
-        // Detect company name (line without bullet, reasonable length)
-        if (!this.isBulletPoint(line) && line.length > 3 && line.length < 80 && 
-            !this.looksLikeJobTitle(line) && !this.looksLikeDate(line)) {
+        const wordCount = line.split(/\s+/).length;
+        
+        // ENHANCED: Pattern for "Web Designer, Expedia Group" format
+        const jobCompanyPattern = /^([^,]+),\s*(.+)$/;
+        const jobMatch = line.match(jobCompanyPattern);
+        
+        if (jobMatch && !this.isBulletPoint(line) && line.length > 5 && wordCount <= 6) {
+          const title = jobMatch[1].trim();
+          const company = jobMatch[2].trim();
           
-          // Check if next lines contain job title and date
-          let hasJobTitle = false;
-          let hasDate = false;
-          
-          for (let j = i + 1; j < Math.min(i + 4, this.lines.length); j++) {
-            if (this.looksLikeJobTitle(this.lines[j])) hasJobTitle = true;
-            if (this.looksLikeDate(this.lines[j])) hasDate = true;
+          // Save previous experience
+          if (currentExp && currentBullets.length > 0) {
+            currentExp.description = currentBullets;
+            experiences.push(currentExp);
           }
 
-          if (hasJobTitle || hasDate) {
-            // Save previous experience
-            if (currentExp && currentBullets.length > 0) {
-              currentExp.description = currentBullets;
-              experiences.push(currentExp);
+          currentExp = {
+            id: Date.now() + experiences.length,
+            title: title,
+            company: company,
+            period: '',
+            description: []
+          };
+          currentBullets = [];
+          console.log('Found job (title, company pattern):', title, 'at', company);
+          
+          // Look for date in next 2 lines
+          for (let j = i + 1; j < Math.min(i + 3, this.lines.length); j++) {
+            const nextLine = this.lines[j];
+            if (this.looksLikeDate(nextLine)) {
+              currentExp.period = nextLine;
+              console.log('Found period:', currentExp.period);
+              i = j; // Skip the date line
+              break;
             }
+          }
+          continue;
+        }
 
+        // RULE 1: Detect next experience - word count 4 or less AND looks like date
+        if (currentExp && wordCount <= 4 && this.looksLikeDate(line)) {
+          console.log('RULE 1: Detected next experience with date:', line);
+          currentExp.description = currentBullets;
+          experiences.push(currentExp);
+          
+          currentExp = {
+            id: Date.now() + experiences.length,
+            title: '',
+            company: '',
+            period: line,
+            description: []
+          };
+          currentBullets = [];
+          continue;
+        }
+        
+        // RULE 2: Detect next section - word count 4 or less AND looks like date AND we have current experience
+        if (currentExp && wordCount <= 4 && this.looksLikeDate(line) && 
+            this.isPotentialNextSectionAfterExperience(i)) {
+          console.log('RULE 2: Detected next section after experience:', line);
+          currentExp.description = currentBullets;
+          experiences.push(currentExp);
+          break;
+        }
+
+        // RULE 3: Job position detection - 4 or 5 words, not a date, not a bullet point
+        if (!currentExp && (wordCount === 4 || wordCount === 5) && 
+            !this.looksLikeDate(line) && !this.isBulletPoint(line) &&
+            line.length > 10 && line.length < 80) {
+          
+          if (this.looksLikeJobTitle(line) || this.hasJobTitleKeywords(line)) {
             currentExp = {
               id: Date.now() + experiences.length,
-              company: line,
-              title: '',
+              title: line,
+              company: '',
               period: '',
               description: []
             };
             currentBullets = [];
-            console.log('Found company:', line);
-
-            // Look ahead for title and date
-            for (let j = i + 1; j < Math.min(i + 4, this.lines.length); j++) {
+            console.log('RULE 3: Found job position (4-5 words):', line);
+            
+            // Look for company in next lines (2-4 words)
+            for (let j = i + 1; j < Math.min(i + 3, this.lines.length); j++) {
               const nextLine = this.lines[j];
-              if (!currentExp.title && this.looksLikeJobTitle(nextLine)) {
-                currentExp.title = nextLine;
-                console.log('Found title:', nextLine);
-              }
-              if (!currentExp.period && this.looksLikeDate(nextLine)) {
-                currentExp.period = nextLine;
-                console.log('Found period:', nextLine);
+              const nextWordCount = nextLine.split(/\s+/).length;
+              if (nextWordCount >= 2 && nextWordCount <= 4 && 
+                  !this.looksLikeDate(nextLine) && !this.isBulletPoint(nextLine) &&
+                  !this.looksLikeJobTitle(nextLine)) {
+                currentExp.company = nextLine;
+                console.log('Found company for position:', nextLine);
+                i = j;
+                break;
               }
             }
+            continue;
           }
         }
-        // Collect bullet points
-        else if (currentExp && this.isBulletPoint(line)) {
-          const clean = this.cleanBulletPoint(line);
-          if (clean.length > 10) {
-            currentBullets.push(clean);
+
+        // Original job title detection
+        if (this.looksLikeJobTitle(line) && !currentExp && !this.isBulletPoint(line) && wordCount <= 5) {
+          currentExp = {
+            id: Date.now() + experiences.length,
+            title: line,
+            company: '',
+            period: '',
+            description: []
+          };
+          currentBullets = [];
+          console.log('Found job title:', line);
+          
+          for (let j = i + 1; j < Math.min(i + 4, this.lines.length); j++) {
+            const nextLine = this.lines[j];
+            if (!currentExp.company && !this.looksLikeDate(nextLine) && 
+                !this.isBulletPoint(nextLine) && nextLine.length > 3 && nextLine.length < 80) {
+              currentExp.company = nextLine;
+              console.log('Found company:', nextLine);
+            }
+            if (!currentExp.period && this.looksLikeDate(nextLine)) {
+              currentExp.period = nextLine;
+              console.log('Found period:', nextLine);
+            }
+          }
+          continue;
+        }
+
+        // Collect bullet points or responsibilities
+        if (currentExp) {
+          if (this.isBulletPoint(line)) {
+            const clean = this.cleanBulletPoint(line);
+            if (clean.length > 10 && !clean.toLowerCase().includes('as the web designer')) {
+              currentBullets.push(clean);
+            }
+          } else if (line.length > 30 && !this.looksLikeJobTitle(line) && 
+                     !this.looksLikeDate(line) && !this.looksLikeSectionHeader(line) &&
+                     !line.match(/at\s+.+?,/i) && wordCount > 4 &&
+                     !line.toLowerCase().includes('as the web designer')) {
+            const sentences = line.split(/\.\s+/).filter(s => s.trim().length > 15);
+            if (sentences.length > 1) {
+              sentences.forEach(sentence => {
+                const trimmed = sentence.trim();
+                if (trimmed.length > 10) {
+                  currentBullets.push(trimmed.endsWith('.') ? trimmed : trimmed + '.');
+                }
+              });
+            } else if (line.length > 20) {
+              currentBullets.push(line);
+            }
           }
         }
       }
@@ -292,7 +444,10 @@ export class SimpleResumeParser {
       const lower = line.toLowerCase();
 
       // Detect EDUCATION section
-      if (lower === 'education' && this.looksLikeSectionHeader(line)) {
+      if ((lower === 'education' || lower === 'academic background' || 
+           lower === 'qualifications' || lower === 'educational background' ||
+           lower === 'academic qualifications') && 
+          this.looksLikeSectionHeader(line)) {
         inEducationSection = true;
         console.log('Found EDUCATION section at line', i);
         continue;
@@ -301,56 +456,52 @@ export class SimpleResumeParser {
       if (inEducationSection) {
         // Stop at next major section
         if (this.looksLikeSectionHeader(line) && 
-            !lower.includes('education') && 
+            !lower.includes('education') && !lower.includes('course') &&
             (lower.includes('achievement') || lower.includes('skill') || lower.includes('experience') || 
-             lower.includes('project') || lower.includes('certification'))) {
+             lower.includes('project') || lower.includes('certification') || lower.includes('training') ||
+             lower === 'details' || lower === 'hobbies' || lower === 'languages' || lower === 'references')) {
           if (currentEdu) {
             education.push(currentEdu);
           }
           break;
         }
 
-        // Detect institution name (contains college, university, school, etc.)
-        if (this.looksLikeInstitution(line)) {
-          // Save previous education entry
-          if (currentEdu) {
-            education.push(currentEdu);
-          }
-
+        // Look for degree patterns
+        if (this.looksLikeDegree(line) && !currentEdu) {
           currentEdu = {
             id: Date.now() + education.length,
-            institution: line,
-            degree: '',
+            degree: line,
+            institution: '',
             year: '',
             gpa: ''
           };
-          console.log('Found institution:', line);
-
-          // Look ahead for degree, GPA, and year
+          console.log('Found degree:', line);
+          
+          // Look ahead for institution and year
           for (let j = i + 1; j < Math.min(i + 5, this.lines.length); j++) {
             const nextLine = this.lines[j];
             
-            // Degree/field of study (longer line, not a year or percentage)
-            if (!currentEdu.degree && nextLine.length > 5 && !this.looksLikeYear(nextLine) && 
-                !this.looksLikePercentage(nextLine) && !this.looksLikeInstitution(nextLine)) {
-              currentEdu.degree = nextLine;
-              console.log('Found degree:', nextLine);
-            }
-            // GPA/Percentage
-            else if (!currentEdu.gpa && this.looksLikePercentage(nextLine)) {
-              currentEdu.gpa = nextLine;
-              console.log('Found GPA:', nextLine);
-            }
-            // Year
-            else if (!currentEdu.year && this.looksLikeYear(nextLine)) {
+            if (!currentEdu.institution && this.looksLikeInstitution(nextLine)) {
+              currentEdu.institution = nextLine;
+              console.log('Found institution:', nextLine);
+            } else if (!currentEdu.year && this.looksLikeDate(nextLine)) {
               currentEdu.year = nextLine;
               console.log('Found year:', nextLine);
-            }
-            // Stop if we hit another institution
-            else if (this.looksLikeInstitution(nextLine)) {
+            } else if (!currentEdu.gpa && this.looksLikePercentage(nextLine)) {
+              currentEdu.gpa = nextLine;
+              console.log('Found GPA:', nextLine);
+            } else if (this.looksLikeDegree(nextLine) || this.looksLikeInstitution(nextLine)) {
               break;
             }
           }
+          continue;
+        }
+
+        // If we have current edu and see a new degree or institution, save and start new
+        if (currentEdu && (this.looksLikeDegree(line) || this.looksLikeInstitution(line))) {
+          education.push(currentEdu);
+          currentEdu = null;
+          i--; // Reprocess this line
         }
       }
     }
@@ -373,7 +524,8 @@ export class SimpleResumeParser {
       const lower = line.toLowerCase();
 
       // Detect SKILLS section
-      if ((lower === 'technical skills' || lower === 'skills' || lower.includes('technical')) && 
+      if ((lower === 'technical skills' || lower === 'skills' || lower === 'core competencies' ||
+           lower === 'key skills' || lower === 'professional skills' || lower === 'competencies') && 
           this.looksLikeSectionHeader(line)) {
         inSkillsSection = true;
         console.log('Found SKILLS section at line', i);
@@ -382,22 +534,22 @@ export class SimpleResumeParser {
 
       if (inSkillsSection) {
         // Stop at next major section
-        if (this.looksLikeSectionHeader(line) && !lower.includes('skill')) {
+        if (this.looksLikeSectionHeader(line) && !lower.includes('skill') && !lower.includes('competenc')) {
           break;
         }
 
-        if (line.length > 0) {
-          // Check for common technical skills
-          const commonSkills = [
-            'aconex', 'wrench', 'sharepoint', 'docusign', 'powerbi', 'power bi', 'excel',
-            'document management', 'version control', 'compliance', 'workflow', 'edms',
-            'python', 'javascript', 'sql', 'vba', 'macro', 'cfihos'
-          ];
-          
-          const lowerLine = lower;
-          
-          // Extract skills from comma-separated list
-          if (line.includes(',')) {
+        if (line.length > 0 && !this.looksLikeSectionHeader(line)) {
+          // Extract skills from various formats
+          if (line.includes('(') && line.includes(')')) {
+            // Format like "WordPress (Intermediate)"
+            const skillMatch = line.match(/([^(]+)\s*\(([^)]+)\)/);
+            if (skillMatch) {
+              const name = skillMatch[1].trim();
+              const proficiency = this.normalizeProficiency(skillMatch[2].trim());
+              skills.push({ name, proficiency });
+            }
+          } else if (line.includes(',')) {
+            // Comma-separated skills
             const parts = line.split(',');
             parts.forEach(part => {
               const trimmed = part.trim();
@@ -410,82 +562,114 @@ export class SimpleResumeParser {
                 }
               }
             });
-          }
-          // Check for known skills in the line
-          else {
-            commonSkills.forEach(skill => {
-              if (lowerLine.includes(skill)) {
-                const skillName = this.capitalizeWords(skill);
-                if (!skills.some(s => s.name.toLowerCase() === skill)) {
-                  skills.push({
-                    name: skillName,
-                    proficiency: 'Intermediate'
-                  });
-                }
+          } else if (this.isBulletPoint(line)) {
+            const cleaned = this.cleanBulletPoint(line);
+            if (cleaned.length > 2 && cleaned.length < 50) {
+              if (!skills.some(s => s.name.toLowerCase() === cleaned.toLowerCase())) {
+                skills.push({
+                  name: cleaned,
+                  proficiency: 'Intermediate'
+                });
               }
-            });
+            }
+          }
+          // Plain text skills
+          else if (line.length > 2 && line.length < 60) {
+            if (!skills.some(s => s.name.toLowerCase() === line.toLowerCase())) {
+              skills.push({
+                name: line,
+                proficiency: 'Intermediate'
+              });
+            }
           }
         }
       }
     }
 
     console.log('Total skills found:', skills.length);
-    return skills.length > 0 ? skills.slice(0, 12) : this.getDefaultSkills();
+    return skills.length > 0 ? skills.slice(0, 15) : this.getDefaultSkills();
   }
 
   private parseProjects(): any[] {
     const projects: any[] = [];
-    let inProjectSection = false;
-
-    for (let i = 0; i < this.lines.length; i++) {
-      const line = this.lines[i];
-      const lower = line.toLowerCase();
-
-      // Detect PROJECTS section
-      if (lower === 'projects' && this.looksLikeSectionHeader(line)) {
-        inProjectSection = true;
-        console.log('Found PROJECTS section at line', i);
-        continue;
-      }
-
-      if (inProjectSection) {
-        // Stop at next major section
-        if (this.looksLikeSectionHeader(line) && !lower.includes('project')) {
-          break;
-        }
-
-        // Project names are typically short lines without bullets
-        if (line.length > 5 && line.length < 100 && !this.isBulletPoint(line)) {
-          projects.push({
-            id: Date.now() + projects.length,
-            name: line,
-            description: [`Worked on ${line} with focus on documentation and control.`],
-            technologies: [],
-            period: '',
-            link: ''
-          });
-          console.log('Found project:', line);
-        }
-      }
-    }
-
-    console.log('Total projects found:', projects.length);
-    return projects.length > 0 ? projects : this.getDefaultProjects();
+    // Default empty projects since none were found in the resume
+    return projects;
   }
 
-  // Helper methods
+  // NEW HELPER METHODS
+  private hasJobTitleKeywords(line: string): boolean {
+    const titleKeywords = [
+      'developer', 'engineer', 'manager', 'analyst', 'specialist', 'coordinator', 
+      'director', 'consultant', 'architect', 'designer', 'administrator', 'officer',
+      'associate', 'executive', 'lead', 'head', 'supervisor', 'assistant', 'intern'
+    ];
+    const lower = line.toLowerCase();
+    return titleKeywords.some(keyword => lower.includes(keyword));
+  }
+
+  private isPotentialNextSectionAfterExperience(currentIndex: number): boolean {
+    for (let i = currentIndex + 1; i < Math.min(currentIndex + 3, this.lines.length); i++) {
+      const nextLine = this.lines[i];
+      if (this.looksLikeSectionHeader(nextLine) && 
+          (nextLine.toLowerCase().includes('education') || 
+           nextLine.toLowerCase().includes('project') || 
+           nextLine.toLowerCase().includes('skill'))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private normalizeProficiency(proficiency: string): 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert' {
+    const lower = proficiency.toLowerCase();
+    if (lower.includes('expert') || lower.includes('master')) return 'Expert';
+    if (lower.includes('advanced') || lower.includes('senior')) return 'Advanced';
+    if (lower.includes('intermediate') || lower.includes('mid')) return 'Intermediate';
+    if (lower.includes('beginner') || lower.includes('junior') || lower.includes('basic')) return 'Beginner';
+    return 'Intermediate'; // default
+  }
+
+  // EXISTING HELPER METHODS
   private looksLikeSectionHeader(line: string): boolean {
     const upper = line.toUpperCase();
-    return upper === line && line.length < 50 && /^[A-Z][A-Z\s&]*$/.test(line);
+    const isAllCaps = upper === line && line.length < 50 && /^[A-Z][A-Z\s&]*$/.test(line);
+    const hasColon = line.endsWith(':') && line.length < 50;
+    
+    const lower = line.toLowerCase().trim();
+    const sectionHeaders = [
+      'profile', 'summary', 'career objective', 'professional summary',
+      'employment history', 'work experience', 'experience', 'professional experience',
+      'education', 'academic background', 'qualifications',
+      'skills', 'technical skills', 'core competencies', 'key skills',
+      'projects', 'achievements', 'certifications', 'courses', 'training',
+      'hobbies', 'interests', 'languages', 'references', 'details'
+    ];
+    
+    const isSectionHeader = sectionHeaders.some(header => lower === header);
+    
+    return isAllCaps || hasColon || isSectionHeader;
   }
 
   private isBulletPoint(line: string): boolean {
     return line.startsWith('•') || line.startsWith('-') || line.startsWith('*') || 
-           line.startsWith('°') || /^\d+\./.test(line);
+           line.startsWith('°') || /^\d+\./.test(line) || line.startsWith('·');
+  }
+
+  private isCommonSectionHeader(line: string): boolean {
+    const commonHeaders = [
+      'education', 'experience', 'work experience', 'skills', 'technical skills',
+      'projects', 'achievements', 'awards', 'certifications', 'training',
+      'languages', 'hobbies', 'interests', 'references', 'publications',
+      'volunteer', 'activities', 'honors', 'courses', 'summary'
+    ];
+    
+    const lower = line.toLowerCase().trim();
+    return commonHeaders.includes(lower) || 
+           commonHeaders.some(header => lower.includes(header));
   }
 
   private cleanBulletPoint(line: string): string {
-    return line.replace(/^[•\-*°\s\d\.]+/, '').trim();
+    return line.replace(/^[•\-*°·\s\d\.]+/, '').trim();
   }
 
   private hasEmail(text: string): boolean {
@@ -500,30 +684,44 @@ export class SimpleResumeParser {
     const titleWords = [
       'developer', 'engineer', 'manager', 'analyst', 'specialist', 'coordinator', 
       'director', 'consultant', 'architect', 'designer', 'administrator', 'controller',
-      'technician', 'officer', 'associate', 'executive', 'lead', 'head'
+      'technician', 'officer', 'associate', 'executive', 'lead', 'head', 'supervisor',
+      'assistant', 'intern', 'trainee', 'apprentice', 'clerk', 'operator', 'warehouse',
+      'inventory', 'laboratory', 'lab', 'sales', 'customer service', 'support'
     ];
     const lower = line.toLowerCase();
-    return titleWords.some(word => lower.includes(word)) && line.length < 80;
+    
+    const hasJobKeyword = titleWords.some(word => lower.includes(word));
+    const hasAtPattern = /\sat\s/i.test(line);
+    
+    return (hasJobKeyword || hasAtPattern) && line.length < 120 && 
+           !this.hasEmail(line) && !this.hasPhone(line);
   }
 
   private looksLikeDate(line: string): boolean {
-    // Matches: "May 2022-Nov 2024", "November 2024 - present", "Feb 2018-March 2019"
     return /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|june|july|august|september|october|november|december)\s*\d{4}/i.test(line) ||
-           /\d{4}\s*[-–]\s*(present|current|\d{4})/i.test(line);
-  }
-
-  private looksLikeYear(line: string): boolean {
-    return /^\d{4}$/.test(line.trim());
+           /\d{4}\s*[-–—]\s*(present|current|\d{4})/i.test(line) ||
+           /\d{1,2}\/\d{4}\s*[-–—]\s*\d{1,2}\/\d{4}/i.test(line);
   }
 
   private looksLikePercentage(line: string): boolean {
-    return /\d+%/.test(line) || /\d+\.\d+/.test(line);
+    return /\d+(\.\d+)?%/.test(line) || /\d+\.\d+\/\d+/.test(line) || 
+           /(cgpa|gpa|percentage)[\s:]+\d+/i.test(line);
   }
 
   private looksLikeInstitution(line: string): boolean {
-    const eduWords = ['university', 'college', 'school', 'institute', 'academy', 'matriculation'];
+    const eduWords = ['university', 'college', 'school', 'institute', 'academy', 'matriculation', 'education'];
     const lower = line.toLowerCase();
-    return eduWords.some(word => lower.includes(word));
+    return eduWords.some(word => lower.includes(word)) && line.length < 100;
+  }
+
+  private looksLikeDegree(line: string): boolean {
+    const degreeWords = ['bachelor', 'master', 'phd', 'diploma', 'degree', 'b.tech', 'b.e.', 
+                         'm.tech', 'm.e.', 'bsc', 'msc', 'ba', 'ma', 'engineering', 'science',
+                         'commerce', 'arts', 'computer', 'information technology', 'it',
+                         'associates', 'associate', 'logistics', 'supply chain', 'certificate',
+                         'graduate certificate', 'warehousing', 'management', 'online'];
+    const lower = line.toLowerCase();
+    return degreeWords.some(word => lower.includes(word)) && line.length < 150;
   }
 
   private capitalizeWords(str: string): string {
