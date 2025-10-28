@@ -61,37 +61,75 @@ const MobilePDFGenerator = ({
         height: resumeRef.current.style.height,
         overflow: resumeRef.current.style.overflow,
         transform: resumeRef.current.style.transform,
+        fontFamily: resumeRef.current.style.fontFamily,
+        fontSize: resumeRef.current.style.fontSize,
+        lineHeight: resumeRef.current.style.lineHeight,
+        letterSpacing: resumeRef.current.style.letterSpacing,
       };
       
-      // Apply mobile-optimized styles for PDF generation
-      resumeRef.current.style.width = '595px'; // A4 width in pixels at 72 DPI
+      // Apply PDF-optimized styles
+      const pdfWidthPixels = 595; // A4 width in pixels at 72 DPI
+      resumeRef.current.style.width = `${pdfWidthPixels}px`;
       resumeRef.current.style.height = 'auto';
       resumeRef.current.style.overflow = 'visible';
       resumeRef.current.style.transform = 'scale(1)';
       
+      // Force consistent fonts and spacing for PDF
+      resumeRef.current.style.fontFamily = "'Arial', 'Helvetica', 'Segoe UI', sans-serif";
+      resumeRef.current.style.fontSize = '14px';
+      resumeRef.current.style.lineHeight = '1.4';
+      resumeRef.current.style.letterSpacing = 'normal';
+      
       // Force font loading
       await document.fonts.ready;
       
-      // Use type assertion for html2canvas options
       const canvas = await html2canvas(resumeRef.current, {
-        scale: 1.5, // This is a valid option, but TypeScript definitions might be outdated:cite[2]
+        scale: 2, // Higher scale for better quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        allowTaint: true,
+        removeContainer: true,
         onclone: (clonedDoc: Document) => {
           const previewElement = clonedDoc.getElementById('resume-preview');
           if (previewElement) {
-            previewElement.style.width = '595px';
-            previewElement.style.fontFamily = "'Arial', 'Helvetica', sans-serif";
+            // Apply PDF-optimized styles to the clone
+            previewElement.style.width = `${pdfWidthPixels}px`;
+            previewElement.style.fontFamily = "'Arial', 'Helvetica', 'Segoe UI', sans-serif";
+            previewElement.style.fontSize = '14px';
+            previewElement.style.lineHeight = '1.4';
+            previewElement.style.letterSpacing = 'normal';
+            previewElement.style.wordSpacing = 'normal';
             
-            // Optimize images in the clone
+            // Optimize all text elements for consistent rendering
+            const allElements = previewElement.querySelectorAll('*');
+            allElements.forEach((el: Element) => {
+              if (el instanceof HTMLElement) {
+                // Ensure consistent fonts
+                el.style.fontFamily = "'Arial', 'Helvetica', 'Segoe UI', sans-serif";
+                el.style.letterSpacing = 'normal';
+                el.style.wordSpacing = 'normal';
+                el.style.textRendering = 'geometricPrecision';
+                el.style.fontKerning = 'normal';
+                
+                // Remove any problematic styles
+                el.style.boxShadow = 'none';
+                el.style.filter = 'none';
+                el.style.transform = 'none';
+                el.style.transition = 'none';
+                el.style.animation = 'none';
+              }
+            });
+            
+            // Optimize images
             const images = previewElement.querySelectorAll('img');
             images.forEach((img: HTMLImageElement) => {
               img.style.imageRendering = 'auto';
               img.loading = 'eager';
+              img.decoding = 'sync';
             });
             
-            // Ensure all circular elements maintain their shape
+            // Ensure circular elements maintain shape
             const circularElements = previewElement.querySelectorAll('.rounded-full, [style*="border-radius"]');
             circularElements.forEach((el: Element) => {
               if (el instanceof HTMLElement) {
@@ -101,68 +139,58 @@ const MobilePDFGenerator = ({
                   el.style.borderRadius = '50%';
                   el.style.overflow = 'hidden';
                 }
-                el.style.fontFamily = "'Arial', 'Helvetica', sans-serif";
-                el.style.letterSpacing = 'normal';
               }
             });
-            
-            // Ensure all text elements use consistent fonts
-            const textElements = previewElement.querySelectorAll('*');
-            textElements.forEach((el: Element) => {
-              if (el instanceof HTMLElement) {
-                el.style.fontFamily = "'Arial', 'Helvetica', sans-serif";
-                el.style.letterSpacing = 'normal';
-                el.style.boxShadow = 'none';
-                el.style.filter = 'none';
-              }
-            });
-
-            // Remove any animations or transitions
-            previewElement.style.animation = 'none';
-            previewElement.style.transition = 'none';
           }
         }
-      } as any); // Type assertion to bypass TypeScript errors
+      } as any); // Type assertion to bypass TypeScript errors for html2canvas options
       
       // Restore original styles
       resumeRef.current.style.width = originalStyles.width;
       resumeRef.current.style.height = originalStyles.height;
       resumeRef.current.style.overflow = originalStyles.overflow;
       resumeRef.current.style.transform = originalStyles.transform;
+      resumeRef.current.style.fontFamily = originalStyles.fontFamily;
+      resumeRef.current.style.fontSize = originalStyles.fontSize;
+      resumeRef.current.style.lineHeight = originalStyles.lineHeight;
+      resumeRef.current.style.letterSpacing = originalStyles.letterSpacing;
       
-      // Convert canvas to JPEG with lower quality to reduce file size:cite[1]
-      const jpegQuality = 0.7;
-      const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
-      
-      // Calculate dimensions for A4
+      // Create PDF with proper dimensions
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210;
-      const pdfHeight = 297;
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfWidthMM = 210; // A4 width in mm
+      const pdfHeightMM = 297; // A4 height in mm
       
-      // Add main image with compression:cite[1]
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+      // Calculate image dimensions maintaining aspect ratio
+      const imgWidth = pdfWidthMM;
+      const imgHeight = (canvas.height * pdfWidthMM) / canvas.width;
+      
+      // Convert canvas to image with good quality
+      const imgData = canvas.toDataURL('image/jpeg', 0.85);
+      
+      // Add main image
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'MEDIUM');
       
       // Handle multi-page PDF
       let heightLeft = imgHeight;
       let position = 0;
       let pageCount = 1;
       
-      while (heightLeft > pdfHeight) {
-        position = -(pageCount * pdfHeight);
+      // Add additional pages if content is longer than one page
+      while (heightLeft > pdfHeightMM) {
+        position = heightLeft - pdfHeightMM;
         pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pdfHeight;
+        pdf.addImage(imgData, 'JPEG', 0, -position, imgWidth, imgHeight, undefined, 'MEDIUM');
+        heightLeft -= pdfHeightMM;
         pageCount++;
         
+        // Safety limit
         if (pageCount > 10) break;
       }
       
       // Generate filename
       const fileName = `${personalInfo.name.replace(/\s+/g, '_')}_Resume.pdf`;
       
-      // Track the download BEFORE saving
+      // Track the download
       trackDownload(fileName);
       
       // Save the PDF
@@ -193,14 +221,14 @@ const MobilePDFGenerator = ({
         ) : (
           <>
             <i className="fas fa-download mr-2"></i>
-            Download PDF (Optimized for Size)
+            Download PDF (Professional Format)
           </>
         )}
       </button>
       
       {isGenerating && (
         <div className="mt-4 text-sm text-gray-600 text-center">
-          <p>Generating optimized PDF (target: under 2MB)...</p>
+          <p>Generating professional PDF with consistent fonts...</p>
           <p className="text-xs mt-1">This may take a moment on mobile devices.</p>
         </div>
       )}
@@ -208,11 +236,18 @@ const MobilePDFGenerator = ({
       {error && (
         <div className="mt-4 text-center">
           <p className="text-sm text-red-600 mb-2">{error}</p>
+          <button 
+            onClick={downloadPDF}
+            className="text-sm text-blue-600 hover:text-blue-800 underline"
+          >
+            Try again
+          </button>
         </div>
       )}
       
       <div className="mt-2 text-xs text-gray-500 text-center">
-        <p>PDF optimized for smaller file size and mobile devices</p>
+        <p>Optimized for consistent fonts (Arial/Helvetica) and proper spacing</p>
+        <p className="mt-1">Works perfectly on both mobile and desktop</p>
       </div>
     </div>
   );
