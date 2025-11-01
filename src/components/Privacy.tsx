@@ -71,6 +71,17 @@ const Privacy: React.FC = () => {
                 </a>
               </p>
             </section>
+
+            <section>
+  <h2 className="text-2xl font-bold text-gray-800 mb-4">6. Data Protection Officer</h2>
+  <p className="text-gray-600">
+    For any privacy-specific concerns, please contact our Data Protection Officer at:
+    <br />
+    <a href="mailto:dpo@resumecvforge.com" className="text-blue-600 hover:underline">
+      dpo@resumecvforge.com
+    </a>
+  </p>
+</section>
           </div>
         </div>
       </div>

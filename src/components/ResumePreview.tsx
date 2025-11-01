@@ -112,20 +112,30 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
   // Section components
   const SummarySection = () => (
     personalInfo.summary.length > 0 && (
-      <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+      <div className={`${template.layout === 'ats' ? 'mb-6' : 'p-4 rounded-lg mb-6'}`} style={template.layout !== 'ats' ? applyCustomStyles('section') : {}}>
         <h3 className="text-lg font-semibold mb-2 flex items-center" style={applyCustomStyles('accent')}>
-          <i className="fas fa-star mr-2"></i> Professional Summary
+          {template.layout !== 'ats' && <i className="fas fa-star mr-2"></i>}
+          Professional Summary
         </h3>
-        <BulletList items={personalInfo.summary} />
+        {template.layout === 'ats' ? (
+          <div className="text-sm space-y-2">
+            {personalInfo.summary.map((point, index) => (
+              <p key={index}>{point}</p>
+            ))}
+          </div>
+        ) : (
+          <BulletList items={personalInfo.summary} />
+        )}
       </div>
     )
   );
 
   const ExperienceSection = () => (
     experiences.length > 0 && (
-      <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+      <div className={`${template.layout === 'ats' ? 'mb-6' : 'p-4 rounded-lg mb-6'}`} style={template.layout !== 'ats' ? applyCustomStyles('section') : {}}>
         <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
-          <i className="fas fa-briefcase mr-2"></i> Work Experience
+          {template.layout !== 'ats' && <i className="fas fa-briefcase mr-2"></i>}
+          Work Experience
         </h3>
         {experiences.map((exp, index) => (
           <div key={index} className="mb-4 last:mb-0">
@@ -145,9 +155,10 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
 
   const EducationSection = () => (
     education.length > 0 && (
-      <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+      <div className={`${template.layout === 'ats' ? 'mb-6' : 'p-4 rounded-lg mb-6'}`} style={template.layout !== 'ats' ? applyCustomStyles('section') : {}}>
         <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
-          <i className="fas fa-graduation-cap mr-2"></i> Education
+          {template.layout !== 'ats' && <i className="fas fa-graduation-cap mr-2"></i>}
+          Education
         </h3>
         {education.map((edu, index) => (
           <div key={index} className="mb-3 last:mb-0">
@@ -165,9 +176,10 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
 
   const ProjectsSection = () => (
     projects.length > 0 && (
-      <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+      <div className={`${template.layout === 'ats' ? 'mb-6' : 'p-4 rounded-lg mb-6'}`} style={template.layout !== 'ats' ? applyCustomStyles('section') : {}}>
         <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
-          <i className="fas fa-code mr-2"></i> Projects
+          {template.layout !== 'ats' && <i className="fas fa-code mr-2"></i>}
+          Projects
         </h3>
         {projects.map((project, index) => (
           <div key={index} className="mb-5 last:mb-0">
@@ -189,9 +201,10 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
 
   const AwardsSection = () => (
     awards.length > 0 && (
-      <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+      <div className={`${template.layout === 'ats' ? 'mb-6' : 'p-4 rounded-lg mb-6'}`} style={template.layout !== 'ats' ? applyCustomStyles('section') : {}}>
         <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
-          <i className="fas fa-trophy mr-2"></i> Awards
+          {template.layout !== 'ats' && <i className="fas fa-trophy mr-2"></i>}
+          Awards
         </h3>
         {awards.map((award, index) => (
           <div key={index} className="mb-3 last:mb-0">
@@ -206,9 +219,10 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
 
   const SkillsSection = () => (
     skills.length > 0 && (
-      <div className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+      <div className={`${template.layout === 'ats' ? 'mb-6' : 'p-4 rounded-lg mb-6'}`} style={template.layout !== 'ats' ? applyCustomStyles('section') : {}}>
         <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
-          <i className="fas fa-tools mr-2"></i> Skills
+          {template.layout !== 'ats' && <i className="fas fa-tools mr-2"></i>}
+          Skills
         </h3>
         {template.layout === 'modern' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
@@ -242,7 +256,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     customFields.length > 0 && (
       <div>
         {customFields.map((field, index) => (
-          <div key={index} className="p-4 rounded-lg mb-6" style={applyCustomStyles('section')}>
+          <div key={index} className={`${template.layout === 'ats' ? 'mb-6' : 'p-4 rounded-lg mb-6'}`} style={template.layout !== 'ats' ? applyCustomStyles('section') : {}}>
             <h3 className="text-lg font-semibold mb-3 flex items-center" style={applyCustomStyles('accent')}>
               {field.label}
             </h3>
@@ -264,6 +278,31 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     custom: <CustomFieldsSection key="custom" />
   };
 
+  // ATS Optimized Template (Single Column, Clean Structure)
+  const renderATSTemplate = (enabledSections: SectionItem[]) => (
+    <div className="bg-white p-8" style={{ color: customColors.text }}>
+      {/* Simple Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold mb-2" style={{ color: customColors.primary }}>{personalInfo.name}</h1>
+        <h2 className="text-lg text-gray-700 mb-4">{personalInfo.title}</h2>
+        <div className="flex justify-center space-x-4 text-sm text-gray-600">
+          <span>{personalInfo.email}</span>
+          <span>|</span>
+          <span>{personalInfo.phone}</span>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {/* Render sections in custom order */}
+        {enabledSections.map(section => (
+          <div key={section.id}>
+            {sectionComponents[section.id]}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   // Render different layouts based on template
   const renderTemplate = () => {
     // Get enabled sections in correct order
@@ -272,6 +311,10 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
       .sort((a, b) => a.order - b.order);
 
     switch(template.layout) {
+      case 'ats':
+        return renderATSTemplate(enabledSections);
+      case 'professional':
+        return renderProfessionalTemplate(enabledSections);
       case 'creative':
         return renderCreativeTemplate(enabledSections);
       case 'minimalist':
@@ -279,9 +322,39 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
       case 'modern':
         return renderModernTemplate(enabledSections);
       default:
-        return renderCreativeTemplate(enabledSections);
+        return renderATSTemplate(enabledSections);
     }
   };
+
+  // Professional Template (Classic Corporate Style)
+  const renderProfessionalTemplate = (enabledSections: SectionItem[]) => (
+    <div className="rounded-lg shadow-lg overflow-hidden bg-white" style={{ color: customColors.text }}>
+      {/* Header with solid color bar */}
+      <div className="p-8 border-b-4" style={{ borderBottomColor: customColors.primary }}>
+        <h1 className="text-4xl font-bold mb-1" style={{ color: customColors.primary }}>{personalInfo.name}</h1>
+        <h2 className="text-xl text-gray-700 mb-3">{personalInfo.title}</h2>
+        <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+          <span className="flex items-center">
+            <i className="fas fa-envelope mr-2" style={{ color: customColors.primary }}></i> 
+            {personalInfo.email}
+          </span>
+          <span className="flex items-center">
+            <i className="fas fa-phone mr-2" style={{ color: customColors.primary }}></i> 
+            {personalInfo.phone}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-8">
+        {/* Render sections in custom order */}
+        {enabledSections.map(section => (
+          <div key={section.id}>
+            {sectionComponents[section.id]}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   // Creative Template (Single Column)
   const renderCreativeTemplate = (enabledSections: SectionItem[]) => (

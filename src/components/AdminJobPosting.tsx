@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { Zap, Copy, Download, Upload } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -17,12 +18,11 @@ interface Job {
   applyLink: string;
   featured?: boolean;
   addedTimestamp?: number;
-  isReal?: boolean;
-  source?: string;
+  page?: number;
 }
 
 const AdminJobPosting: React.FC = () => {
-  const [job, setJob] = useState<Omit<Job, 'id' | 'postedDate' | 'addedTimestamp'>>({
+  const [job, setJob] = useState<Omit<Job, 'id' | 'postedDate' | 'addedTimestamp' | 'page'>>({
     title: '',
     company: '',
     location: '',
@@ -46,7 +46,67 @@ const AdminJobPosting: React.FC = () => {
     errors: string[];
   } | null>(null);
   
+  const [batchCreate, setBatchCreate] = useState({
+    baseTitle: '',
+    companies: [''],
+    locations: [''],
+    count: 3
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Quick job templates
+  const quickTemplates = {
+    software_developer: {
+      title: "Software Developer",
+      company: "Tech Solutions India",
+      location: "Bangalore, Karnataka",
+      type: "Full-time",
+      sector: "IT/Software",
+      salary: "₹6,00,000 - ₹12,00,000 PA",
+      description: "We are looking for a skilled Software Developer to join our dynamic team. The ideal candidate will have strong programming skills and experience in modern web technologies.",
+      requirements: [
+        "2+ years of experience in software development",
+        "Proficiency in JavaScript/TypeScript",
+        "Experience with React/Node.js",
+        "Knowledge of database systems",
+        "Bachelor's degree in Computer Science or related field"
+      ],
+      applyLink: "mailto:careers@company.com"
+    },
+    data_analyst: {
+      title: "Data Analyst",
+      company: "Data Insights Corp",
+      location: "Hyderabad, Telangana",
+      type: "Full-time",
+      sector: "Data Science",
+      salary: "₹5,00,000 - ₹10,00,000 PA",
+      description: "Seeking a Data Analyst to interpret and analyze complex data sets. You will be responsible for data cleaning, analysis, and visualization.",
+      requirements: [
+        "Bachelor's degree in Statistics, Mathematics, or related field",
+        "Experience with SQL and Python",
+        "Knowledge of data visualization tools",
+        "Strong analytical and problem-solving skills"
+      ],
+      applyLink: "mailto:hr@company.com"
+    },
+    frontend_developer: {
+      title: "Frontend Developer",
+      company: "Digital Creations",
+      location: "Pune, Maharashtra",
+      type: "Full-time", 
+      sector: "IT/Software",
+      salary: "₹5,50,000 - ₹11,00,000 PA",
+      description: "Join our frontend team to build responsive and user-friendly web applications using modern JavaScript frameworks.",
+      requirements: [
+        "1+ years of experience with React.js",
+        "Proficiency in HTML5, CSS3, JavaScript",
+        "Experience with responsive web design",
+        "Knowledge of version control systems"
+      ],
+      applyLink: "mailto:jobs@digitalcreations.com"
+    }
+  };
 
   // Load existing manual jobs on component mount
   useEffect(() => {
@@ -54,55 +114,15 @@ const AdminJobPosting: React.FC = () => {
     setManualJobs(savedJobs);
   }, []);
 
-  // Load all jobs from storage
-  const loadAllJobsFromStorage = (): Job[] => {
-    try {
-      const storedJobs = localStorage.getItem('allJobs');
-      return storedJobs ? JSON.parse(storedJobs) : [];
-    } catch (error) {
-      console.error('Error loading jobs from storage:', error);
-      return [];
-    }
-  };
-
-  // Save all jobs to storage
-  const saveAllJobsToStorage = (jobs: Job[]) => {
-    try {
-      localStorage.setItem('allJobs', JSON.stringify(jobs));
-    } catch (error) {
-      console.error('Error saving jobs to storage:', error);
-    }
-  };
-
-  // Update all jobs storage when manual jobs change
-  const updateAllJobsStorage = (newManualJobs: Job[]) => {
-    const existingJobs = loadAllJobsFromStorage();
-    const manualJobsMap = new Map(newManualJobs.map(job => [job.id, job]));
-    
-    // Update existing jobs with manual jobs data
-    const updatedJobs = existingJobs.map(existingJob => {
-      const manualJob = manualJobsMap.get(existingJob.id);
-      if (manualJob) {
-        return { ...existingJob, ...manualJob };
-      }
-      return existingJob;
+  // Apply quick template
+  const applyTemplate = (templateKey: keyof typeof quickTemplates) => {
+    const template = quickTemplates[templateKey];
+    setJob({
+      ...template,
+      featured: false
     });
-
-    // Add new manual jobs that don't exist in storage
-    newManualJobs.forEach(manualJob => {
-      if (!updatedJobs.some(job => job.id === manualJob.id)) {
-        updatedJobs.push(manualJob);
-      }
-    });
-
-    // Sort by timestamp (newest first)
-    updatedJobs.sort((a, b) => {
-      const timeA = a.addedTimestamp || new Date(a.postedDate).getTime();
-      const timeB = b.addedTimestamp || new Date(b.postedDate).getTime();
-      return timeB - timeA;
-    });
-
-    saveAllJobsToStorage(updatedJobs);
+    setRequirementsInput(template.requirements.join('\n'));
+    setActiveTab('single');
   };
 
   // Single job submission
@@ -117,16 +137,12 @@ const AdminJobPosting: React.FC = () => {
       requirements: requirementsInput.split('\n')
         .filter(req => req.trim() !== '')
         .map(req => req.trim()),
-      isReal: false,
-      source: 'manual'
+      page: Math.floor(manualJobs.length / 10) + 1
     };
 
     const updatedJobs = [...manualJobs, newJob];
     setManualJobs(updatedJobs);
     localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-    
-    // Update the main jobs storage
-    updateAllJobsStorage(updatedJobs);
     
     setShowSuccess(true);
     // Reset form
@@ -144,7 +160,6 @@ const AdminJobPosting: React.FC = () => {
     });
     setRequirementsInput('');
 
-    // Hide success message after 3 seconds
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
@@ -165,7 +180,6 @@ const AdminJobPosting: React.FC = () => {
 
       const newJobs: Job[] = jobsData.map((jobData, index) => {
         try {
-          // Validate required fields
           if (!jobData.title || !jobData.company || !jobData.location) {
             throw new Error(`Job ${index + 1}: Missing required fields (title, company, location)`);
           }
@@ -186,8 +200,7 @@ const AdminJobPosting: React.FC = () => {
             featured: jobData.featured || false,
             postedDate: new Date().toISOString().split('T')[0],
             addedTimestamp: Date.now(),
-            isReal: false,
-            source: 'manual-bulk'
+            page: Math.floor((manualJobs.length + index) / 10) + 1
           };
 
           successCount++;
@@ -203,9 +216,6 @@ const AdminJobPosting: React.FC = () => {
         const updatedJobs = [...manualJobs, ...newJobs];
         setManualJobs(updatedJobs);
         localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-        
-        // Update the main jobs storage
-        updateAllJobsStorage(updatedJobs);
       }
 
       setBulkUploadResults({
@@ -215,7 +225,7 @@ const AdminJobPosting: React.FC = () => {
       });
 
       if (successCount > 0) {
-        setBulkJsonInput(''); // Clear input on successful upload
+        setBulkJsonInput('');
       }
     } catch (error) {
       setBulkUploadResults({
@@ -236,10 +246,8 @@ const AdminJobPosting: React.FC = () => {
       try {
         const content = e.target?.result as string;
         setBulkJsonInput(content);
-        
-        // Auto-validate the JSON
         JSON.parse(content);
-        setBulkUploadResults(null); // Clear previous results
+        setBulkUploadResults(null);
       } catch (error) {
         setBulkUploadResults({
           success: 0,
@@ -249,6 +257,29 @@ const AdminJobPosting: React.FC = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  // Generate batch jobs
+  const generateBatchJobs = () => {
+    const jobs = [];
+    for (let i = 0; i < batchCreate.count; i++) {
+      const company = batchCreate.companies[i % batchCreate.companies.length] || 'Tech Company';
+      const location = batchCreate.locations[i % batchCreate.locations.length] || 'Bangalore, Karnataka';
+      
+      jobs.push({
+        title: `${batchCreate.baseTitle} ${i + 1}`,
+        company: company,
+        location: location,
+        type: "Full-time",
+        sector: "IT/Software",
+        salary: "₹6,00,000 - ₹12,00,000 PA",
+        description: `We are hiring a ${batchCreate.baseTitle} to join our team at ${company}.`,
+        requirements: ["2+ years experience", "Relevant skills", "Good communication"],
+        applyLink: "mailto:careers@company.com",
+        featured: i < 2
+      });
+    }
+    setBulkJsonInput(JSON.stringify(jobs, null, 2));
   };
 
   // Download template JSON
@@ -316,28 +347,13 @@ const AdminJobPosting: React.FC = () => {
     const updatedJobs = manualJobs.filter(job => job.id !== jobId);
     setManualJobs(updatedJobs);
     localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-    
-    // Update the main jobs storage
-    updateAllJobsStorage(updatedJobs);
   };
 
   const clearAllJobs = () => {
     if (window.confirm('Are you sure you want to delete all manually posted jobs? This action cannot be undone.')) {
       setManualJobs([]);
       localStorage.setItem('manualJobs', '[]');
-      
-      // Remove manual jobs from main storage
-      const existingJobs = loadAllJobsFromStorage();
-      const filteredJobs = existingJobs.filter(job => !job.id.startsWith('manual-'));
-      saveAllJobsToStorage(filteredJobs);
     }
-  };
-
-  // Sync with main storage (useful for debugging)
-  const syncWithMainStorage = () => {
-    updateAllJobsStorage(manualJobs);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 2000);
   };
 
   const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Remote', 'Internship', 'Freelance'];
@@ -351,9 +367,6 @@ const AdminJobPosting: React.FC = () => {
     'Chennai, Tamil Nadu', 'Pune, Maharashtra', 'Kolkata, West Bengal', 
     'Ahmedabad, Gujarat', 'Remote', 'Gurgaon, Haryana', 'Noida, Uttar Pradesh'
   ];
-
-  // Load total jobs count from main storage
-  const totalJobsCount = loadAllJobsFromStorage().length;
 
   return (
     <>
@@ -381,19 +394,12 @@ const AdminJobPosting: React.FC = () => {
 
           {/* Storage Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold text-blue-800">Storage Status</h3>
-                <p className="text-blue-700 text-sm">
-                  Manual Jobs: {manualJobs.length} | Total Stored Jobs: {totalJobsCount}
-                </p>
-              </div>
-              <button
-                onClick={syncWithMainStorage}
-                className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-              >
-                Sync Storage
-              </button>
+            <div>
+              <h3 className="font-semibold text-blue-800">Storage Status</h3>
+              <p className="text-blue-700 text-sm">
+                Manual Jobs: {manualJobs.length} | Pages: {Math.ceil(manualJobs.length / 10)} | 
+                Featured: {manualJobs.filter(j => j.featured).length}
+              </p>
             </div>
           </div>
 
@@ -617,6 +623,68 @@ Bachelor's degree in Computer Science..."
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   <h2 className="text-2xl font-bold text-gray-800 mb-6">Bulk Job Upload</h2>
                   
+                  {/* Batch Job Creator */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <h4 className="font-semibold text-green-800 mb-3 flex items-center">
+                      <Zap className="mr-2" size={20} />
+                      Quick Batch Creator
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Base Job Title</label>
+                        <input
+                          type="text"
+                          value={batchCreate.baseTitle}
+                          onChange={e => setBatchCreate({...batchCreate, baseTitle: e.target.value})}
+                          placeholder="e.g., Software Engineer"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Number of Jobs</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={batchCreate.count}
+                          onChange={e => setBatchCreate({...batchCreate, count: parseInt(e.target.value)})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Companies (one per line)</label>
+                        <textarea
+                          value={batchCreate.companies.join('\n')}
+                          onChange={e => setBatchCreate({...batchCreate, companies: e.target.value.split('\n')})}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Tech Corp\nStartup Inc\nEnterprise Ltd"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Locations (one per line)</label>
+                        <textarea
+                          value={batchCreate.locations.join('\n')}
+                          onChange={e => setBatchCreate({...batchCreate, locations: e.target.value.split('\n')})}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Bangalore, Karnataka\nMumbai, Maharashtra"
+                        />
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={generateBatchJobs}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-green-700 transition-colors"
+                    >
+                      Generate Batch Jobs
+                    </button>
+                  </div>
+
                   {/* File Upload */}
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -690,21 +758,24 @@ Bachelor's degree in Computer Science..."
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button
                       onClick={downloadTemplate}
-                      className="bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                      className="bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center"
                     >
-                      Download Template
+                      <Download size={16} className="mr-2" />
+                      Template
                     </button>
                     <button
                       onClick={handleBulkUpload}
                       disabled={!bulkJsonInput.trim()}
-                      className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                     >
+                      <Upload size={16} className="mr-2" />
                       Upload Jobs
                     </button>
                     <button
                       onClick={() => setBulkJsonInput('')}
-                      className="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                      className="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center"
                     >
+                      <Copy size={16} className="mr-2" />
                       Clear
                     </button>
                   </div>
@@ -714,6 +785,31 @@ Bachelor's degree in Computer Science..."
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {/* Quick Templates */}
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4">
+                <h4 className="font-semibold mb-3">🚀 Quick Templates</h4>
+                <div className="space-y-2">
+                  <button 
+                    onClick={() => applyTemplate('software_developer')}
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left"
+                  >
+                    💻 Software Developer
+                  </button>
+                  <button 
+                    onClick={() => applyTemplate('data_analyst')}
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left"
+                  >
+                    📊 Data Analyst
+                  </button>
+                  <button 
+                    onClick={() => applyTemplate('frontend_developer')}
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left"
+                  >
+                    🎨 Frontend Developer
+                  </button>
+                </div>
+              </div>
+
               {/* Preview and Existing Jobs */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -724,14 +820,14 @@ Bachelor's degree in Computer Science..."
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                       title="Export all jobs"
                     >
-                      <i className="fas fa-download"></i>
+                      Export
                     </button>
                     <button
                       onClick={clearAllJobs}
                       className="text-red-600 hover:text-red-800 text-sm font-medium"
                       title="Delete all jobs"
                     >
-                      <i className="fas fa-trash"></i>
+                      Clear All
                     </button>
                   </div>
                 </div>
@@ -765,6 +861,9 @@ Bachelor's degree in Computer Science..."
                                     Bulk
                                   </span>
                                 )}
+                                <span className="inline-block bg-gray-100 text-gray-800 text-xs px-1 py-0.5 rounded">
+                                  Page {manualJob.page || 1}
+                                </span>
                               </div>
                               <p className="text-xs text-gray-400 mt-1">
                                 Added: {manualJob.addedTimestamp ? new Date(manualJob.addedTimestamp).toLocaleDateString() : 'Recently'}
@@ -775,7 +874,7 @@ Bachelor's degree in Computer Science..."
                               className="text-red-600 hover:text-red-800 ml-2"
                               title="Delete job"
                             >
-                              <i className="fas fa-trash"></i>
+                              ×
                             </button>
                           </div>
                         </div>
@@ -797,7 +896,7 @@ Bachelor's degree in Computer Science..."
                     <li>• Provide realistic salary ranges</li>
                     <li>• Use "mailto:" links for email applications</li>
                     <li>• Mark high-priority roles as "Featured"</li>
-                    <li>• Jobs are automatically timestamped and sorted</li>
+                    <li>• Jobs are automatically timestamped and paginated</li>
                   </ul>
                 ) : (
                   <ul className="text-sm text-blue-700 space-y-1">
@@ -806,7 +905,7 @@ Bachelor's degree in Computer Science..."
                     <li>• Required fields: title, company, location</li>
                     <li>• Use arrays for requirements field</li>
                     <li>• Validate JSON before uploading</li>
-                    <li>• Jobs get automatic timestamps</li>
+                    <li>• Jobs get automatic timestamps and page numbers</li>
                   </ul>
                 )}
               </div>
@@ -815,12 +914,12 @@ Bachelor's degree in Computer Science..."
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h4 className="font-semibold text-green-800 mb-2">Quick Stats</h4>
                 <div className="text-sm text-green-700 space-y-1">
-                  <p>• Manual Jobs: {manualJobs.length}</p>
+                  <p>• Total Jobs: {manualJobs.length}</p>
                   <p>• Featured Jobs: {manualJobs.filter(j => j.featured).length}</p>
+                  <p>• Pages: {Math.ceil(manualJobs.length / 10)}</p>
                   <p>• Bulk Uploaded: {manualJobs.filter(j => j.id.startsWith('manual-bulk-')).length}</p>
                   <p>• Single Posted: {manualJobs.filter(j => !j.id.startsWith('manual-bulk-')).length}</p>
                   <p>• New Today: {manualJobs.filter(j => j.addedTimestamp && (Date.now() - j.addedTimestamp) < 24 * 60 * 60 * 1000).length}</p>
-                  <p>• Total Stored: {totalJobsCount}</p>
                 </div>
               </div>
             </div>

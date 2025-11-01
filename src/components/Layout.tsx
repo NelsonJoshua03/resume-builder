@@ -39,6 +39,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 Job Applications
               </Link>
               <Link 
+                to="/job-drives" 
+                className={`font-medium transition-colors ${
+                  location.pathname.includes('/job-drives') 
+                    ? 'text-blue-600' 
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                Walk-in Drives
+              </Link>
+              <Link 
                 to="/blog" 
                 className={`font-medium transition-colors ${
                   location.pathname.includes('/blog') 
@@ -57,6 +67,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 }`}
               >
                 About
+              </Link>
+              <Link 
+                to="/contact" 
+                className={`font-medium transition-colors ${
+                  location.pathname === '/contact' 
+                    ? 'text-blue-600' 
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                Contact
               </Link>
             </div>
             
@@ -92,8 +112,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <li><Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link></li>
                 <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors">Job Disciplines</Link></li>
                 <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors">Job Applications</Link></li>
+                <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors">Walk-in Drives</Link></li>
                 <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors">Blog</Link></li>
                 <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors">About Us</Link></li>
+                <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
               </ul>
             </div>
             
@@ -101,14 +123,35 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <h3 className="text-xl font-bold mb-4">Legal</h3>
               <ul className="space-y-2">
                 <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</Link></li>
+                <li><Link to="/cookies" className="text-gray-400 hover:text-white transition-colors">Cookie Policy</Link></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="text-xl font-bold mb-4">Contact</h3>
-              <a href="mailto:support@resumecvforge.com" className="text-gray-400 hover:text-white transition-colors">
-                support@resumecvforge.com
-              </a>
+              <h3 className="text-xl font-bold mb-4">Contact & Support</h3>
+              <ul className="space-y-2 text-gray-400">
+                <li>
+                  <a href="mailto:support@resumecvforge.com" className="hover:text-white transition-colors">
+                    General Support
+                  </a>
+                </li>
+                <li>
+                  <a href="mailto:privacy@resumecvforge.com" className="hover:text-white transition-colors">
+                    Privacy Concerns
+                  </a>
+                </li>
+                <li>
+                  <a href="mailto:ads@resumecvforge.com" className="hover:text-white transition-colors">
+                    Advertising
+                  </a>
+                </li>
+                <li>
+                  <a href="mailto:dpo@resumecvforge.com" className="hover:text-white transition-colors">
+                    Data Protection Officer
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
           

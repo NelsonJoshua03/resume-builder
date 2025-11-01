@@ -16,9 +16,9 @@ interface Job {
   postedDate: string;
   applyLink: string;
   featured?: boolean;
-  source?: string;
   isReal?: boolean;
-  addedTimestamp?: number; // New field to track when job was added
+  addedTimestamp?: number;
+  page?: number; // For multi-page organization
 }
 
 const JobApplications: React.FC = () => {
@@ -27,10 +27,8 @@ const JobApplications: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [manualJobs, setManualJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [_, setApiSource] = useState<string>('rss');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const jobsPerPage = 10;
 
   // Popular Indian cities for quick filters
   const popularCities = [
@@ -38,232 +36,84 @@ const JobApplications: React.FC = () => {
     'Pune', 'Kolkata', 'Ahmedabad', 'Remote', 'Gurgaon', 'Noida'
   ];
 
-  // Load all jobs from localStorage
-  const loadAllJobsFromStorage = (): Job[] => {
-    try {
-      const storedJobs = localStorage.getItem('allJobs');
-      return storedJobs ? JSON.parse(storedJobs) : [];
-    } catch (error) {
-      console.error('Error loading jobs from storage:', error);
-      return [];
-    }
-  };
-
-  // Save all jobs to localStorage
-  const saveAllJobsToStorage = (jobs: Job[]) => {
-    try {
-      localStorage.setItem('allJobs', JSON.stringify(jobs));
-    } catch (error) {
-      console.error('Error saving jobs to storage:', error);
-    }
-  };
-
   // Load manual jobs from localStorage
   useEffect(() => {
-    const savedManualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
-    setManualJobs(savedManualJobs);
-  }, []);
-
-  // Fetch REAL jobs from RSS feeds
-  const fetchRSSJobs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/.netlify/functions/jobs-rss');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch real jobs');
-      }
-      
-      const data = await response.json();
-      
-      if (data.jobs && data.jobs.length > 0) {
-        // Add timestamp to RSS jobs
-        const rssJobsWithTimestamp = data.jobs.map((job: Job) => ({
-          ...job,
-          addedTimestamp: job.addedTimestamp || Date.now(),
-          isReal: true
-        }));
-
-        // Load existing jobs from storage
-        const existingJobs = loadAllJobsFromStorage();
-        
-        // Create a map of existing jobs by ID for quick lookup
-        const existingJobsMap = new Map(existingJobs.map(job => [job.id, job]));
-        
-        // Merge jobs: keep existing jobs, add new RSS jobs, update existing RSS jobs
-        const mergedJobs = [...existingJobs];
-        
-        rssJobsWithTimestamp.forEach((rssJob: Job) => {
-          const existingJob = existingJobsMap.get(rssJob.id);
-          if (existingJob) {
-            // Update existing job but preserve manual additions
-            Object.assign(existingJob, {
-              ...rssJob,
-              // Don't overwrite manual fields if this was a manually added job
-              addedTimestamp: existingJob.addedTimestamp || rssJob.addedTimestamp
-            });
-          } else {
-            // Add new RSS job
-            mergedJobs.push(rssJob);
-          }
-        });
-
-        // Add manual jobs that aren't already in the list
-        manualJobs.forEach(manualJob => {
-          if (!existingJobsMap.has(manualJob.id)) {
-            mergedJobs.push({
-              ...manualJob,
-              addedTimestamp: manualJob.addedTimestamp || Date.now()
-            });
-          }
-        });
-
-        // Sort by timestamp (newest first)
-        mergedJobs.sort((a, b) => {
-          const timeA = a.addedTimestamp || new Date(a.postedDate).getTime();
-          const timeB = b.addedTimestamp || new Date(b.postedDate).getTime();
-          return timeB - timeA;
-        });
-
-        // Save to storage
-        saveAllJobsToStorage(mergedJobs);
-        setJobs(mergedJobs);
-        setApiSource('rss');
-        console.log(`Loaded ${mergedJobs.length} jobs (${rssJobsWithTimestamp.length} from RSS)`);
-      } else {
-        throw new Error('No jobs found in RSS feeds');
-      }
-      
-    } catch (err) {
-      setError('Using stored jobs. Real jobs will load soon.');
-      // Fallback to stored jobs or sample jobs
-      loadStoredJobs();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Load jobs from storage as fallback
-  const loadStoredJobs = () => {
-    const storedJobs = loadAllJobsFromStorage();
+    const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
     
-    if (storedJobs.length > 0) {
-      // Sort by timestamp (newest first)
-      const sortedJobs = [...storedJobs].sort((a, b) => {
-        const timeA = a.addedTimestamp || new Date(a.postedDate).getTime();
-        const timeB = b.addedTimestamp || new Date(b.postedDate).getTime();
-        return timeB - timeA;
-      });
-      setJobs(sortedJobs);
-      setApiSource('storage');
-      console.log(`Loaded ${sortedJobs.length} jobs from storage`);
-    } else {
-      loadSampleJobs();
-    }
-  };
-
-  // Sample jobs as fallback
-  const loadSampleJobs = () => {
-    const sampleJobs: Job[] = [
-      {
-        id: 'sample-1',
-        title: "Software Developer",
-        company: "Various Indian Companies",
-        location: "Bangalore, Karnataka",
-        type: "Full-time",
-        sector: "IT/Software",
-        salary: "Based on experience",
-        description: "Real job opportunities from Indian companies. Positions updated regularly through RSS feeds.",
-        requirements: [
-          "Check specific company requirements",
-          "Visit company websites for details",
-          "Tailor your resume accordingly"
-        ],
-        postedDate: new Date().toISOString().split('T')[0],
-        applyLink: "#",
-        featured: true,
-        source: "sample",
-        isReal: false,
-        addedTimestamp: Date.now()
-      }
-    ];
-
-    // Combine with manual jobs and sort
-    const allJobs = [...sampleJobs, ...manualJobs].map(job => ({
+    // Add page numbers if not present (for backward compatibility)
+    const jobsWithPages = savedJobs.map((job: Job, index: number) => ({
       ...job,
+      page: job.page || Math.floor(index / jobsPerPage) + 1,
       addedTimestamp: job.addedTimestamp || Date.now()
-    })).sort((a, b) => b.addedTimestamp! - a.addedTimestamp!);
+    }));
 
-    // Save to storage
-    saveAllJobsToStorage(allJobs);
-    setJobs(allJobs);
-    setApiSource('sample');
-  };
-
-  // Initial load
-  useEffect(() => {
-    fetchRSSJobs();
-  }, [manualJobs]);
+    setJobs(jobsWithPages);
+  }, []);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // For now, we'll just filter existing jobs
-    // In future, we can enhance to search RSS feeds
-    setError('Search currently filters existing jobs. RSS search coming soon!');
+    setCurrentPage(1); // Reset to first page when searching
   };
 
   // Handle city quick filter
   const handleCityFilter = (city: string) => {
     setLocationFilter(city);
+    setCurrentPage(1);
   };
 
-  // Refresh jobs
-  const refreshJobs = () => {
-    fetchRSSJobs();
+  // Clear all filters
+  const clearFilters = () => {
+    setSelectedSector('all');
+    setSelectedType('all');
+    setSearchTerm('');
+    setLocationFilter('');
+    setCurrentPage(1);
   };
 
-  // Clear all stored jobs (useful for debugging)
-  const clearStoredJobs = () => {
-    if (window.confirm('Are you sure you want to clear all stored jobs? This will reset to RSS feeds only.')) {
-      localStorage.removeItem('allJobs');
-      fetchRSSJobs();
-    }
-  };
-
-  const sectors = ['all', 'IT/Software', 'Engineering', 'Data Science', 'Marketing', 'HR', 'Finance', 'Healthcare'];
-  const jobTypes = ['all', 'Full-time', 'Part-time', 'Contract', 'Remote', 'Internship'];
+  const sectors = ['all', 'IT/Software', 'Engineering', 'Data Science', 'Marketing', 'HR', 'Finance', 'Healthcare', 'Education', 'Sales'];
+  const jobTypes = ['all', 'Full-time', 'Part-time', 'Contract', 'Remote', 'Internship', 'Freelance'];
 
   const filteredJobs = jobs.filter(job => {
     const matchesSector = selectedSector === 'all' || job.sector === selectedSector;
     const matchesType = selectedType === 'all' || job.type === selectedType;
     const matchesSearch = searchTerm === '' || 
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.company.toLowerCase().includes(searchTerm.toLowerCase());
+      job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLocation = locationFilter === '' || 
       job.location.toLowerCase().includes(locationFilter.toLowerCase());
     
     return matchesSector && matchesType && matchesSearch && matchesLocation;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+  const startIndex = (currentPage - 1) * jobsPerPage;
+  const currentJobs = filteredJobs.slice(startIndex, startIndex + jobsPerPage);
+
   const featuredJobs = jobs.filter(job => job.featured);
-  const realJobsCount = jobs.filter(job => job.isReal).length;
+  const totalJobsCount = jobs.length;
+
+  // Page navigation
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <>
       <Helmet>
-        <title>Real Job Opportunities in India | ResumeCVForge</title>
-        <meta name="description" content="Browse real job opportunities from Indian companies. Updated daily from multiple job portals." />
+        <title>Job Opportunities | ResumeCVForge</title>
+        <meta name="description" content="Browse manually posted job opportunities from various companies." />
       </Helmet>
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Real Indian Job Opportunities</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Job Opportunities</h1>
           <p className="text-xl max-w-2xl mx-auto mb-8">
-            Live job postings from top Indian companies. Updated automatically every day.
+            Manually curated job postings from various companies.
           </p>
           
           {/* Search Form */}
@@ -281,7 +131,7 @@ const JobApplications: React.FC = () => {
               <div>
                 <input
                   type="text"
-                  placeholder="City or state in India"
+                  placeholder="City or state"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
@@ -291,9 +141,8 @@ const JobApplications: React.FC = () => {
                 <button 
                   type="submit"
                   className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                  disabled={loading}
                 >
-                  {loading ? 'Loading Jobs...' : 'Find Jobs'}
+                  Find Jobs
                 </button>
               </div>
             </div>
@@ -315,17 +164,16 @@ const JobApplications: React.FC = () => {
             </div>
           </div>
 
-          {/* Live Status */}
+          {/* Stats */}
           <div className="mt-6 flex justify-center items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-blue-100">Live Job Feed Active</span>
+              <span className="text-blue-100">Total Jobs: {totalJobsCount}</span>
             </div>
             <button 
-              onClick={refreshJobs}
+              onClick={clearFilters}
               className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
             >
-              Refresh Jobs
+              Clear Filters
             </button>
           </div>
         </div>
@@ -334,17 +182,19 @@ const JobApplications: React.FC = () => {
       {/* Main Content */}
       <section className="py-12">
         <div className="container mx-auto px-4">
-          {error && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <p className="text-yellow-800">{error}</p>
-            </div>
-          )}
-
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Filters Sidebar */}
             <div className="lg:w-1/4">
               <div className="bg-white rounded-lg shadow-lg p-6 sticky-sidebar">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Filters</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-gray-800">Filters</h3>
+                  <button 
+                    onClick={clearFilters}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Clear All
+                  </button>
+                </div>
                 
                 {/* Sector Filter */}
                 <div className="mb-6">
@@ -352,7 +202,10 @@ const JobApplications: React.FC = () => {
                   <select 
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={selectedSector}
-                    onChange={(e) => setSelectedSector(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedSector(e.target.value);
+                      setCurrentPage(1);
+                    }}
                   >
                     {sectors.map(sector => (
                       <option key={sector} value={sector}>
@@ -368,7 +221,10 @@ const JobApplications: React.FC = () => {
                   <select 
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedType(e.target.value);
+                      setCurrentPage(1);
+                    }}
                   >
                     {jobTypes.map(type => (
                       <option key={type} value={type}>
@@ -378,20 +234,13 @@ const JobApplications: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Quick Stats */}
+                {/* Stats */}
                 <div className="border-t border-gray-200 pt-4">
-                  <h4 className="font-semibold text-gray-800 mb-2">Live Stats</h4>
-                  <p className="text-sm text-gray-600">{filteredJobs.length} jobs showing</p>
-                  <p className="text-sm text-gray-600">{realJobsCount} real-time jobs</p>
+                  <h4 className="font-semibold text-gray-800 mb-2">Job Stats</h4>
+                  <p className="text-sm text-gray-600">{filteredJobs.length} jobs found</p>
+                  <p className="text-sm text-gray-600">{totalJobsCount} total jobs</p>
                   <p className="text-sm text-gray-600">{jobs.filter(j => j.type === 'Remote').length} remote positions</p>
-                  <p className="text-sm text-gray-600">{jobs.length} total stored jobs</p>
-                  <button 
-                    onClick={clearStoredJobs}
-                    className="text-xs text-red-600 hover:text-red-800 mt-2"
-                    title="Clear all stored jobs"
-                  >
-                    Clear Storage
-                  </button>
+                  <p className="text-sm text-gray-600">Page {currentPage} of {totalPages}</p>
                 </div>
               </div>
 
@@ -399,7 +248,7 @@ const JobApplications: React.FC = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
                 <h3 className="font-bold text-blue-800 mb-2">Build Your Resume</h3>
                 <p className="text-blue-700 text-sm mb-4">
-                  Create an ATS-friendly resume for these real job opportunities.
+                  Create an ATS-friendly resume for these job opportunities.
                 </p>
                 <Link 
                   to="/builder" 
@@ -426,80 +275,99 @@ const JobApplications: React.FC = () => {
 
             {/* Jobs List */}
             <div className="lg:w-3/4">
-              {loading ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading real Indian job opportunities...</p>
-                  <p className="text-sm text-gray-500 mt-2">Fetching from multiple job portals</p>
+              {/* Info Banner */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-800 font-semibold">
+                      📋 Manually Curated Jobs
+                    </p>
+                    <p className="text-blue-700 text-sm">
+                      Showing {filteredJobs.length} filtered jobs from our database
+                    </p>
+                    <p className="text-blue-700 text-sm">
+                      {totalJobsCount} total jobs • Sorted by newest first
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Featured Jobs */}
+              {featuredJobs.length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">Featured Opportunities</h2>
+                  <div className="space-y-4">
+                    {featuredJobs.map(job => (
+                      <JobCard key={job.id} job={job} featured />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All Jobs */}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {selectedSector === 'all' ? 'All Job Opportunities' : `${selectedSector} Jobs`} 
+                  <span className="text-gray-600 text-lg ml-2">({filteredJobs.length})</span>
+                </h2>
+                <div className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </div>
+              </div>
+              
+              {currentJobs.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">No jobs found</h3>
+                  <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
+                  <button 
+                    onClick={clearFilters}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Clear All Filters
+                  </button>
                 </div>
               ) : (
                 <>
-                  {/* Data Source Info */}
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-green-800 font-semibold">
-                          ✅ Live Job Feed Active
-                        </p>
-                        <p className="text-green-700 text-sm">
-                          Showing {realJobsCount} real-time jobs from Indian job portals
-                        </p>
-                        <p className="text-green-700 text-sm">
-                          {jobs.length} total jobs stored • Sorted by newest first
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-green-700 text-sm">Updated: {new Date().toLocaleTimeString()}</p>
-                        <button 
-                          onClick={refreshJobs}
-                          className="text-green-700 hover:text-green-900 text-sm font-semibold"
-                        >
-                          Refresh Now
-                        </button>
-                      </div>
-                    </div>
+                  <div className="space-y-6">
+                    {currentJobs.map(job => (
+                      <JobCard key={job.id} job={job} />
+                    ))}
                   </div>
 
-                  {/* Featured Jobs */}
-                  {featuredJobs.length > 0 && (
-                    <div className="mb-8">
-                      <h2 className="text-2xl font-bold text-gray-800 mb-4">Featured Opportunities</h2>
-                      <div className="space-y-4">
-                        {featuredJobs.map(job => (
-                          <JobCard key={job.id} job={job} featured />
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center mt-8">
+                      <nav className="flex items-center space-x-2">
+                        <button
+                          onClick={() => goToPage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            onClick={() => goToPage(page)}
+                            className={`px-3 py-2 rounded-lg border ${
+                              currentPage === page
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                            }`}
+                          >
+                            {page}
+                          </button>
                         ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* All Jobs */}
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                    {selectedSector === 'all' ? 'All Job Opportunities' : `${selectedSector} Jobs`} 
-                    <span className="text-gray-600 text-lg ml-2">({filteredJobs.length})</span>
-                  </h2>
-                  
-                  {filteredJobs.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                      <h3 className="text-xl font-bold text-gray-800 mb-2">No jobs found</h3>
-                      <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
-                      <button 
-                        onClick={() => {
-                          setSelectedSector('all');
-                          setSelectedType('all');
-                          setSearchTerm('');
-                          setLocationFilter('');
-                          fetchRSSJobs();
-                        }}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Clear Filters & Reload
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {filteredJobs.map(job => (
-                        <JobCard key={job.id} job={job} />
-                      ))}
+                        
+                        <button
+                          onClick={() => goToPage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
+                      </nav>
                     </div>
                   )}
                 </>
@@ -508,49 +376,18 @@ const JobApplications: React.FC = () => {
           </div>
         </div>
       </section>
-
-      {/* How It Works Section */}
-      <section className="bg-gray-100 py-12">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🔍</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Live Job Scraping</h3>
-              <p className="text-gray-600">Automatically fetches real jobs from multiple Indian job portals every day</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">💾</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Smart Storage</h3>
-              <p className="text-gray-600">Jobs are stored locally and sorted with newest opportunities first</p>
-            </div>
-            <div className="text-center">
-              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🎯</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Direct Applications</h3>
-              <p className="text-gray-600">Apply directly to companies with your professionally built resume</p>
-            </div>
-          </div>
-        </div>
-      </section>
     </>
   );
 };
 
-// Job Card Component
+// Job Card Component (unchanged)
 const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = false }) => {
-  const isRealJob = job.isReal;
-  const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000; // New if less than 24 hours old
+  const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000;
   
   return (
     <div className={`job-card bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${
       featured ? 'featured-job border-l-4 border-blue-500' : ''
-    } ${isRealJob ? 'border-l-4 border-green-500' : ''}`}>
+    }`}>
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
         <div className="flex-1">
           <div className="flex items-start justify-between mb-2">
@@ -567,16 +404,6 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
               {featured && (
                 <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
                   Featured
-                </span>
-              )}
-              {isRealJob && (
-                <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                  Real Job
-                </span>
-              )}
-              {job.source && (
-                <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2 py-1 rounded-full">
-                  {job.source}
                 </span>
               )}
             </div>
@@ -607,7 +434,6 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
 
           <p className="text-sm text-gray-500">
             Posted {new Date(job.postedDate).toLocaleDateString()}
-            {isRealJob && ' • Live from job portals'}
             {job.addedTimestamp && ` • Added ${new Date(job.addedTimestamp).toLocaleDateString()}`}
           </p>
         </div>

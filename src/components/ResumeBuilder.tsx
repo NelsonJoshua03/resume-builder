@@ -17,6 +17,48 @@ import SectionOrderCustomizer from './SectionOrderCustomizer';
 
 // Enhanced template configuration with color customization
 const TEMPLATES: Record<string, Template> = {
+  ats: {
+    id: 'ats',
+    name: 'ATS Optimized',
+    background: 'bg-white',
+    textColor: 'text-gray-900',
+    accentColor: 'text-gray-800',
+    borderColor: 'border-gray-600',
+    buttonColor: 'bg-gray-800 hover:bg-gray-700',
+    headerBg: 'bg-gray-800',
+    headerText: 'text-white',
+    sectionBg: 'bg-gray-50',
+    description: 'Maximum ATS compatibility with clean, single-column layout',
+    layout: 'ats',
+    colors: {
+      primary: '#1f2937', // gray-800
+      secondary: '#374151', // gray-700
+      accent: '#6b7280', // gray-500
+      background: '#ffffff',
+      text: '#111827'
+    }
+  },
+  professional: {
+    id: 'professional',
+    name: 'Professional',
+    background: 'bg-white',
+    textColor: 'text-gray-900',
+    accentColor: 'text-blue-900',
+    borderColor: 'border-blue-900',
+    buttonColor: 'bg-blue-900 hover:bg-blue-800',
+    headerBg: 'bg-blue-900',
+    headerText: 'text-white',
+    sectionBg: 'bg-gray-50',
+    description: 'Classic professional design for corporate environments',
+    layout: 'professional',
+    colors: {
+      primary: '#1e3a8a', // blue-900
+      secondary: '#1e40af', // blue-800
+      accent: '#3b82f6', // blue-500
+      background: '#ffffff',
+      text: '#111827'
+    }
+  },
   creative: {
     id: 'creative',
     name: 'Creative',
@@ -167,7 +209,7 @@ const ResumeBuilder = () => {
       { name: 'MongoDB', proficiency: 'Intermediate' },
       { name: 'AWS', proficiency: 'Beginner' }
     ],
-    selectedTemplate: 'creative',
+    selectedTemplate: 'ats',
     customColors: {}
   });
 
@@ -499,7 +541,7 @@ const ResumeBuilder = () => {
         value: '',
         type: 'text'
       }],
-      selectedTemplate: 'creative',
+      selectedTemplate: 'ats',
       customColors: {}
     };
 
@@ -516,7 +558,7 @@ const ResumeBuilder = () => {
   };
 
   // Get the current template configuration
-  const currentTemplate = TEMPLATES[resumeData.selectedTemplate] || TEMPLATES.creative;
+  const currentTemplate = TEMPLATES[resumeData.selectedTemplate] || TEMPLATES.ats;
   
   // Get custom colors for the current template if they exist
   const customColors = resumeData.customColors[resumeData.selectedTemplate] || currentTemplate.colors;
@@ -598,10 +640,12 @@ const ResumeBuilder = () => {
               sectionOrder={sectionOrder}
             />
             
-            {/* Replace the old download button with the MobilePDFGenerator */}
+            {/* Updated MobilePDFGenerator with new props */}
             <MobilePDFGenerator 
               resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
               personalInfo={resumeData.personalInfo}
+              resumeData={resumeData}
+              template={currentTemplate}
             />
             
             <TemplateSelector 

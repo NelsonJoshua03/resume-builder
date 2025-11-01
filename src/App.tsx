@@ -19,6 +19,11 @@ import DataScience from "./components/job-pages/DataScience";
 import Cybersecurity from "./components/job-pages/Cybersecurity";
 import AdminJobPosting from "./components/AdminJobPosting";
 import FreshGraduateGuide from './components/FreshGraduateGuide';
+import TermsOfService from "./components/TermsOfService";
+import CookiePolicy from "./components/CookiePolicy";
+import Contact from "./components/Contact";
+import JobDrives from './components/JobDrives';
+import AdminJobDrives from './components/AdminJobDrives';
 
 function App() {
   return (
@@ -50,6 +55,11 @@ function App() {
             <Route path="/job-disciplines/data-science" element={<DataScience />} />
             <Route path="/job-disciplines/cybersecurity" element={<Cybersecurity />} />
             <Route path="/fresh-graduate-guide" element={<FreshGraduateGuide />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/cookies" element={<CookiePolicy />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/job-drives" element={<JobDrives />} />
+<Route path="/admin/job-drives" element={<AdminJobDrives />} />
 
             {/* Redirect any unknown routes to home */}
             <Route path="*" element={<HomePage />} />
