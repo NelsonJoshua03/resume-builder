@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import GoogleAnalytics from './GoogleAnalytics';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,7 +33,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
         <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
         <meta property="twitter:image" content="https://careercraft.in/og-image.png" />
+
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5"></script>
+        <script>
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-SW5M9YN8L5');
+          `}
+        </script>
       </Helmet>
+
+      {/* Google Analytics Component */}
+      <GoogleAnalytics />
 
       <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Header */}
