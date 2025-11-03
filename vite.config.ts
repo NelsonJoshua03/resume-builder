@@ -16,7 +16,6 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
-    copyPublicDir: true,
     minify: 'terser',
     terserOptions: {
       compress: {
