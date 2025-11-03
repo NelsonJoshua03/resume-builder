@@ -5,7 +5,7 @@ import Layout from "./components/Layout";
 import ResumeBuilder from "./components/ResumeBuilder";
 import HomePage from "./components/HomePage";
 import JobDisciplines from "./components/JobDisciplines";
-import JobApplications from "./components/JobApplications"; // Add this import
+import JobApplications from "./components/JobApplications";
 import About from "./components/About";
 import Privacy from "./components/Privacy";
 import Blog from "./components/Blog";
@@ -35,13 +35,12 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/builder" element={<ResumeBuilder />} />
             <Route path="/job-disciplines" element={<JobDisciplines />} />
-            <Route path="/job-applications" element={<JobApplications />} /> {/* Add this route */}
+            <Route path="/job-applications" element={<JobApplications />} />
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/admin/job-posting" element={<AdminJobPosting />} />
-            
 
             {/* Job Discipline Pages - Engineering */}
             <Route path="/job-disciplines/engineering" element={<JobDisciplines />} />
@@ -59,7 +58,7 @@ function App() {
             <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/job-drives" element={<JobDrives />} />
-<Route path="/admin/job-drives" element={<AdminJobDrives />} />
+            <Route path="/admin/job-drives" element={<AdminJobDrives />} />
 
             {/* Redirect any unknown routes to home */}
             <Route path="*" element={<HomePage />} />

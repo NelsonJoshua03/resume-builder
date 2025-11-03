@@ -104,16 +104,17 @@ const JobApplications: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Job Opportunities | ResumeCVForge</title>
-        <meta name="description" content="Browse manually posted job opportunities from various companies." />
+        <title>Job Opportunities in India | CareerCraft.in</title>
+        <meta name="description" content="Browse manually curated job opportunities from top Indian companies. Find IT, engineering, marketing jobs across Bangalore, Mumbai, Delhi, Hyderabad and more." />
+        <meta name="keywords" content="Indian job portal, jobs in India, IT jobs Bangalore, engineering jobs Pune, fresher jobs India, remote jobs India" />
       </Helmet>
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Job Opportunities</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Job Opportunities in India</h1>
           <p className="text-xl max-w-2xl mx-auto mb-8">
-            Manually curated job postings from various companies.
+            Curated job postings from top Indian companies and startups.
           </p>
           
           {/* Search Form */}
@@ -150,7 +151,7 @@ const JobApplications: React.FC = () => {
 
           {/* Popular Cities Quick Filters */}
           <div className="mt-6">
-            <p className="text-blue-100 mb-3">Popular Locations:</p>
+            <p className="text-blue-100 mb-3">Popular Indian Cities:</p>
             <div className="flex flex-wrap justify-center gap-2">
               {popularCities.map(city => (
                 <button
@@ -246,9 +247,9 @@ const JobApplications: React.FC = () => {
 
               {/* Resume Builder CTA */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-blue-800 mb-2">Build Your Resume</h3>
+                <h3 className="font-bold text-blue-800 mb-2">Build Your Indian Resume</h3>
                 <p className="text-blue-700 text-sm mb-4">
-                  Create an ATS-friendly resume for these job opportunities.
+                  Create an ATS-friendly resume optimized for Indian job market.
                 </p>
                 <Link 
                   to="/builder" 
@@ -262,7 +263,7 @@ const JobApplications: React.FC = () => {
               <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
                 <h3 className="font-bold text-green-800 mb-2">Add More Jobs</h3>
                 <p className="text-green-700 text-sm mb-3">
-                  Post additional job opportunities manually.
+                  Post additional job opportunities for Indian market.
                 </p>
                 <Link 
                   to="/admin/job-posting" 
@@ -280,10 +281,10 @@ const JobApplications: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-blue-800 font-semibold">
-                      📋 Manually Curated Jobs
+                      📋 CareerCraft Curated Jobs
                     </p>
                     <p className="text-blue-700 text-sm">
-                      Showing {filteredJobs.length} filtered jobs from our database
+                      Showing {filteredJobs.length} filtered jobs from our Indian job database
                     </p>
                     <p className="text-blue-700 text-sm">
                       {totalJobsCount} total jobs • Sorted by newest first
@@ -307,7 +308,7 @@ const JobApplications: React.FC = () => {
               {/* All Jobs */}
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {selectedSector === 'all' ? 'All Job Opportunities' : `${selectedSector} Jobs`} 
+                  {selectedSector === 'all' ? 'All Job Opportunities in India' : `${selectedSector} Jobs in India`} 
                   <span className="text-gray-600 text-lg ml-2">({filteredJobs.length})</span>
                 </h2>
                 <div className="text-sm text-gray-600">
@@ -380,7 +381,7 @@ const JobApplications: React.FC = () => {
   );
 };
 
-// Job Card Component (unchanged)
+// Job Card Component
 const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = false }) => {
   const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000;
   

@@ -1,6 +1,13 @@
-# public/robots.txt
+# robots.txt for CareerCraft.in
 User-agent: *
 Allow: /
 
-# Point to your sitemap. Use your full URL.
-Sitemap: https://resumecvforge.netlify.app/sitemap.xml
+# Disallow admin pages
+Disallow: /admin/
+Disallow: /private/
+
+# Sitemap location
+Sitemap: https://careercraft.in/sitemap.xml
+
+# Crawl delay (optional)
+Crawl-delay: 1

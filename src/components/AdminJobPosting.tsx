@@ -55,7 +55,7 @@ const AdminJobPosting: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Quick job templates
+  // Quick job templates optimized for Indian market
   const quickTemplates = {
     software_developer: {
       title: "Software Developer",
@@ -90,21 +90,22 @@ const AdminJobPosting: React.FC = () => {
       ],
       applyLink: "mailto:hr@company.com"
     },
-    frontend_developer: {
-      title: "Frontend Developer",
-      company: "Digital Creations",
+    mechanical_engineer: {
+      title: "Mechanical Engineer",
+      company: "Engineering Solutions Ltd",
       location: "Pune, Maharashtra",
       type: "Full-time", 
-      sector: "IT/Software",
-      salary: "₹5,50,000 - ₹11,00,000 PA",
-      description: "Join our frontend team to build responsive and user-friendly web applications using modern JavaScript frameworks.",
+      sector: "Engineering",
+      salary: "₹4,00,000 - ₹8,00,000 PA",
+      description: "Looking for a Mechanical Engineer with experience in design and development. Knowledge of AutoCAD and SolidWorks required.",
       requirements: [
-        "1+ years of experience with React.js",
-        "Proficiency in HTML5, CSS3, JavaScript",
-        "Experience with responsive web design",
-        "Knowledge of version control systems"
+        "Bachelor's degree in Mechanical Engineering",
+        "1-3 years of experience in mechanical design",
+        "Proficiency in AutoCAD, SolidWorks",
+        "Knowledge of manufacturing processes",
+        "Good communication skills"
       ],
-      applyLink: "mailto:jobs@digitalcreations.com"
+      applyLink: "mailto:careers@engineering.com"
     }
   };
 
@@ -302,19 +303,19 @@ const AdminJobPosting: React.FC = () => {
         "featured": true
       },
       {
-        "title": "Data Analyst",
-        "company": "Data Insights Corp",
-        "location": "Hyderabad, Telangana",
+        "title": "Mechanical Engineer",
+        "company": "Engineering Corp",
+        "location": "Chennai, Tamil Nadu",
         "type": "Full-time",
-        "sector": "Data Science",
-        "salary": "₹6,00,000 - ₹12,00,000 PA",
-        "description": "Seeking a Data Analyst to interpret and analyze complex data sets...",
+        "sector": "Engineering",
+        "salary": "₹4,50,000 - ₹9,00,000 PA",
+        "description": "Seeking a Mechanical Engineer for product design and development...",
         "requirements": [
-          "Bachelor's degree in Statistics or related field",
-          "Experience with SQL and Python",
-          "Knowledge of data visualization tools"
+          "Bachelor's degree in Mechanical Engineering",
+          "Experience with CAD software",
+          "Knowledge of manufacturing processes"
         ],
-        "applyLink": "https://company.com/careers/data-analyst",
+        "applyLink": "https://company.com/careers/mechanical-engineer",
         "featured": false
       }
     ];
@@ -323,7 +324,7 @@ const AdminJobPosting: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'job-postings-template.json';
+    link.download = 'careercraft-job-postings-template.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -336,7 +337,7 @@ const AdminJobPosting: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `resumecvforge-jobs-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `careercraft-jobs-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -371,8 +372,8 @@ const AdminJobPosting: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Admin Job Posting | ResumeCVForge</title>
-        <meta name="description" content="Post new job opportunities on ResumeCVForge" />
+        <title>Admin Job Posting | CareerCraft.in</title>
+        <meta name="description" content="Post new job opportunities on CareerCraft.in - India's premier career platform" />
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 py-8">
@@ -383,7 +384,7 @@ const AdminJobPosting: React.FC = () => {
               ← Back to Job Applications
             </Link>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Posting</h1>
-            <p className="text-gray-600">Add new job opportunities to the website</p>
+            <p className="text-gray-600">Add new job opportunities to CareerCraft.in</p>
           </div>
 
           {showSuccess && (
@@ -395,7 +396,7 @@ const AdminJobPosting: React.FC = () => {
           {/* Storage Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div>
-              <h3 className="font-semibold text-blue-800">Storage Status</h3>
+              <h3 className="font-semibold text-blue-800">CareerCraft Job Portal Status</h3>
               <p className="text-blue-700 text-sm">
                 Manual Jobs: {manualJobs.length} | Pages: {Math.ceil(manualJobs.length / 10)} | 
                 Featured: {manualJobs.filter(j => j.featured).length}
@@ -437,7 +438,7 @@ const AdminJobPosting: React.FC = () => {
               {activeTab === 'single' ? (
                 /* Single Job Form */
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Post New Job</h2>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Post New Job on CareerCraft</h2>
                   
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information */}
@@ -530,7 +531,7 @@ const AdminJobPosting: React.FC = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Salary Range
+                          Salary Range (INR)
                         </label>
                         <input
                           type="text"
@@ -613,7 +614,7 @@ Bachelor's degree in Computer Science..."
                         type="submit"
                         className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                       >
-                        Post Job Opportunity
+                        Post Job on CareerCraft
                       </button>
                     </div>
                   </form>
@@ -627,7 +628,7 @@ Bachelor's degree in Computer Science..."
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
                     <h4 className="font-semibold text-green-800 mb-3 flex items-center">
                       <Zap className="mr-2" size={20} />
-                      Quick Batch Creator
+                      Quick Batch Creator for Indian Market
                     </h4>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -662,17 +663,17 @@ Bachelor's degree in Computer Science..."
                           onChange={e => setBatchCreate({...batchCreate, companies: e.target.value.split('\n')})}
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                          placeholder="Tech Corp\nStartup Inc\nEnterprise Ltd"
+                          placeholder="Tech Corp India\nStartup Inc\nEnterprise Solutions Ltd"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Locations (one per line)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Indian Locations (one per line)</label>
                         <textarea
                           value={batchCreate.locations.join('\n')}
                           onChange={e => setBatchCreate({...batchCreate, locations: e.target.value.split('\n')})}
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                          placeholder="Bangalore, Karnataka\nMumbai, Maharashtra"
+                          placeholder="Bangalore, Karnataka\nMumbai, Maharashtra\nHyderabad, Telangana"
                         />
                       </div>
                     </div>
@@ -681,7 +682,7 @@ Bachelor's degree in Computer Science..."
                       onClick={generateBatchJobs}
                       className="w-full bg-green-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-green-700 transition-colors"
                     >
-                      Generate Batch Jobs
+                      Generate Batch Jobs for India
                     </button>
                   </div>
 
@@ -712,13 +713,13 @@ Bachelor's degree in Computer Science..."
                       onChange={e => setBulkJsonInput(e.target.value)}
                       placeholder={`[
   {
-    "title": "Job Title",
-    "company": "Company Name",
-    "location": "City, State",
+    "title": "Software Developer",
+    "company": "Tech Company India",
+    "location": "Bangalore, Karnataka",
     "type": "Full-time",
     "sector": "IT/Software",
-    "salary": "₹X,00,000 - ₹Y,00,000 PA",
-    "description": "Job description...",
+    "salary": "₹8,00,000 - ₹15,00,000 PA",
+    "description": "Job description for Indian market...",
     "requirements": ["Requirement 1", "Requirement 2"],
     "applyLink": "mailto:careers@company.com",
     "featured": false
@@ -787,7 +788,7 @@ Bachelor's degree in Computer Science..."
             <div className="space-y-6">
               {/* Quick Templates */}
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4">
-                <h4 className="font-semibold mb-3">🚀 Quick Templates</h4>
+                <h4 className="font-semibold mb-3">🚀 Quick Templates (India)</h4>
                 <div className="space-y-2">
                   <button 
                     onClick={() => applyTemplate('software_developer')}
@@ -802,10 +803,10 @@ Bachelor's degree in Computer Science..."
                     📊 Data Analyst
                   </button>
                   <button 
-                    onClick={() => applyTemplate('frontend_developer')}
+                    onClick={() => applyTemplate('mechanical_engineer')}
                     className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left"
                   >
-                    🎨 Frontend Developer
+                    🔧 Mechanical Engineer
                   </button>
                 </div>
               </div>
@@ -813,7 +814,7 @@ Bachelor's degree in Computer Science..."
               {/* Preview and Existing Jobs */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">Posted Jobs ({manualJobs.length})</h3>
+                  <h3 className="text-xl font-bold text-gray-800">CareerCraft Jobs ({manualJobs.length})</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={exportJobs}
@@ -832,7 +833,7 @@ Bachelor's degree in Computer Science..."
                   </div>
                 </div>
                 {manualJobs.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No jobs posted yet</p>
+                  <p className="text-gray-500 text-sm">No jobs posted yet on CareerCraft</p>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {manualJobs.map(manualJob => {
@@ -887,39 +888,39 @@ Bachelor's degree in Computer Science..."
               {/* Instructions */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-800 mb-2">
-                  {activeTab === 'single' ? 'Tips for Posting' : 'Bulk Upload Instructions'}
+                  {activeTab === 'single' ? 'Tips for Indian Job Market' : 'Bulk Upload Instructions'}
                 </h4>
                 {activeTab === 'single' ? (
                   <ul className="text-sm text-blue-700 space-y-1">
                     <li>• Use clear, descriptive job titles</li>
-                    <li>• Include specific requirements</li>
-                    <li>• Provide realistic salary ranges</li>
-                    <li>• Use "mailto:" links for email applications</li>
+                    <li>• Include specific requirements for Indian market</li>
+                    <li>• Provide realistic INR salary ranges</li>
+                    <li>• Use Indian city names and states</li>
                     <li>• Mark high-priority roles as "Featured"</li>
-                    <li>• Jobs are automatically timestamped and paginated</li>
+                    <li>• Jobs are automatically timestamped</li>
                   </ul>
                 ) : (
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Download the template to get started</li>
+                    <li>• Download the India-specific template</li>
                     <li>• JSON must be an array of job objects</li>
                     <li>• Required fields: title, company, location</li>
                     <li>• Use arrays for requirements field</li>
                     <li>• Validate JSON before uploading</li>
-                    <li>• Jobs get automatic timestamps and page numbers</li>
+                    <li>• Include Indian salary ranges in INR</li>
                   </ul>
                 )}
               </div>
 
               {/* Quick Stats */}
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">Quick Stats</h4>
+                <h4 className="font-semibold text-green-800 mb-2">CareerCraft Stats</h4>
                 <div className="text-sm text-green-700 space-y-1">
                   <p>• Total Jobs: {manualJobs.length}</p>
                   <p>• Featured Jobs: {manualJobs.filter(j => j.featured).length}</p>
                   <p>• Pages: {Math.ceil(manualJobs.length / 10)}</p>
-                  <p>• Bulk Uploaded: {manualJobs.filter(j => j.id.startsWith('manual-bulk-')).length}</p>
-                  <p>• Single Posted: {manualJobs.filter(j => !j.id.startsWith('manual-bulk-')).length}</p>
-                  <p>• New Today: {manualJobs.filter(j => j.addedTimestamp && (Date.now() - j.addedTimestamp) < 24 * 60 * 60 * 1000).length}</p>
+                  <p>• IT/Software Jobs: {manualJobs.filter(j => j.sector === 'IT/Software').length}</p>
+                  <p>• Engineering Jobs: {manualJobs.filter(j => j.sector === 'Engineering').length}</p>
+                  <p>• Remote Jobs: {manualJobs.filter(j => j.type === 'Remote').length}</p>
                 </div>
               </div>
             </div>

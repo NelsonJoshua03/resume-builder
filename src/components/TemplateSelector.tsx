@@ -1,3 +1,4 @@
+
 // src/components/TemplateSelector.tsx
 import { TemplateSelectorProps } from './types';
 
@@ -19,10 +20,35 @@ const TemplateSelector = ({ selectedTemplate, onSelect, templates }: TemplateSel
           >
             <div className={`h-32 rounded mb-3 flex flex-col items-center justify-center ${template.background} p-3 relative overflow-hidden`}>
               {/* Mini template preview */}
-              <div className="absolute top-2 left-2 w-4 h-4 rounded-full bg-red-400"></div>
-              <div className="absolute top-2 right-2 w-6 h-2 bg-blue-400 rounded"></div>
-              <div className="absolute bottom-2 left-2 w-8 h-2 bg-green-400 rounded"></div>
-              <div className="absolute bottom-2 right-2 w-4 h-4 rounded-full bg-yellow-400"></div>
+              {template.layout === 'twoColumn' ? (
+                <div className="w-full h-full flex">
+                  <div className="w-1/3 h-full" style={{ backgroundColor: template.colors.primary }}></div>
+                  <div className="w-2/3 h-full bg-white"></div>
+                </div>
+              ) : template.layout === 'executive' ? (
+                <div className="w-full h-full">
+                  <div className="h-6 w-full" style={{ backgroundColor: template.colors.primary }}></div>
+                  <div className="h-full bg-white p-2">
+                    <div className="h-2 bg-gray-200 mb-1"></div>
+                    <div className="h-2 bg-gray-200 w-3/4"></div>
+                  </div>
+                </div>
+              ) : template.layout === 'tech' ? (
+                <div className="w-full h-full bg-gradient-to-br from-gray-50 to-blue-50">
+                  <div className="h-6 w-full bg-gradient-to-r from-gray-900 to-gray-700"></div>
+                  <div className="h-full p-2">
+                    <div className="h-2 bg-gray-300 mb-1"></div>
+                    <div className="h-2 bg-gray-300 w-2/3"></div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="absolute top-2 left-2 w-4 h-4 rounded-full" style={{ backgroundColor: template.colors.accent }}></div>
+                  <div className="absolute top-2 right-2 w-6 h-2" style={{ backgroundColor: template.colors.primary }}></div>
+                  <div className="absolute bottom-2 left-2 w-8 h-2" style={{ backgroundColor: template.colors.primary }}></div>
+                  <div className="absolute bottom-2 right-2 w-4 h-4 rounded-full" style={{ backgroundColor: template.colors.accent }}></div>
+                </>
+              )}
               
               <div className="text-center z-10">
                 <div className={`text-xs font-semibold ${template.accentColor}`}>Preview</div>
@@ -43,3 +69,4 @@ const TemplateSelector = ({ selectedTemplate, onSelect, templates }: TemplateSel
 };
 
 export default TemplateSelector;
+

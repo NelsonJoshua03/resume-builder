@@ -3,12 +3,25 @@
   publish = "dist"
 
 [dev]
-  # Match the port that Vite is actually using
   targetPort = 3001
-  # Optional: You can also specify the framework
   framework = "vite"
 
-# Priority redirects for SEO files (must come first)
+# Environment variables
+[build.environment]
+  NODE_VERSION = "18"
+
+# Redirects for SEO - UPDATED FOR CAREERCRAFT.IN
+[[redirects]]
+  from = "https://resumecvforge.netlify.app/*"
+  to = "https://careercraft.in/:splat"
+  status = 301
+
+[[redirects]]
+  from = "http://careercraft.in/*"
+  to = "https://careercraft.in/:splat"
+  status = 301
+
+# Priority redirects for SEO files
 [[redirects]]
   from = "/sitemap.xml"
   to = "/sitemap.xml"

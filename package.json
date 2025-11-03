@@ -1,9 +1,9 @@
 {
-  "name": "my-resume-website",
+  "name": "careercraft-website",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
-  "homepage": "https://resumecvforge.netlify.app",
+  "homepage": "https://careercraft.in",
   "scripts": {
     "dev": "vite",
     "start": "vite",
@@ -54,18 +54,24 @@
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2",
     "vite-plugin-html": "^3.2.2",
-    "vite-plugin-sitemap": "^0.8.2"
+    "vite-plugin-sitemap": "^8.0.0"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "description": "CareerCraft.in - India's premier career platform for resume building and job search",
   "main": "eslint.config.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NelsonJoshua03/resume-builder.git"
+    "url": "git+https://github.com/NelsonJoshua03/careercraft.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "resume-builder",
+    "job-portal",
+    "career-platform",
+    "india-jobs",
+    "ats-resume"
+  ],
+  "author": "CareerCraft India",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/NelsonJoshua03/resume-builder/issues"
+    "url": "https://github.com/NelsonJoshua03/careercraft/issues"
   }
 }

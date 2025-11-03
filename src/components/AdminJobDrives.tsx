@@ -122,7 +122,8 @@ const AdminJobDrives: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Admin - Job Drives | ResumeCVForge</title>
+        <title>Admin - Job Drives | CareerCraft.in</title>
+        <meta name="description" content="Manage job drives and walk-in interviews for CareerCraft.in - India's premier career platform" />
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 py-8">
@@ -132,13 +133,13 @@ const AdminJobDrives: React.FC = () => {
             <Link to="/job-drives" className="text-green-600 hover:text-green-800 mb-4 inline-block">
               ← Back to Job Drives
             </Link>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Drives</h1>
-            <p className="text-gray-600">Add walk-in drives and job fairs</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Drives - CareerCraft.in</h1>
+            <p className="text-gray-600">Add walk-in drives and job fairs for Indian job seekers</p>
           </div>
 
           {showSuccess && (
             <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-              Drive posted successfully!
+              Drive posted successfully on CareerCraft!
             </div>
           )}
 
@@ -146,7 +147,7 @@ const AdminJobDrives: React.FC = () => {
             {/* Main Form */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-lg p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Drive</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Drive to CareerCraft</h2>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Image Upload */}
@@ -183,7 +184,7 @@ const AdminJobDrives: React.FC = () => {
                               className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                             >
                               <Upload size={16} className="inline mr-2" />
-                              Upload Image
+                              Upload Drive Poster
                             </button>
                             <input
                               type="file"
@@ -291,7 +292,7 @@ const AdminJobDrives: React.FC = () => {
                       required
                       value={drive.description}
                       onChange={e => setDrive({...drive, description: e.target.value})}
-                      placeholder="Describe the drive, positions available, and key highlights..."
+                      placeholder="Describe the drive, positions available, and key highlights for Indian job seekers..."
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
@@ -380,7 +381,7 @@ Educational certificates..."
                       className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                     >
                       <Plus size={20} className="inline mr-2" />
-                      Add Job Drive
+                      Add Job Drive to CareerCraft
                     </button>
                   </div>
                 </form>
@@ -393,7 +394,7 @@ Educational certificates..."
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-bold text-gray-800">
-                    Drives ({drives.length})
+                    CareerCraft Drives ({drives.length})
                   </h3>
                   {drives.length > 0 && (
                     <button
@@ -406,7 +407,7 @@ Educational certificates..."
                   )}
                 </div>
                 {drives.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No drives added yet</p>
+                  <p className="text-gray-500 text-sm">No drives added yet to CareerCraft</p>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
                     {drives.map(driveItem => (
@@ -444,24 +445,30 @@ Educational certificates..."
 
               {/* Quick Stats */}
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">Quick Stats</h4>
+                <h4 className="font-semibold text-green-800 mb-2">CareerCraft Drive Stats</h4>
                 <div className="text-sm text-green-700 space-y-1">
                   <p>• Total Drives: {drives.length}</p>
                   <p>• Featured: {drives.filter(d => d.featured).length}</p>
                   <p>• Upcoming: {drives.filter(d => new Date(d.date) >= new Date()).length}</p>
                   <p>• With Images: {drives.filter(d => d.image).length}</p>
+                  <p>• This Month: {drives.filter(d => {
+                    const driveDate = new Date(d.date);
+                    const now = new Date();
+                    return driveDate.getMonth() === now.getMonth() && driveDate.getFullYear() === now.getFullYear();
+                  }).length}</p>
                 </div>
               </div>
 
               {/* Tips */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">Tips</h4>
+                <h4 className="font-semibold text-blue-800 mb-2">Tips for Indian Job Drives</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>• Use high-quality drive posters</li>
-                  <li>• Include all eligibility criteria</li>
-                  <li>• Provide clear contact information</li>
+                  <li>• Include all eligibility criteria for Indian graduates</li>
+                  <li>• Provide clear contact information with Indian phone numbers</li>
                   <li>• Mark important drives as featured</li>
-                  <li>• Set realistic dates and times</li>
+                  <li>• Set realistic dates and times for Indian locations</li>
+                  <li>• Mention specific Indian educational requirements</li>
                 </ul>
               </div>
             </div>

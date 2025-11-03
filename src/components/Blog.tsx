@@ -1,7 +1,7 @@
 // src/components/Blog.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import SEO from './SEO';
+import { Helmet } from 'react-helmet-async';
 
 interface BlogPost {
   id: number;
@@ -81,35 +81,34 @@ const Blog: React.FC = () => {
 
   return (
     <>
-      <SEO
-        title="ResumeCVForge Blog - Career Advice & ATS Resume Tips"
-        description="Expert resume advice, ATS optimization tips, and career insights. Learn how to create resumes that get you hired in competitive job markets."
-        keywords="resume blog, career advice blog, ATS resume tips, job search strategies, resume writing guide, career development"
-        canonicalUrl="https://resumecvforge.netlify.app/blog"
-      />
+      <Helmet>
+        <title>CareerCraft Blog - Career Advice & ATS Resume Tips for Indian Job Market</title>
+        <meta name="description" content="Expert resume advice, ATS optimization tips, and career insights for Indian job seekers. Learn how to create resumes that get you hired in competitive Indian job markets." />
+        <meta name="keywords" content="Indian resume blog, career advice India, ATS resume tips, job search strategies India, resume writing guide, career development India" />
+      </Helmet>
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">ResumeCVForge Blog</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">CareerCraft.in Blog</h1>
             <p className="text-xl text-gray-600 mb-8">
-              Expert advice, tips, and insights to help you create the perfect resume and land your dream job.
+              Expert advice, tips, and insights to help Indian professionals create the perfect resume and land dream jobs.
             </p>
             
             {/* E-E-A-T Trust Signals */}
             <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
               <div className="flex items-center text-gray-600 bg-green-50 px-4 py-2 rounded-full">
                 <span className="text-green-600 mr-2">✓</span>
-                Written by Career Experts
+                Written by Indian Career Experts
               </div>
               <div className="flex items-center text-gray-600 bg-blue-50 px-4 py-2 rounded-full">
                 <span className="text-blue-600 mr-2">✓</span>
-                ATS-Optimized Templates
+                ATS-Optimized for Indian Companies
               </div>
               <div className="flex items-center text-gray-600 bg-purple-50 px-4 py-2 rounded-full">
                 <span className="text-purple-600 mr-2">✓</span>
-                Updated Weekly
+                Updated Weekly with Indian Market Insights
               </div>
             </div>
           </div>
@@ -164,15 +163,15 @@ const Blog: React.FC = () => {
 
           {/* CTA Section */}
           <div className="text-center mt-16 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Create Your Professional Resume?</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Create Your Professional Indian Resume?</h3>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-              Join thousands of successful job seekers who landed their dream jobs with our ATS-optimized resume templates and expert guidance.
+              Join thousands of successful Indian job seekers who landed their dream jobs with our ATS-optimized resume templates and expert guidance tailored for Indian companies.
             </p>
             <Link 
               to="/builder" 
               className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 inline-block transition-colors duration-200 shadow-lg hover:shadow-xl"
             >
-              🚀 Start Building Your Resume Now
+              🚀 Start Building Your Indian Resume Now
             </Link>
           </div>
         </div>

@@ -1,5 +1,5 @@
 javascript:(function(){
-  // Job Capture Bookmarklet
+  // CareerCraft Job Capture Bookmarklet
   var jobData = {
     title: document.title.replace(/ - [^-]*$/, '').replace(' hiring', '').replace(' Careers', ''),
     company: '',
@@ -53,8 +53,8 @@ javascript:(function(){
     }
   });
   
-  // Open prepopulated form
-  var formUrl = 'https://yourdomain.com/admin/job-posting?' + 
+  // Open prepopulated form with CareerCraft.in domain
+  var formUrl = 'https://careercraft.in/admin/job-posting?' + 
     'title=' + encodeURIComponent(jobData.title) +
     '&company=' + encodeURIComponent(jobData.company) +
     '&location=' + encodeURIComponent(jobData.location) +

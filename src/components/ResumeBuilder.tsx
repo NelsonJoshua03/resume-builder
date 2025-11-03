@@ -7,13 +7,14 @@ import TemplateSelector from './TemplateSelector';
 import FileUpload from './FileUpload';
 import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
-import { ResumeData, Template, PersonalInfoData, Skill, SectionItem, ParsedResumeData } from './types';
+import { ResumeData, Template, PersonalInfoData, Skill, SectionItem, ParsedResumeData, Experience as ExperienceType, Education as EducationType, Project } from './types';
 import Projects from './Projects';
 import Awards from './Awards';
 import CustomFields from './CustomFields';
 import MobilePDFGenerator from './MobilePDFGenerator';
 import SEO from './SEO';
 import SectionOrderCustomizer from './SectionOrderCustomizer';
+import SocialSharing from './SocialSharing';
 
 // Enhanced template configuration with color customization
 const TEMPLATES: Record<string, Template> = {
@@ -80,46 +81,67 @@ const TEMPLATES: Record<string, Template> = {
       text: '#1f2937'
     }
   },
-  minimalist: {
-    id: 'minimalist',
-    name: 'Minimalist',
+  executive: {
+    id: 'executive',
+    name: 'Executive',
     background: 'bg-white',
     textColor: 'text-gray-900',
-    accentColor: 'text-gray-700',
-    borderColor: 'border-gray-400',
-    buttonColor: 'bg-gray-700 hover:bg-gray-800',
-    headerBg: 'bg-gray-100',
-    headerText: 'text-gray-800',
+    accentColor: 'text-indigo-900',
+    borderColor: 'border-indigo-600',
+    buttonColor: 'bg-indigo-900 hover:bg-indigo-800',
+    headerBg: 'bg-indigo-900',
+    headerText: 'text-white',
     sectionBg: 'bg-gray-50',
-    description: 'Simple and focused design with maximum readability',
-    layout: 'minimalist',
+    description: 'Elegant corporate design for senior roles',
+    layout: 'executive',
     colors: {
-      primary: '#374151', // gray-700
-      secondary: '#1f2937', // gray-800
-      accent: '#d1d5db', // gray-300
+      primary: '#312e81', // indigo-900
+      secondary: '#3730a3', // indigo-800
+      accent: '#6366f1', // indigo-500
       background: '#ffffff',
       text: '#111827'
     }
   },
-  modern: {
-    id: 'modern',
-    name: 'Modern',
-    background: 'bg-gradient-to-br from-blue-50 to-cyan-50',
+  tech: {
+    id: 'tech',
+    name: 'Tech',
+    background: 'bg-gradient-to-br from-gray-50 to-blue-50',
     textColor: 'text-gray-900',
-    accentColor: 'text-blue-600',
-    borderColor: 'border-blue-300',
-    buttonColor: 'bg-blue-600 hover:bg-blue-700',
-    headerBg: 'bg-gradient-to-r from-blue-500 to-cyan-500',
+    accentColor: 'text-gray-800',
+    borderColor: 'border-gray-400',
+    buttonColor: 'bg-gray-800 hover:bg-gray-700',
+    headerBg: 'bg-gradient-to-r from-gray-900 to-gray-700',
     headerText: 'text-white',
     sectionBg: 'bg-white bg-opacity-80',
-    description: 'Clean modern design with skill proficiency charts',
-    layout: 'modern',
+    description: 'Modern tech-focused design for developers',
+    layout: 'tech',
     colors: {
-      primary: '#2563eb', // blue-600
-      secondary: '#1d4ed8', // blue-700
-      accent: '#93c5fd', // blue-300
-      background: '#eff6ff',
+      primary: '#1f2937', // gray-800
+      secondary: '#374151', // gray-700
+      accent: '#9ca3af', // gray-400
+      background: '#f9fafb',
       text: '#1f2937'
+    }
+  },
+  twoColumn: {
+    id: 'twoColumn',
+    name: 'Two Column',
+    background: 'bg-white',
+    textColor: 'text-gray-900',
+    accentColor: 'text-teal-700',
+    borderColor: 'border-teal-600',
+    buttonColor: 'bg-teal-700 hover:bg-teal-600',
+    headerBg: 'bg-teal-700',
+    headerText: 'text-white',
+    sectionBg: 'bg-teal-50',
+    description: 'Modern two-column layout with sidebar',
+    layout: 'twoColumn',
+    colors: {
+      primary: '#0f766e', // teal-700
+      secondary: '#115e59', // teal-800
+      accent: '#5eead4', // teal-300
+      background: '#ffffff',
+      text: '#111827'
     }
   }
 };
@@ -485,7 +507,7 @@ const ResumeBuilder = () => {
           : ['Professional summary will appear here.']
       },
       experiences: parsedData.experiences.length > 0 
-        ? parsedData.experiences.map((exp, index) => ({
+        ? parsedData.experiences.map((exp: ExperienceType, index: number) => ({
             ...exp,
             id: Date.now() + index,
             description: exp.description.length > 0 ? exp.description : ['']
@@ -498,7 +520,7 @@ const ResumeBuilder = () => {
             description: ['']
           }],
       education: parsedData.education.length > 0 
-        ? parsedData.education.map((edu, index) => ({
+        ? parsedData.education.map((edu: EducationType, index: number) => ({
             ...edu,
             id: Date.now() + index,
             gpa: edu.gpa || ''
@@ -514,7 +536,7 @@ const ResumeBuilder = () => {
         ? parsedData.skills 
         : [{ name: 'JavaScript', proficiency: 'Intermediate' }],
       projects: parsedData.projects.length > 0 
-        ? parsedData.projects.map((proj, index) => ({
+        ? parsedData.projects.map((proj: Project, index: number) => ({
             ...proj,
             id: Date.now() + index,
             description: proj.description.length > 0 ? proj.description : [''],
@@ -566,15 +588,15 @@ const ResumeBuilder = () => {
   return (
     <>
       <SEO
-        title="Free Resume Builder - Create ATS-Friendly CV Online"
-        description="Build professional, ATS-optimized resumes with our free online builder. 10+ templates for engineers, developers, and IT professionals. Download PDF instantly."
-        keywords="free resume builder, online CV maker, ATS resume template, professional resume download, resume builder no sign up, create resume free"
-        canonicalUrl="https://resumecvforge.netlify.app/builder"
+        title="Free Resume Builder - Create ATS-Friendly CV Online | CareerCraft"
+        description="Build professional, ATS-optimized resumes with CareerCraft's free online builder. 6+ templates for engineers, developers, and professionals. Download PDF instantly."
+        keywords="free resume builder, online CV maker, ATS resume template, professional resume download, resume builder no sign up, create resume free, career craft"
+        canonicalUrl="https://careercraft.in/builder"
       />
       
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <header className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-800 mb-3">Resume Builder</h1>
+          <h1 className="text-4xl font-bold text-gray-800 mb-3">CareerCraft Resume Builder</h1>
           <p className="text-xl text-gray-600">Create professional resumes in minutes</p>
         </header>
 
@@ -640,12 +662,18 @@ const ResumeBuilder = () => {
               sectionOrder={sectionOrder}
             />
             
-            {/* Updated MobilePDFGenerator with new props */}
+            {/* Updated MobilePDFGenerator with sectionOrder prop */}
             <MobilePDFGenerator 
               resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
               personalInfo={resumeData.personalInfo}
               resumeData={resumeData}
               template={currentTemplate}
+              sectionOrder={sectionOrder}
+            />
+
+            {/* Social Sharing Component */}
+            <SocialSharing 
+              resumeTitle={resumeData.personalInfo.title}
             />
             
             <TemplateSelector 

@@ -76,16 +76,17 @@ const JobDrives: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Walk-in Drives & Job Fairs | ResumeCVForge</title>
-        <meta name="description" content="Find upcoming walk-in drives, job fairs, and immediate hiring opportunities across India." />
+        <title>Walk-in Drives & Job Fairs in India | CareerCraft.in</title>
+        <meta name="description" content="Find upcoming walk-in drives, job fairs, and immediate hiring opportunities across India. Direct company interviews for IT, engineering, and business roles." />
+        <meta name="keywords" content="walk-in drives India, job fairs India, immediate hiring, direct interview, IT jobs walk-in, engineering jobs drive, campus placement India" />
       </Helmet>
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-green-600 to-green-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Walk-in Drives & Job Fairs</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Walk-in Drives & Job Fairs in India</h1>
           <p className="text-xl max-w-2xl mx-auto mb-8">
-            Immediate hiring opportunities with direct company interviews
+            Immediate hiring opportunities with direct company interviews across India
           </p>
           
           {/* Search Form */}
@@ -143,7 +144,7 @@ const JobDrives: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div>
                 <h3 className="font-bold text-yellow-800">Admin Access</h3>
-                <p className="text-yellow-700 text-sm">Add new walk-in drives and job fairs</p>
+                <p className="text-yellow-700 text-sm">Add new walk-in drives and job fairs for Indian companies</p>
               </div>
               <Link 
                 to="/admin/job-drives" 
@@ -170,7 +171,7 @@ const JobDrives: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-3xl font-bold text-gray-800">
-                All Walk-in Drives ({filteredDrives.length})
+                All Walk-in Drives in India ({filteredDrives.length})
               </h2>
               <div className="text-sm text-gray-600">
                 Sorted by date
@@ -180,7 +181,7 @@ const JobDrives: React.FC = () => {
             {filteredDrives.length === 0 ? (
               <div className="bg-white rounded-lg shadow-lg p-8 text-center">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">No drives found</h3>
-                <p className="text-gray-600 mb-4">Try adjusting your search terms or check back later</p>
+                <p className="text-gray-600 mb-4">Try adjusting your search terms or check back later for new Indian job drives</p>
                 <Link 
                   to="/admin/job-drives"
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -209,16 +210,16 @@ const JobDrives: React.FC = () => {
               <p className="text-sm text-gray-500 mb-6">{selectedDrive.company} • {selectedDrive.location}</p>
               
               <div className="flex justify-center space-x-4 mb-6">
-                <FacebookShareButton url={shareUrl} title={selectedDrive.title}>
+                <FacebookShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
                   <FacebookIcon size={40} round />
                 </FacebookShareButton>
-                <LinkedinShareButton url={shareUrl} title={selectedDrive.title}>
+                <LinkedinShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
                   <LinkedinIcon size={40} round />
                 </LinkedinShareButton>
-                <TwitterShareButton url={shareUrl} title={selectedDrive.title}>
+                <TwitterShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
                   <TwitterIcon size={40} round />
                 </TwitterShareButton>
-                <WhatsappShareButton url={shareUrl} title={selectedDrive.title}>
+                <WhatsappShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
                   <WhatsappIcon size={40} round />
                 </WhatsappShareButton>
               </div>
@@ -267,7 +268,7 @@ const DriveCard: React.FC<{ drive: JobDrive; onShare: (drive: JobDrive) => void;
           alt={drive.title}
           className="w-full h-48 object-cover"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200/3B82F6/FFFFFF?text=Drive+Image';
+            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200/3B82F6/FFFFFF?text=CareerCraft.in+Drive';
           }}
         />
         {featured && (
