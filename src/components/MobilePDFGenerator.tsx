@@ -1,6 +1,7 @@
 // src/components/MobilePDFGenerator.tsx
 import { useState } from 'react';
 import jsPDF from 'jspdf';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 interface MobilePDFGeneratorProps {
   resumeRef: React.RefObject<HTMLDivElement>;
@@ -18,29 +19,6 @@ interface MobilePDFGeneratorProps {
   onDownloadEnd?: () => void;
 }
 
-const trackDownload = (fileName: string) => {
-  if (typeof gtag !== 'undefined') {
-    gtag('event', 'download', {
-      'event_category': 'resume',
-      'event_label': fileName,
-      'value': 1
-    });
-  }
-  
-  try {
-    const currentDownloads = parseInt(localStorage.getItem('resumeDownloads') || '0');
-    localStorage.setItem('resumeDownloads', (currentDownloads + 1).toString());
-    
-    const templateType = localStorage.getItem('currentTemplate') || 'default';
-    const templateDownloads = parseInt(localStorage.getItem(`downloads_${templateType}`) || '0');
-    localStorage.setItem(`downloads_${templateType}`, (templateDownloads + 1).toString());
-  } catch (error) {
-    console.log('LocalStorage tracking failed:', error);
-  }
-  
-  console.log(`📊 Download tracked: ${fileName}`);
-};
-
 const MobilePDFGenerator = ({ 
   resumeRef, 
   personalInfo,
@@ -52,6 +30,25 @@ const MobilePDFGenerator = ({
 }: MobilePDFGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { trackResumeDownload, trackButtonClick } = useGoogleAnalytics();
+
+  const trackDownload = (fileName: string) => {
+    trackResumeDownload('PDF', template.name);
+    trackButtonClick('download_pdf', 'pdf_generator', 'resume_builder');
+    
+    try {
+      const currentDownloads = parseInt(localStorage.getItem('resumeDownloads') || '0');
+      localStorage.setItem('resumeDownloads', (currentDownloads + 1).toString());
+      
+      const templateType = localStorage.getItem('currentTemplate') || 'default';
+      const templateDownloads = parseInt(localStorage.getItem(`downloads_${templateType}`) || '0');
+      localStorage.setItem(`downloads_${templateType}`, (templateDownloads + 1).toString());
+    } catch (error) {
+      console.log('LocalStorage tracking failed:', error);
+    }
+    
+    console.log(`📊 Download tracked: ${fileName}`);
+  };
 
   const downloadPDF = async () => {
     if (!resumeRef.current) return;
@@ -718,11 +715,10 @@ const MobilePDFGenerator = ({
                       pdf.setFont('helvetica', 'italic');
                       pdf.setTextColor(80, 80, 80);
                       const techText = project.technologies.join(', ');
-                      const techX = margin + pdf.getTextWidth('Technologies: ');
                       const lines = pdf.splitTextToSize(techText, contentWidth - pdf.getTextWidth('Technologies: '));
                       lines.forEach((line: string) => {
                         checkNewPage(4);
-                        pdf.text(line, techX, yPosition);
+                        pdf.text(line, margin + pdf.getTextWidth('Technologies: '), yPosition);
                         yPosition += 3.8;
                       });
                     }

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 interface Job {
   id: string;
@@ -30,6 +31,8 @@ const JobApplications: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const jobsPerPage = 10;
 
+  const { trackJobApplication, trackJobView, trackSearch, trackButtonClick } = useGoogleAnalytics();
+
   // Popular Indian cities for quick filters
   const popularCities = [
     'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 
@@ -54,12 +57,15 @@ const JobApplications: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1); // Reset to first page when searching
+    trackSearch(searchTerm, filteredJobs.length, 'job_search');
+    trackButtonClick('job_search', 'search_form', 'job_applications');
   };
 
   // Handle city quick filter
   const handleCityFilter = (city: string) => {
     setLocationFilter(city);
     setCurrentPage(1);
+    trackButtonClick(`filter_city_${city}`, 'city_filters', 'job_applications');
   };
 
   // Clear all filters
@@ -69,6 +75,7 @@ const JobApplications: React.FC = () => {
     setSearchTerm('');
     setLocationFilter('');
     setCurrentPage(1);
+    trackButtonClick('clear_filters', 'filters', 'job_applications');
   };
 
   const sectors = ['all', 'IT/Software', 'Engineering', 'Data Science', 'Marketing', 'HR', 'Finance', 'Healthcare', 'Education', 'Sales'];
@@ -98,7 +105,20 @@ const JobApplications: React.FC = () => {
   // Page navigation
   const goToPage = (page: number) => {
     setCurrentPage(page);
+    trackButtonClick(`page_${page}`, 'pagination', 'job_applications');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSectorChange = (sector: string) => {
+    setSelectedSector(sector);
+    setCurrentPage(1);
+    trackButtonClick(`filter_sector_${sector}`, 'sector_filters', 'job_applications');
+  };
+
+  const handleTypeChange = (type: string) => {
+    setSelectedType(type);
+    setCurrentPage(1);
+    trackButtonClick(`filter_type_${type}`, 'type_filters', 'job_applications');
   };
 
   return (
@@ -203,10 +223,7 @@ const JobApplications: React.FC = () => {
                   <select 
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={selectedSector}
-                    onChange={(e) => {
-                      setSelectedSector(e.target.value);
-                      setCurrentPage(1);
-                    }}
+                    onChange={(e) => handleSectorChange(e.target.value)}
                   >
                     {sectors.map(sector => (
                       <option key={sector} value={sector}>
@@ -222,10 +239,7 @@ const JobApplications: React.FC = () => {
                   <select 
                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={selectedType}
-                    onChange={(e) => {
-                      setSelectedType(e.target.value);
-                      setCurrentPage(1);
-                    }}
+                    onChange={(e) => handleTypeChange(e.target.value)}
                   >
                     {jobTypes.map(type => (
                       <option key={type} value={type}>
@@ -253,6 +267,7 @@ const JobApplications: React.FC = () => {
                 </p>
                 <Link 
                   to="/builder" 
+                  onClick={() => trackButtonClick('build_resume_sidebar', 'sidebar_cta', 'job_applications')}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors block text-center"
                 >
                   Build Resume
@@ -267,6 +282,7 @@ const JobApplications: React.FC = () => {
                 </p>
                 <Link 
                   to="/admin/job-posting" 
+                  onClick={() => trackButtonClick('admin_job_posting', 'sidebar_cta', 'job_applications')}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors block text-center"
                 >
                   Post New Job
@@ -383,8 +399,29 @@ const JobApplications: React.FC = () => {
 
 // Job Card Component
 const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = false }) => {
+  const { trackJobApplication, trackJobView, trackButtonClick } = useGoogleAnalytics();
+  
   const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000;
   
+  const handleViewJob = () => {
+    trackJobView(job.id, job.title, 'job_listing');
+  };
+
+  const handleApplyClick = () => {
+    trackJobApplication(job.id, job.title, job.company, job.sector);
+    trackButtonClick('apply_job', 'job_card', 'job_applications');
+  };
+
+  const handleBuildResumeClick = () => {
+    trackButtonClick('build_resume_from_job', 'job_card', 'job_applications');
+  };
+
+  // Track job view only once when component mounts
+  useEffect(() => {
+    handleViewJob();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures this runs only once
+
   return (
     <div className={`job-card bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${
       featured ? 'featured-job border-l-4 border-blue-500' : ''
@@ -444,12 +481,14 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
             href={job.applyLink} 
             target="_blank" 
             rel="noopener noreferrer"
+            onClick={handleApplyClick}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
           >
             Apply Now
           </a>
           <Link 
             to="/builder" 
+            onClick={handleBuildResumeClick}
             className="border border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-center"
           >
             Build Resume First

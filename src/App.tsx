@@ -24,11 +24,14 @@ import CookiePolicy from "./components/CookiePolicy";
 import Contact from "./components/Contact";
 import JobDrives from './components/JobDrives';
 import AdminJobDrives from './components/AdminJobDrives';
+import GoogleAnalytics from './components/GoogleAnalytics'; // ADD THIS IMPORT
 
 function App() {
   return (
     <HelmetProvider>
       <Router>
+        {/* ADD GoogleAnalytics component here */}
+        <GoogleAnalytics />
         <Layout>
           <Routes>
             {/* Main Pages */}

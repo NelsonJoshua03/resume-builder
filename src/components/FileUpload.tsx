@@ -1,31 +1,47 @@
 // src/components/FileUpload.tsx
 import { useState } from 'react';
 import { FileUploadProps } from './types';
+import { SimpleResumeParser, extractTextFromFile } from '../utils/simpleResumeParser';
 
 const FileUpload = ({ onUpload }: FileUploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('resume', file);
+    setIsProcessing(true);
 
     try {
-      const response = await fetch('/api/parse-resume', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to parse resume');
+      // Extract text from the file (now supports PDF)
+      const extractedText = await extractTextFromFile(file);
+      
+      if (extractedText === 'UNSUPPORTED_FILE_TYPE') {
+        alert('Unsupported file type. Please upload a PDF, TXT, DOC, or DOCX file.');
+        setIsProcessing(false);
+        return;
       }
 
-      const parsedData = await response.json();
+      if (extractedText === 'MANUAL_INPUT_REQUIRED') {
+        alert('This file type requires manual text extraction. Please copy and paste your resume content or use a PDF file.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Parse the extracted text
+      const parser = new SimpleResumeParser(extractedText);
+      const parsedData = parser.parse();
+      
+      console.log('Parsed resume data:', parsedData);
+      
       onUpload(parsedData);
+      alert('Resume uploaded successfully! Please review and edit the auto-filled information.');
+      
     } catch (error) {
       console.error('Error parsing resume:', error);
       alert('Failed to parse resume. Please try again or enter information manually.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -67,11 +83,11 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
           isDragging 
             ? 'border-blue-400 bg-blue-50' 
             : 'border-gray-300 hover:border-blue-300 hover:bg-gray-50'
-        }`}
+        } ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => document.getElementById('resume-file-input')?.click()}
+        onClick={() => !isProcessing && document.getElementById('resume-file-input')?.click()}
       >
         <input 
           type="file" 
@@ -79,25 +95,35 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
           className="hidden" 
           accept=".pdf,.doc,.docx,.txt"
           onChange={handleFileInput}
+          disabled={isProcessing}
         />
         
         <div className="flex flex-col items-center justify-center space-y-3">
-          <i className="fas fa-file-upload text-4xl text-gray-400"></i>
-          <div>
-            <p className="text-lg font-medium text-gray-700">Upload your resume</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Drag & drop your resume file here or click to browse
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 justify-center text-xs text-gray-500">
-            <span>PDF</span>
-            <span>•</span>
-            <span>DOC</span>
-            <span>•</span>
-            <span>DOCX</span>
-            <span>•</span>
-            <span>TXT</span>
-          </div>
+          {isProcessing ? (
+            <>
+              <i className="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
+              <p className="text-lg font-medium text-gray-700">Processing your resume...</p>
+            </>
+          ) : (
+            <>
+              <i className="fas fa-file-upload text-4xl text-gray-400"></i>
+              <div>
+                <p className="text-lg font-medium text-gray-700">Upload your resume</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Drag & drop your resume file here or click to browse
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center text-xs text-gray-500">
+                <span>PDF</span>
+                <span>•</span>
+                <span>DOC</span>
+                <span>•</span>
+                <span>DOCX</span>
+                <span>•</span>
+                <span>TXT</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
       
@@ -107,7 +133,7 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
             <i className="fas fa-info-circle"></i>
           </div>
           <div className="text-sm text-blue-800">
-            <strong>How it works:</strong> Upload your existing resume and we'll automatically extract your information to pre-fill the form. Supported formats: PDF, DOC, DOCX, TXT.
+            <strong>How it works:</strong> Upload your existing resume and we'll automatically extract your information to pre-fill the form. PDF files work best for automatic extraction. Supported formats: PDF, DOC, DOCX, TXT.
           </div>
         </div>
       </div>

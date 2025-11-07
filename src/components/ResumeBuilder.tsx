@@ -15,6 +15,7 @@ import MobilePDFGenerator from './MobilePDFGenerator';
 import SEO from './SEO';
 import SectionOrderCustomizer from './SectionOrderCustomizer';
 import SocialSharing from './SocialSharing';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 // Enhanced template configuration with color customization
 const TEMPLATES: Record<string, Template> = {
@@ -247,6 +248,9 @@ const ResumeBuilder = () => {
 
   const [formKey, setFormKey] = useState(0); // Add this key to force re-render
   const resumeRef = useRef<HTMLDivElement>(null);
+  
+  // Google Analytics tracking
+  const { trackResumeGeneration, trackButtonClick, trackTemplateChange } = useGoogleAnalytics();
 
   // Debug effect to log state changes
   useEffect(() => {
@@ -288,6 +292,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    trackButtonClick('add_experience', 'experience_section', 'resume_builder');
     return newId;
   };
 
@@ -296,6 +301,7 @@ const ResumeBuilder = () => {
       ...prev,
       experiences: prev.experiences.filter(exp => exp.id !== id)
     }));
+    trackButtonClick('remove_experience', 'experience_section', 'resume_builder');
   };
 
   const updateEducation = (id: number, field: string, value: string) => {
@@ -322,6 +328,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    trackButtonClick('add_education', 'education_section', 'resume_builder');
     return newId;
   };
 
@@ -330,6 +337,7 @@ const ResumeBuilder = () => {
       ...prev,
       education: prev.education.filter(edu => edu.id !== id)
     }));
+    trackButtonClick('remove_education', 'education_section', 'resume_builder');
   };
 
   const addSkill = (skill: Skill) => {
@@ -338,6 +346,7 @@ const ResumeBuilder = () => {
         ...prev,
         skills: [...prev.skills, skill]
       }));
+      trackButtonClick('add_skill', 'skills_section', 'resume_builder');
     }
   };
 
@@ -346,6 +355,7 @@ const ResumeBuilder = () => {
       ...prev,
         skills: prev.skills.filter((_, i) => i !== index)
     }));
+    trackButtonClick('remove_skill', 'skills_section', 'resume_builder');
   };
 
   const updateSkillProficiency = (index: number, proficiency: Skill['proficiency']) => {
@@ -362,6 +372,8 @@ const ResumeBuilder = () => {
       ...prev,
       selectedTemplate: template
     }));
+    trackTemplateChange(template);
+    trackButtonClick('template_select', 'template_selector', 'resume_builder');
   };
 
   const updateTemplateColors = (colors: any) => {
@@ -372,6 +384,7 @@ const ResumeBuilder = () => {
         [prev.selectedTemplate]: colors
       }
     }));
+    trackButtonClick('update_colors', 'color_customizer', 'resume_builder');
   };
 
   const updateProject = (id: number, field: string, value: any) => {
@@ -399,6 +412,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    trackButtonClick('add_project', 'projects_section', 'resume_builder');
     return newId;
   };
 
@@ -407,6 +421,7 @@ const ResumeBuilder = () => {
       ...prev,
       projects: prev.projects.filter(proj => proj.id !== id)
     }));
+    trackButtonClick('remove_project', 'projects_section', 'resume_builder');
   };
 
   const updateAward = (id: number, field: string, value: string) => {
@@ -433,6 +448,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    trackButtonClick('add_award', 'awards_section', 'resume_builder');
     return newId;
   };
 
@@ -441,6 +457,7 @@ const ResumeBuilder = () => {
       ...prev,
       awards: prev.awards.filter(award => award.id !== id)
     }));
+    trackButtonClick('remove_award', 'awards_section', 'resume_builder');
   };
 
   const updateCustomField = (id: number, field: string, value: string) => {
@@ -475,6 +492,7 @@ const ResumeBuilder = () => {
         }
       ]
     }));
+    trackButtonClick('add_custom_field', 'custom_fields', 'resume_builder');
     return newId;
   };
 
@@ -483,6 +501,7 @@ const ResumeBuilder = () => {
       ...prev,
       customFields: prev.customFields.filter(cf => cf.id !== id)
     }));
+    trackButtonClick('remove_custom_field', 'custom_fields', 'resume_builder');
   };
 
   const handleFileUpload = (parsedData: ParsedResumeData) => {
@@ -494,6 +513,8 @@ const ResumeBuilder = () => {
       skills: parsedData.skills,
       projects: parsedData.projects
     });
+    
+    trackButtonClick('file_upload', 'file_upload', 'resume_builder');
     
     // Create a completely new state with parsed data
     const newResumeData: ResumeData = {
@@ -577,6 +598,7 @@ const ResumeBuilder = () => {
 
   const handleSectionReorder = (reorderedSections: SectionItem[]) => {
     setSectionOrder(reorderedSections);
+    trackButtonClick('reorder_sections', 'section_ordering', 'resume_builder');
   };
 
   // Get the current template configuration

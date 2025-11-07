@@ -1,4 +1,8 @@
 // src/utils/simpleResumeParser.ts
+
+// Import PDF.js types (you'll need to install: npm install pdfjs-dist)
+// At the top of your file, you'll need to configure PDF.js worker
+
 export interface ParsedResumeData {
   personalInfo: {
     name: string;
@@ -782,19 +786,57 @@ export class SimpleResumeParser {
   }
 }
 
-// Simple file extraction
+// Enhanced file extraction with PDF support
 export async function extractTextFromFile(file: File): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     try {
-      if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+      // Handle PDF files
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        try {
+          // Dynamically import PDF.js
+          const pdfjsLib = await import('pdfjs-dist');
+          
+          // Set worker source
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          
+          let fullText = '';
+          
+          // Extract text from each page
+          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+              .map((item: any) => item.str)
+              .join(' ');
+            fullText += pageText + '\n';
+          }
+          
+          console.log('PDF text extracted successfully');
+          resolve(fullText);
+        } catch (pdfError) {
+          console.error('PDF extraction error:', pdfError);
+          resolve('UNSUPPORTED_FILE_TYPE');
+        }
+      }
+      // Handle plain text files
+      else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target?.result as string);
         reader.onerror = () => resolve('UNSUPPORTED_FILE_TYPE');
         reader.readAsText(file);
-      } else {
+      }
+      // Handle DOC/DOCX files - require manual input or backend processing
+      else if (file.name.toLowerCase().endsWith('.doc') || file.name.toLowerCase().endsWith('.docx')) {
         resolve('MANUAL_INPUT_REQUIRED');
       }
+      else {
+        resolve('UNSUPPORTED_FILE_TYPE');
+      }
     } catch (error) {
+      console.error('File extraction error:', error);
       resolve('UNSUPPORTED_FILE_TYPE');
     }
   });

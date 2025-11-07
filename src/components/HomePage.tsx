@@ -1,4 +1,5 @@
 // src/components/HomePage.tsx
+import React, { useEffect } from 'react'; // ✅ Added React import
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { 
@@ -11,8 +12,21 @@ import {
   Download,
   Shield
 } from 'lucide-react';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 const HomePage = () => {
+  const { trackButtonClick, trackPageView } = useGoogleAnalytics();
+
+
+
+  const handleCTAClick = (buttonName: string, section: string) => {
+    trackButtonClick(buttonName, section, 'homepage');
+  };
+
+  const handleFeatureClick = (featureName: string) => {
+    trackButtonClick(`view_${featureName.toLowerCase()}`, 'features_section', 'homepage');
+  };
+
   return (
     <>
       <Helmet>
@@ -45,6 +59,7 @@ const HomePage = () => {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link 
                   to="/builder" 
+                  onClick={() => handleCTAClick('build_resume', 'hero_section')}
                   className="bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                 >
                   <FileText size={24} />
@@ -52,6 +67,7 @@ const HomePage = () => {
                 </Link>
                 <Link 
                   to="/job-applications" 
+                  onClick={() => handleCTAClick('find_jobs', 'hero_section')}
                   className="border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white hover:text-blue-600 transition-all duration-300 flex items-center justify-center gap-2 transform hover:-translate-y-1"
                 >
                   <Briefcase size={24} />
@@ -95,7 +111,10 @@ const HomePage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300">
+              <div 
+                className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                onClick={() => handleFeatureClick('ATS_Resumes')}
+              >
                 <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FileText className="text-blue-600" size={32} />
                 </div>
@@ -105,7 +124,10 @@ const HomePage = () => {
                 </p>
               </div>
 
-              <div className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300">
+              <div 
+                className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                onClick={() => handleFeatureClick('India_Jobs')}
+              >
                 <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Briefcase className="text-green-600" size={32} />
                 </div>
@@ -115,7 +137,10 @@ const HomePage = () => {
                 </p>
               </div>
 
-              <div className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300">
+              <div 
+                className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                onClick={() => handleFeatureClick('Career_Guidance')}
+              >
                 <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="text-purple-600" size={32} />
                 </div>
@@ -199,7 +224,11 @@ const HomePage = () => {
                 { name: 'Design & Creative', color: 'bg-indigo-500' },
                 { name: 'Education & Research', color: 'bg-teal-500' }
               ].map((industry, index) => (
-                <div key={index} className="bg-white rounded-lg p-4 text-center shadow-md hover:shadow-lg transition-shadow duration-300">
+                <div 
+                  key={index} 
+                  className="bg-white rounded-lg p-4 text-center shadow-md hover:shadow-lg transition-shadow duration-300 cursor-pointer"
+                  onClick={() => handleFeatureClick(`${industry.name}_Industry`)}
+                >
                   <div className={`w-12 h-12 ${industry.color} rounded-full mx-auto mb-2 flex items-center justify-center text-white font-bold`}>
                     {industry.name.charAt(0)}
                   </div>
@@ -261,6 +290,7 @@ const HomePage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link 
                 to="/builder" 
+                onClick={() => handleCTAClick('final_build_resume', 'final_cta')}
                 className="bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
               >
                 Create Your Resume
@@ -268,6 +298,7 @@ const HomePage = () => {
               </Link>
               <Link 
                 to="/job-applications" 
+                onClick={() => handleCTAClick('final_find_jobs', 'final_cta')}
                 className="border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white hover:text-blue-600 transition-all duration-300 transform hover:-translate-y-1"
               >
                 Browse Indian Jobs

@@ -1,10 +1,12 @@
 // src/components/BlogPost.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const { trackBlogView, trackButtonClick } = useGoogleAnalytics();
   
   // Dynamic blog posts based on slug
   const getBlogPostBySlug = (slug: string | undefined) => {
@@ -90,6 +92,17 @@ const BlogPost: React.FC = () => {
 
   const currentPost = getBlogPostBySlug(slug);
 
+  // Track blog post view - ADD THIS BACK
+  useEffect(() => {
+    if (currentPost) {
+      trackBlogView(slug || 'unknown', currentPost.title, currentPost.category);
+    }
+  }, [currentPost, slug, trackBlogView]);
+
+  const handleCTAClick = () => {
+    trackButtonClick('build_resume_from_blog', 'blog_post_cta', 'blog');
+  };
+
   return (
     <>
       <Helmet>
@@ -100,7 +113,13 @@ const BlogPost: React.FC = () => {
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
-          <Link to="/blog" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">← Back to CareerCraft Blog</Link>
+          <Link 
+            to="/blog" 
+            className="text-blue-600 hover:text-blue-700 mb-4 inline-block"
+            onClick={() => trackButtonClick('back_to_blog', 'blog_navigation', 'blog')}
+          >
+            ← Back to CareerCraft Blog
+          </Link>
           
           <article className="bg-white rounded-lg shadow-lg p-8">
             <div className="flex items-center justify-between mb-6">
@@ -120,7 +139,11 @@ const BlogPost: React.FC = () => {
             />
             
             <div className="mt-8 pt-6 border-t border-gray-200">
-              <Link to="/builder" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 inline-block">
+              <Link 
+                to="/builder" 
+                onClick={handleCTAClick}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 inline-block"
+              >
                 Create Your ATS-Friendly Indian Resume
               </Link>
             </div>
