@@ -1,8 +1,5 @@
 // src/utils/simpleResumeParser.ts
 
-// Import PDF.js types (you'll need to install: npm install pdfjs-dist)
-// At the top of your file, you'll need to configure PDF.js worker
-
 export interface ParsedResumeData {
   personalInfo: {
     name: string;
@@ -63,6 +60,7 @@ export class SimpleResumeParser {
         .replace(/\r/g, '\n')
         .replace(/\t/g, ' ')
         .replace(/[ ]+/g, ' ')
+        .replace(/\n\s*\n/g, '\n\n') // Preserve paragraph breaks
         .replace(/\n+/g, '\n')
         .trim();
 
@@ -72,7 +70,7 @@ export class SimpleResumeParser {
         .filter(line => line.length > 0);
 
       console.log('Total lines:', this.lines.length);
-      console.log('Lines:', this.lines);
+      console.log('First 20 lines:', this.lines.slice(0, 20));
 
       return {
         personalInfo: this.parsePersonalInfo(),
@@ -88,21 +86,17 @@ export class SimpleResumeParser {
   }
 
   private normalizeSpacedOutText(text: string): string {
-    // Handle spaced-out text like "K A R E N P H I L I P S"
     const words = text.trim().split(/\s+/);
     
     if (words.length > 3) {
       const singleCharCount = words.filter(word => word.length === 1).length;
       const totalChars = words.join('').length;
       
-      // If more than 70% are single characters and it's not too short, it's probably spaced-out
       if (singleCharCount > 0.7 * words.length && totalChars >= 3) {
-        // Check if it's a common acronym or should remain spaced out
         const potentialWord = words.join('').toUpperCase();
         const commonAcronyms = ['USA', 'UK', 'CEO', 'CFO', 'VP', 'HR', 'IT', 'UI', 'UX', 'API'];
         
         if (!commonAcronyms.includes(potentialWord) && potentialWord.length > 2) {
-          // Reconstruct as normal text (remove extra spaces between characters)
           return words.join('');
         }
       }
@@ -125,13 +119,16 @@ export class SimpleResumeParser {
       const line = this.lines[i];
       const words = line.split(/\s+/);
       
-      // Name is typically 2-4 words, all caps or title case
-      if ((words.length >= 2 && words.length <= 4) || line.includes('KAREN') || line.includes('PHILIPS')) {
+      // Check if line is all uppercase (common for names)
+      const isAllCaps = line === line.toUpperCase() && /^[A-Z\s]+$/.test(line);
+      
+      if ((words.length >= 2 && words.length <= 4) || isAllCaps) {
         const hasValidChars = /^[A-Za-z\s.'-]+$/.test(line);
         const hasNoContactInfo = !this.hasEmail(line) && !this.hasPhone(line);
-        const hasNoAddressIndicators = !/(street|st|road|rd|avenue|ave|lane|ln|drive|dr|city|state|zip|nagar|mumbai|maharashtra|india|stockholm|sweden)/i.test(line);
+        const hasNoAddressIndicators = !/(street|st|road|rd|avenue|ave|lane|ln|drive|dr|city|state|zip)/i.test(line);
+        const notSectionHeader = !this.looksLikeSectionHeader(line);
         
-        if (hasValidChars && hasNoContactInfo && hasNoAddressIndicators && line.length < 50) {
+        if (hasValidChars && hasNoContactInfo && hasNoAddressIndicators && notSectionHeader && line.length >= 4 && line.length < 50) {
           info.name = this.capitalizeWords(line);
           console.log('Found name:', info.name);
           break;
@@ -156,7 +153,7 @@ export class SimpleResumeParser {
       if (phoneMatch) {
         for (const match of phoneMatch) {
           const digitCount = match.replace(/\D/g, '').length;
-          if (digitCount >= 8 && digitCount <= 15) {
+          if (digitCount >= 10 && digitCount <= 15) {
             info.phone = match.trim();
             console.log('Found phone:', info.phone);
             break;
@@ -166,30 +163,26 @@ export class SimpleResumeParser {
       if (info.phone) break;
     }
 
-    // Extract professional title - look for "WEB DESIGNER" or similar
-    for (let i = 0; i < Math.min(15, this.lines.length); i++) {
+    // Extract professional title
+    for (let i = 0; i < Math.min(20, this.lines.length); i++) {
       const line = this.lines[i];
+      const lower = line.toLowerCase();
       
-      if (line === info.name || this.hasEmail(line) || this.hasPhone(line)) {
+      if (line === info.name || this.hasEmail(line) || this.hasPhone(line) || this.looksLikeSectionHeader(line)) {
         continue;
       }
       
-      // Check for job title keywords
-      if (this.looksLikeJobTitle(line) && line.length < 80) {
-        info.title = line;
-        console.log('Found title:', info.title);
-        break;
-      }
-      
-      // Specific check for "WEB DESIGNER"
-      if (line.toUpperCase().includes('WEB DESIGNER') || line.toUpperCase().includes('WEB DEVELOPER')) {
-        info.title = line;
-        console.log('Found title (specific):', info.title);
-        break;
+      const words = line.split(/\s+/);
+      if (words.length >= 1 && words.length <= 5 && line.length < 80) {
+        if (this.looksLikeJobTitle(line) || this.hasJobTitleKeywords(line)) {
+          info.title = line;
+          console.log('Found title:', info.title);
+          break;
+        }
       }
     }
 
-    // Extract summary/objective - look for profile section
+    // Extract summary
     let inSummary = false;
     let summaryLines: string[] = [];
 
@@ -197,45 +190,36 @@ export class SimpleResumeParser {
       const line = this.lines[i];
       const lower = line.toLowerCase();
       
-      // Detect summary section headers including "PROFILE"
-      if ((lower.includes('career objective') || lower.includes('professional summary') || 
-          lower.includes('profile') || (lower === 'summary') ||
-          lower.includes('about me')) && this.looksLikeSectionHeader(line)) {
+      if ((lower === 'professional summary' || lower === 'summary' || 
+          lower === 'profile' || lower === 'career objective' ||
+          lower === 'objective' || lower === 'about me') && this.looksLikeSectionHeader(line)) {
         inSummary = true;
+        console.log('Found summary section');
         continue;
       }
       
       if (inSummary) {
-        const wordCount = line.trim().split(/\s+/).length;
-        const isPotentialNextSection = wordCount <= 3 && 
-                                     (this.looksLikeSectionHeader(line) || 
-                                      /^[A-Z][A-Z\s]*$/.test(line) ||
-                                      line.endsWith(':') ||
-                                      this.isCommonSectionHeader(line));
-        
-        if (isPotentialNextSection && 
-            !lower.includes('objective') && 
-            !lower.includes('summary') &&
-            !lower.includes('profile')) {
+        if (this.looksLikeSectionHeader(line) && !lower.includes('summary') && !lower.includes('profile') && !lower.includes('objective')) {
           break;
         }
         
-        // Add summary lines that are actual content
-        if (line.length > 20 && !this.looksLikeSectionHeader(line) && wordCount > 3) {
-          const sentences = line.split(/\.\s+/).filter(s => s.trim().length > 15);
-          if (sentences.length > 0) {
-            summaryLines.push(...sentences.map(s => s.trim() + (s.endsWith('.') ? '' : '.')));
-          } else {
-            summaryLines.push(line);
+        if (line.length > 15 && !this.looksLikeSectionHeader(line)) {
+          let cleanLine = line;
+          if (this.isBulletPoint(line)) {
+            cleanLine = this.cleanBulletPoint(line);
+          }
+          
+          if (cleanLine.length > 15) {
+            summaryLines.push(cleanLine);
           }
         }
+        
+        if (summaryLines.length >= 5) break;
       }
-      
-      if (summaryLines.length >= 3) break;
     }
 
-    info.summary = summaryLines.length > 0 ? summaryLines.slice(0, 3) : ['Professional with diverse experience.'];
-    console.log('Found summary lines:', info.summary);
+    info.summary = summaryLines.length > 0 ? summaryLines : ['Professional with diverse experience.'];
+    console.log('Summary lines found:', summaryLines.length);
 
     return info;
   }
@@ -250,102 +234,34 @@ export class SimpleResumeParser {
       const line = this.lines[i];
       const lower = line.toLowerCase();
 
-      // Detect EXPERIENCE section - including "EMPLOYMENT HISTORY"
-      if ((lower === 'experience' || lower === 'work experience' || 
+      if ((lower === 'work experience' || lower === 'experience' || 
            lower === 'professional experience' || lower === 'employment history' ||
-           lower === 'work history' || lower === 'career history' ||
-           lower.includes('employment')) && 
-          this.looksLikeSectionHeader(line)) {
+           lower === 'employment') && this.looksLikeSectionHeader(line)) {
         inExperienceSection = true;
-        console.log('Found EXPERIENCE section at line', i, ':', line);
+        console.log('Found EXPERIENCE section');
         continue;
       }
 
       if (inExperienceSection) {
-        // Stop at next major section
         if (this.looksLikeSectionHeader(line) && 
-            (lower.includes('education') || lower.includes('project') || lower.includes('certification') || 
-             lower.includes('skill') || lower.includes('achievement') || lower.includes('training') ||
-             lower.includes('course') || lower === 'details' || lower === 'hobbies' || lower === 'languages')) {
-          if (currentExp && currentBullets.length > 0) {
-            currentExp.description = currentBullets;
+            (lower.includes('education') || lower.includes('project') || lower.includes('skill') || 
+             lower.includes('award') || lower.includes('language'))) {
+          if (currentExp) {
+            currentExp.description = currentBullets.length > 0 ? currentBullets : [''];
             experiences.push(currentExp);
           }
-          console.log('Ending experience section at:', line);
           break;
         }
 
-        const wordCount = line.split(/\s+/).length;
-        
-        // ENHANCED: Pattern for "Web Designer, Expedia Group" format
-        const jobCompanyPattern = /^([^,]+),\s*(.+)$/;
-        const jobMatch = line.match(jobCompanyPattern);
-        
-        if (jobMatch && !this.isBulletPoint(line) && line.length > 5 && wordCount <= 6) {
-          const title = jobMatch[1].trim();
-          const company = jobMatch[2].trim();
+        if (!this.isBulletPoint(line) && !this.looksLikeDate(line) && line.length > 3 && line.length < 100) {
+          const words = line.split(/\s+/).length;
           
-          // Save previous experience
-          if (currentExp && currentBullets.length > 0) {
-            currentExp.description = currentBullets;
-            experiences.push(currentExp);
-          }
-
-          currentExp = {
-            id: Date.now() + experiences.length,
-            title: title,
-            company: company,
-            period: '',
-            description: []
-          };
-          currentBullets = [];
-          console.log('Found job (title, company pattern):', title, 'at', company);
-          
-          // Look for date in next 2 lines
-          for (let j = i + 1; j < Math.min(i + 3, this.lines.length); j++) {
-            const nextLine = this.lines[j];
-            if (this.looksLikeDate(nextLine)) {
-              currentExp.period = nextLine;
-              console.log('Found period:', currentExp.period);
-              i = j; // Skip the date line
-              break;
+          if ((this.looksLikeJobTitle(line) || this.hasJobTitleKeywords(line)) && words <= 6) {
+            if (currentExp) {
+              currentExp.description = currentBullets.length > 0 ? currentBullets : [''];
+              experiences.push(currentExp);
             }
-          }
-          continue;
-        }
 
-        // RULE 1: Detect next experience - word count 4 or less AND looks like date
-        if (currentExp && wordCount <= 4 && this.looksLikeDate(line)) {
-          console.log('RULE 1: Detected next experience with date:', line);
-          currentExp.description = currentBullets;
-          experiences.push(currentExp);
-          
-          currentExp = {
-            id: Date.now() + experiences.length,
-            title: '',
-            company: '',
-            period: line,
-            description: []
-          };
-          currentBullets = [];
-          continue;
-        }
-        
-        // RULE 2: Detect next section - word count 4 or less AND looks like date AND we have current experience
-        if (currentExp && wordCount <= 4 && this.looksLikeDate(line) && 
-            this.isPotentialNextSectionAfterExperience(i)) {
-          console.log('RULE 2: Detected next section after experience:', line);
-          currentExp.description = currentBullets;
-          experiences.push(currentExp);
-          break;
-        }
-
-        // RULE 3: Job position detection - 4 or 5 words, not a date, not a bullet point
-        if (!currentExp && (wordCount === 4 || wordCount === 5) && 
-            !this.looksLikeDate(line) && !this.isBulletPoint(line) &&
-            line.length > 10 && line.length < 80) {
-          
-          if (this.looksLikeJobTitle(line) || this.hasJobTitleKeywords(line)) {
             currentExp = {
               id: Date.now() + experiences.length,
               title: line,
@@ -354,17 +270,30 @@ export class SimpleResumeParser {
               description: []
             };
             currentBullets = [];
-            console.log('RULE 3: Found job position (4-5 words):', line);
+            console.log('Found job title:', line);
             
-            // Look for company in next lines (2-4 words)
-            for (let j = i + 1; j < Math.min(i + 3, this.lines.length); j++) {
+            for (let j = i + 1; j < Math.min(i + 4, this.lines.length); j++) {
               const nextLine = this.lines[j];
-              const nextWordCount = nextLine.split(/\s+/).length;
-              if (nextWordCount >= 2 && nextWordCount <= 4 && 
-                  !this.looksLikeDate(nextLine) && !this.isBulletPoint(nextLine) &&
+              
+              if (!currentExp.company && !this.looksLikeDate(nextLine) && 
+                  !this.isBulletPoint(nextLine) && nextLine.length > 2 && nextLine.length < 100 &&
                   !this.looksLikeJobTitle(nextLine)) {
-                currentExp.company = nextLine;
-                console.log('Found company for position:', nextLine);
+                
+                if (nextLine.includes('|')) {
+                  const parts = nextLine.split('|').map(p => p.trim());
+                  currentExp.company = parts[0];
+                  if (parts.length > 1 && this.looksLikeDate(parts[1])) {
+                    currentExp.period = parts[1];
+                  }
+                  i = j;
+                  break;
+                } else {
+                  currentExp.company = nextLine;
+                }
+              }
+              
+              if (!currentExp.period && this.looksLikeDate(nextLine)) {
+                currentExp.period = nextLine;
                 i = j;
                 break;
               }
@@ -373,63 +302,19 @@ export class SimpleResumeParser {
           }
         }
 
-        // Original job title detection
-        if (this.looksLikeJobTitle(line) && !currentExp && !this.isBulletPoint(line) && wordCount <= 5) {
-          currentExp = {
-            id: Date.now() + experiences.length,
-            title: line,
-            company: '',
-            period: '',
-            description: []
-          };
-          currentBullets = [];
-          console.log('Found job title:', line);
-          
-          for (let j = i + 1; j < Math.min(i + 4, this.lines.length); j++) {
-            const nextLine = this.lines[j];
-            if (!currentExp.company && !this.looksLikeDate(nextLine) && 
-                !this.isBulletPoint(nextLine) && nextLine.length > 3 && nextLine.length < 80) {
-              currentExp.company = nextLine;
-              console.log('Found company:', nextLine);
-            }
-            if (!currentExp.period && this.looksLikeDate(nextLine)) {
-              currentExp.period = nextLine;
-              console.log('Found period:', nextLine);
-            }
-          }
-          continue;
-        }
-
-        // Collect bullet points or responsibilities
         if (currentExp) {
           if (this.isBulletPoint(line)) {
             const clean = this.cleanBulletPoint(line);
-            if (clean.length > 10 && !clean.toLowerCase().includes('as the web designer')) {
+            if (clean.length > 10) {
               currentBullets.push(clean);
-            }
-          } else if (line.length > 30 && !this.looksLikeJobTitle(line) && 
-                     !this.looksLikeDate(line) && !this.looksLikeSectionHeader(line) &&
-                     !line.match(/at\s+.+?,/i) && wordCount > 4 &&
-                     !line.toLowerCase().includes('as the web designer')) {
-            const sentences = line.split(/\.\s+/).filter(s => s.trim().length > 15);
-            if (sentences.length > 1) {
-              sentences.forEach(sentence => {
-                const trimmed = sentence.trim();
-                if (trimmed.length > 10) {
-                  currentBullets.push(trimmed.endsWith('.') ? trimmed : trimmed + '.');
-                }
-              });
-            } else if (line.length > 20) {
-              currentBullets.push(line);
             }
           }
         }
       }
     }
 
-    // Save last experience
-    if (currentExp && currentBullets.length > 0) {
-      currentExp.description = currentBullets;
+    if (currentExp) {
+      currentExp.description = currentBullets.length > 0 ? currentBullets : [''];
       experiences.push(currentExp);
     }
 
@@ -446,30 +331,21 @@ export class SimpleResumeParser {
       const line = this.lines[i];
       const lower = line.toLowerCase();
 
-      // Detect EDUCATION section
       if ((lower === 'education' || lower === 'academic background' || 
-           lower === 'qualifications' || lower === 'educational background' ||
-           lower === 'academic qualifications') && 
-          this.looksLikeSectionHeader(line)) {
+           lower === 'qualifications') && this.looksLikeSectionHeader(line)) {
         inEducationSection = true;
-        console.log('Found EDUCATION section at line', i);
+        console.log('Found EDUCATION section');
         continue;
       }
 
       if (inEducationSection) {
-        // Stop at next major section
-        if (this.looksLikeSectionHeader(line) && 
-            !lower.includes('education') && !lower.includes('course') &&
-            (lower.includes('achievement') || lower.includes('skill') || lower.includes('experience') || 
-             lower.includes('project') || lower.includes('certification') || lower.includes('training') ||
-             lower === 'details' || lower === 'hobbies' || lower === 'languages' || lower === 'references')) {
+        if (this.looksLikeSectionHeader(line) && !lower.includes('education')) {
           if (currentEdu) {
             education.push(currentEdu);
           }
           break;
         }
 
-        // Look for degree patterns
         if (this.looksLikeDegree(line) && !currentEdu) {
           currentEdu = {
             id: Date.now() + education.length,
@@ -480,41 +356,35 @@ export class SimpleResumeParser {
           };
           console.log('Found degree:', line);
           
-          // Look ahead for institution and year
           for (let j = i + 1; j < Math.min(i + 5, this.lines.length); j++) {
             const nextLine = this.lines[j];
             
             if (!currentEdu.institution && this.looksLikeInstitution(nextLine)) {
               currentEdu.institution = nextLine;
-              console.log('Found institution:', nextLine);
             } else if (!currentEdu.year && this.looksLikeDate(nextLine)) {
               currentEdu.year = nextLine;
-              console.log('Found year:', nextLine);
             } else if (!currentEdu.gpa && this.looksLikePercentage(nextLine)) {
               currentEdu.gpa = nextLine;
-              console.log('Found GPA:', nextLine);
-            } else if (this.looksLikeDegree(nextLine) || this.looksLikeInstitution(nextLine)) {
+            } else if (this.looksLikeDegree(nextLine)) {
               break;
             }
           }
           continue;
         }
 
-        // If we have current edu and see a new degree or institution, save and start new
-        if (currentEdu && (this.looksLikeDegree(line) || this.looksLikeInstitution(line))) {
+        if (currentEdu && this.looksLikeDegree(line)) {
           education.push(currentEdu);
           currentEdu = null;
-          i--; // Reprocess this line
+          i--;
         }
       }
     }
 
-    // Save last education entry
     if (currentEdu) {
       education.push(currentEdu);
     }
 
-    console.log('Total education entries found:', education.length);
+    console.log('Total education entries:', education.length);
     return education.length > 0 ? education : this.getDefaultEducation();
   }
 
@@ -526,63 +396,41 @@ export class SimpleResumeParser {
       const line = this.lines[i];
       const lower = line.toLowerCase();
 
-      // Detect SKILLS section
-      if ((lower === 'technical skills' || lower === 'skills' || lower === 'core competencies' ||
-           lower === 'key skills' || lower === 'professional skills' || lower === 'competencies') && 
-          this.looksLikeSectionHeader(line)) {
+      if ((lower === 'skills' || lower === 'technical skills' || lower === 'core competencies' ||
+           lower === 'key skills') && this.looksLikeSectionHeader(line)) {
         inSkillsSection = true;
-        console.log('Found SKILLS section at line', i);
+        console.log('Found SKILLS section');
         continue;
       }
 
       if (inSkillsSection) {
-        // Stop at next major section
-        if (this.looksLikeSectionHeader(line) && !lower.includes('skill') && !lower.includes('competenc')) {
+        if (this.looksLikeSectionHeader(line)) {
           break;
         }
 
         if (line.length > 0 && !this.looksLikeSectionHeader(line)) {
-          // Extract skills from various formats
-          if (line.includes('(') && line.includes(')')) {
-            // Format like "WordPress (Intermediate)"
-            const skillMatch = line.match(/([^(]+)\s*\(([^)]+)\)/);
-            if (skillMatch) {
-              const name = skillMatch[1].trim();
-              const proficiency = this.normalizeProficiency(skillMatch[2].trim());
-              skills.push({ name, proficiency });
-            }
+          if (line.includes('•')) {
+            const parts = line.split('•').map(s => s.trim()).filter(s => s.length > 0);
+            parts.forEach(skill => {
+              if (skill.length > 1 && skill.length < 50 && !skills.some(s => s.name.toLowerCase() === skill.toLowerCase())) {
+                skills.push({ name: skill, proficiency: 'Intermediate' });
+              }
+            });
           } else if (line.includes(',')) {
-            // Comma-separated skills
-            const parts = line.split(',');
-            parts.forEach(part => {
-              const trimmed = part.trim();
-              if (trimmed.length > 2 && trimmed.length < 50) {
-                if (!skills.some(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
-                  skills.push({
-                    name: trimmed,
-                    proficiency: 'Intermediate'
-                  });
-                }
+            const parts = line.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            parts.forEach(skill => {
+              if (skill.length > 1 && skill.length < 50 && !skills.some(s => s.name.toLowerCase() === skill.toLowerCase())) {
+                skills.push({ name: skill, proficiency: 'Intermediate' });
               }
             });
           } else if (this.isBulletPoint(line)) {
             const cleaned = this.cleanBulletPoint(line);
-            if (cleaned.length > 2 && cleaned.length < 50) {
-              if (!skills.some(s => s.name.toLowerCase() === cleaned.toLowerCase())) {
-                skills.push({
-                  name: cleaned,
-                  proficiency: 'Intermediate'
-                });
-              }
+            if (cleaned.length > 1 && cleaned.length < 50 && !skills.some(s => s.name.toLowerCase() === cleaned.toLowerCase())) {
+              skills.push({ name: cleaned, proficiency: 'Intermediate' });
             }
-          }
-          // Plain text skills
-          else if (line.length > 2 && line.length < 60) {
+          } else if (line.length > 1 && line.length < 50) {
             if (!skills.some(s => s.name.toLowerCase() === line.toLowerCase())) {
-              skills.push({
-                name: line,
-                proficiency: 'Intermediate'
-              });
+              skills.push({ name: line, proficiency: 'Intermediate' });
             }
           }
         }
@@ -595,11 +443,75 @@ export class SimpleResumeParser {
 
   private parseProjects(): any[] {
     const projects: any[] = [];
-    // Default empty projects since none were found in the resume
+    let inProjectsSection = false;
+    let currentProject: any = null;
+    let currentBullets: string[] = [];
+
+    for (let i = 0; i < this.lines.length; i++) {
+      const line = this.lines[i];
+      const lower = line.toLowerCase();
+
+      if ((lower === 'projects' || lower === 'project') && this.looksLikeSectionHeader(line)) {
+        inProjectsSection = true;
+        console.log('Found PROJECTS section');
+        continue;
+      }
+
+      if (inProjectsSection) {
+        if (this.looksLikeSectionHeader(line) && !lower.includes('project')) {
+          if (currentProject) {
+            currentProject.description = currentBullets.length > 0 ? currentBullets : [''];
+            projects.push(currentProject);
+          }
+          break;
+        }
+
+        // Project name (not a bullet, not a date)
+        if (!this.isBulletPoint(line) && !this.looksLikeDate(line) && line.length > 3 && line.length < 100) {
+          if (currentProject) {
+            currentProject.description = currentBullets.length > 0 ? currentBullets : [''];
+            projects.push(currentProject);
+          }
+
+          currentProject = {
+            id: Date.now() + projects.length,
+            name: line,
+            description: [],
+            technologies: [],
+            period: '',
+            link: ''
+          };
+          currentBullets = [];
+          console.log('Found project:', line);
+
+          // Look for date in next line
+          if (i + 1 < this.lines.length && this.looksLikeDate(this.lines[i + 1])) {
+            currentProject.period = this.lines[i + 1];
+            i++;
+          }
+          continue;
+        }
+
+        // Project description bullets
+        if (currentProject && this.isBulletPoint(line)) {
+          const clean = this.cleanBulletPoint(line);
+          if (clean.length > 10) {
+            currentBullets.push(clean);
+          }
+        }
+      }
+    }
+
+    if (currentProject) {
+      currentProject.description = currentBullets.length > 0 ? currentBullets : [''];
+      projects.push(currentProject);
+    }
+
+    console.log('Total projects found:', projects.length);
     return projects;
   }
 
-  // NEW HELPER METHODS
+  // Helper methods
   private hasJobTitleKeywords(line: string): boolean {
     const titleKeywords = [
       'developer', 'engineer', 'manager', 'analyst', 'specialist', 'coordinator', 
@@ -629,10 +541,9 @@ export class SimpleResumeParser {
     if (lower.includes('advanced') || lower.includes('senior')) return 'Advanced';
     if (lower.includes('intermediate') || lower.includes('mid')) return 'Intermediate';
     if (lower.includes('beginner') || lower.includes('junior') || lower.includes('basic')) return 'Beginner';
-    return 'Intermediate'; // default
+    return 'Intermediate';
   }
 
-  // EXISTING HELPER METHODS
   private looksLikeSectionHeader(line: string): boolean {
     const upper = line.toUpperCase();
     const isAllCaps = upper === line && line.length < 50 && /^[A-Z][A-Z\s&]*$/.test(line);
@@ -645,7 +556,7 @@ export class SimpleResumeParser {
       'education', 'academic background', 'qualifications',
       'skills', 'technical skills', 'core competencies', 'key skills',
       'projects', 'achievements', 'certifications', 'courses', 'training',
-      'hobbies', 'interests', 'languages', 'references', 'details'
+      'hobbies', 'interests', 'languages', 'references', 'details', 'awards'
     ];
     
     const isSectionHeader = sectionHeaders.some(header => lower === header);
@@ -655,7 +566,7 @@ export class SimpleResumeParser {
 
   private isBulletPoint(line: string): boolean {
     return line.startsWith('•') || line.startsWith('-') || line.startsWith('*') || 
-           line.startsWith('°') || /^\d+\./.test(line) || line.startsWith('·');
+           /^\d+\./.test(line) || line.startsWith('·');
   }
 
   private isCommonSectionHeader(line: string): boolean {
@@ -672,7 +583,7 @@ export class SimpleResumeParser {
   }
 
   private cleanBulletPoint(line: string): string {
-    return line.replace(/^[•\-*°·\s\d\.]+/, '').trim();
+    return line.replace(/^[•\-*·\s\d\.]+/, '').trim();
   }
 
   private hasEmail(text: string): boolean {
@@ -688,8 +599,7 @@ export class SimpleResumeParser {
       'developer', 'engineer', 'manager', 'analyst', 'specialist', 'coordinator', 
       'director', 'consultant', 'architect', 'designer', 'administrator', 'controller',
       'technician', 'officer', 'associate', 'executive', 'lead', 'head', 'supervisor',
-      'assistant', 'intern', 'trainee', 'apprentice', 'clerk', 'operator', 'warehouse',
-      'inventory', 'laboratory', 'lab', 'sales', 'customer service', 'support'
+      'assistant', 'intern', 'trainee', 'apprentice'
     ];
     const lower = line.toLowerCase();
     
@@ -712,7 +622,7 @@ export class SimpleResumeParser {
   }
 
   private looksLikeInstitution(line: string): boolean {
-    const eduWords = ['university', 'college', 'school', 'institute', 'academy', 'matriculation', 'education'];
+    const eduWords = ['university', 'college', 'school', 'institute', 'academy'];
     const lower = line.toLowerCase();
     return eduWords.some(word => lower.includes(word)) && line.length < 100;
   }
@@ -720,9 +630,7 @@ export class SimpleResumeParser {
   private looksLikeDegree(line: string): boolean {
     const degreeWords = ['bachelor', 'master', 'phd', 'diploma', 'degree', 'b.tech', 'b.e.', 
                          'm.tech', 'm.e.', 'bsc', 'msc', 'ba', 'ma', 'engineering', 'science',
-                         'commerce', 'arts', 'computer', 'information technology', 'it',
-                         'associates', 'associate', 'logistics', 'supply chain', 'certificate',
-                         'graduate certificate', 'warehousing', 'management', 'online'];
+                         'computer', 'information technology'];
     const lower = line.toLowerCase();
     return degreeWords.some(word => lower.includes(word)) && line.length < 150;
   }
@@ -733,7 +641,6 @@ export class SimpleResumeParser {
     ).join(' ');
   }
 
-  // Default data methods
   private getDefaultData(): ParsedResumeData {
     return {
       personalInfo: { 
@@ -786,58 +693,244 @@ export class SimpleResumeParser {
   }
 }
 
-// Enhanced file extraction with PDF support
+// PDF.js CDN loader
+declare global {
+  interface Window {
+    pdfjsLib: any;
+  }
+}
+
+function loadPDFJSFromCDN(): Promise<any> {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) {
+      console.log('✅ PDF.js already loaded');
+      resolve(window.pdfjsLib);
+      return;
+    }
+
+    const PDFJS_VERSION = '3.11.174';
+    const scriptId = 'pdfjs-lib-script';
+    
+    if (document.getElementById(scriptId)) {
+      const checkInterval = setInterval(() => {
+        if (window.pdfjsLib) {
+          clearInterval(checkInterval);
+          resolve(window.pdfjsLib);
+        }
+      }, 100);
+      
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (window.pdfjsLib) {
+          resolve(window.pdfjsLib);
+        } else {
+          reject(new Error('PDF.js script loaded but library not available'));
+        }
+      }, 5000);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+    script.async = true;
+
+    script.onload = () => {
+      console.log('✅ PDF.js script loaded from CDN');
+      
+      const checkInterval = setInterval(() => {
+        if (window.pdfjsLib) {
+          clearInterval(checkInterval);
+          
+          const workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+          console.log('✅ Worker configured');
+          
+          resolve(window.pdfjsLib);
+        }
+      }, 50);
+
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (window.pdfjsLib) {
+          resolve(window.pdfjsLib);
+        } else {
+          reject(new Error('PDF.js loaded but pdfjsLib not available'));
+        }
+      }, 5000);
+    };
+
+    script.onerror = () => {
+      reject(new Error('Failed to load PDF.js from CDN'));
+    };
+
+    document.head.appendChild(script);
+    console.log('📦 Loading PDF.js from CDN...');
+  });
+}
+
 export async function extractTextFromFile(file: File): Promise<string> {
   return new Promise(async (resolve) => {
     try {
-      // Handle PDF files
+      console.log('=== FILE UPLOAD STARTED ===');
+      console.log('File name:', file.name);
+      console.log('File type:', file.type);
+      console.log('File size:', file.size, 'bytes');
+      
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         try {
-          // Dynamically import PDF.js
-          const pdfjsLib = await import('pdfjs-dist');
+          console.log('🔵 Attempting PDF extraction...');
           
-          // Set worker source
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
-
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const pdfjsLib = await loadPDFJSFromCDN();
+          console.log('✅ PDF.js library ready');
           
-          let fullText = '';
+          const text = await extractPDFText(pdfjsLib, file);
           
-          // Extract text from each page
-          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items
-              .map((item: any) => item.str)
-              .join(' ');
-            fullText += pageText + '\n';
+          if (text && text.length > 0) {
+            console.log('✅ PDF extracted successfully');
+            resolve(text);
+            return;
           }
           
-          console.log('PDF text extracted successfully');
-          resolve(fullText);
-        } catch (pdfError) {
-          console.error('PDF extraction error:', pdfError);
-          resolve('UNSUPPORTED_FILE_TYPE');
+          console.log('⚠️ No text found in PDF');
+          resolve('MANUAL_INPUT_REQUIRED');
+          
+        } catch (error) {
+          console.error('❌ PDF extraction failed:', error);
+          resolve('MANUAL_INPUT_REQUIRED');
         }
       }
-      // Handle plain text files
       else if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        console.log('📄 Processing text file...');
         const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target?.result as string);
-        reader.onerror = () => resolve('UNSUPPORTED_FILE_TYPE');
+        reader.onload = (e) => {
+          const text = e.target?.result as string;
+          console.log('✅ Text file extracted, length:', text.length);
+          resolve(text);
+        };
+        reader.onerror = (error) => {
+          console.error('❌ Text file read error:', error);
+          resolve('UNSUPPORTED_FILE_TYPE');
+        };
         reader.readAsText(file);
       }
-      // Handle DOC/DOCX files - require manual input or backend processing
       else if (file.name.toLowerCase().endsWith('.doc') || file.name.toLowerCase().endsWith('.docx')) {
+        console.log('📝 DOC/DOCX file detected - manual input required');
         resolve('MANUAL_INPUT_REQUIRED');
       }
       else {
+        console.log('❌ Unsupported file type:', file.type);
         resolve('UNSUPPORTED_FILE_TYPE');
       }
     } catch (error) {
-      console.error('File extraction error:', error);
+      console.error('❌ File extraction error:', error);
       resolve('UNSUPPORTED_FILE_TYPE');
     }
   });
+}
+
+async function extractPDFText(pdfjsLib: any, file: File): Promise<string> {
+  console.log('🔄 Converting file to ArrayBuffer...');
+  const arrayBuffer = await file.arrayBuffer();
+  console.log('✅ ArrayBuffer created, size:', arrayBuffer.byteLength, 'bytes');
+  
+  if (arrayBuffer.byteLength === 0) {
+    throw new Error('File is empty');
+  }
+  
+  const uint8Array = new Uint8Array(arrayBuffer);
+  
+  console.log('📖 Loading PDF document...');
+  const loadingTask = pdfjsLib.getDocument({
+    data: uint8Array,
+    verbosity: 0,
+  });
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('PDF loading timeout')), 30000);
+  });
+  
+  const pdf = await Promise.race([
+    loadingTask.promise,
+    timeoutPromise
+  ]);
+  
+  console.log('✅ PDF loaded successfully!');
+  console.log('📄 Total pages:', pdf.numPages);
+  
+  if (!pdf.numPages || pdf.numPages === 0) {
+    throw new Error('PDF has no pages');
+  }
+  
+  let fullText = '';
+  
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    try {
+      console.log(`📄 Processing page ${pageNum}/${pdf.numPages}...`);
+      
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      
+      console.log(`   Found ${textContent.items.length} text items`);
+      
+      // Group text items by line (y-coordinate)
+      const lines: { [key: number]: string[] } = {};
+      
+      textContent.items.forEach((item: any) => {
+        if (item.str && typeof item.str === 'string') {
+          const text = item.str.trim();
+          if (text.length > 0) {
+            // Use the y-coordinate to group items on the same line
+            const y = Math.round(item.transform[5]); // y-coordinate from transform matrix
+            
+            if (!lines[y]) {
+              lines[y] = [];
+            }
+            
+            // Add text to the appropriate line
+            lines[y].push(text);
+          }
+        }
+      });
+      
+      // Sort lines by y-coordinate (top to bottom) and join each line
+      const sortedYs = Object.keys(lines)
+        .map(Number)
+        .sort((a, b) => b - a); // PDF coordinates: higher y = top of page
+      
+      const pageLines: string[] = [];
+      
+      sortedYs.forEach(y => {
+        const lineText = lines[y].join(' ').trim();
+        if (lineText.length > 0) {
+          pageLines.push(lineText);
+        }
+      });
+      
+      const pageText = pageLines.join('\n');
+      console.log(`   Extracted ${pageText.length} characters in ${pageLines.length} lines`);
+      
+      if (pageText.length > 0) {
+        fullText += pageText + '\n\n';
+      }
+      
+    } catch (pageError) {
+      console.error(`⚠️ Error processing page ${pageNum}:`, pageError);
+    }
+  }
+  
+  const finalText = fullText.trim();
+  
+  console.log('=== EXTRACTION COMPLETE ===');
+  console.log('Total characters:', finalText.length);
+  console.log('Total lines:', finalText.split('\n').length);
+  console.log('Preview (first 500 chars):', finalText.substring(0, 500));
+  console.log('First 10 lines:', finalText.split('\n').slice(0, 10));
+  console.log('==========================');
+  
+  if (finalText.length === 0) {
+    throw new Error('No text content found in PDF');
+  }
+  
+  return finalText;
 }

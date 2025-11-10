@@ -13,7 +13,7 @@ const GoogleAnalytics = () => {
           window.dataLayer.push(arguments);
         };
         window.gtag('js', new Date());
-        window.gtag('config', 'G-SW5M9YN8L5', {
+        window.gtag('config', 'G-JW2bS0D8YB', { // UPDATED ID
           page_title: document.title,
           page_location: window.location.href,
           send_page_view: false // We'll handle page views manually

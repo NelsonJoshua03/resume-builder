@@ -45,6 +45,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               
               <div className="hidden md:flex space-x-6">
                 <Link 
+                  to="/government-exams" 
+                  className={`font-medium transition-colors ${
+                    location.pathname.includes('/government-exams') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  Government Exams
+                </Link>
+                <Link 
                   to="/job-disciplines" 
                   className={`font-medium transition-colors ${
                     location.pathname.includes('/job-disciplines') 
@@ -136,6 +146,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <h3 className="text-xl font-bold mb-4">Quick Links</h3>
                 <ul className="space-y-2">
                   <li><Link to="/" className="text-gray-400 hover:text-white transition-colors">Home</Link></li>
+                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors">Government Exams</Link></li>
                   <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors">Job Disciplines</Link></li>
                   <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors">Job Applications</Link></li>
                   <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors">Walk-in Drives</Link></li>

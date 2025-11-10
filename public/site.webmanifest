@@ -1,21 +1,41 @@
 {
-  "name": "CareerCraft - Free ATS Resume Builder & Job Portal",
+  "name": "CareerCraft.in - Free ATS Resume Builder & Job Portal",
   "short_name": "CareerCraft",
-  "description": "Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India.",
+  "description": "India's premier career platform - Create ATS-friendly resumes and find your dream job",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["business", "education", "productivity"],
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "375x812",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }

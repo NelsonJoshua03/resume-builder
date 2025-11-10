@@ -25,6 +25,8 @@ import Contact from "./components/Contact";
 import JobDrives from './components/JobDrives';
 import AdminJobDrives from './components/AdminJobDrives';
 import GoogleAnalytics from './components/GoogleAnalytics'; // ADD THIS IMPORT
+import GovernmentExams from "./components/GovernmentExams";
+import AdminGovernmentExams from "./components/AdminGovernmentExams";
 
 function App() {
   return (
@@ -62,6 +64,8 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/job-drives" element={<JobDrives />} />
             <Route path="/admin/job-drives" element={<AdminJobDrives />} />
+            <Route path="/government-exams" element={<GovernmentExams />} />
+<Route path="/admin/government-exams" element={<AdminGovernmentExams />} />
 
             {/* Redirect any unknown routes to home */}
             <Route path="*" element={<HomePage />} />

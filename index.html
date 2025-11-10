@@ -5,28 +5,59 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Content Security Policy - COMPLETE GOOGLE ADS FIX -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self' https:;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+                           https://www.googletagmanager.com 
+                           https://pagead2.googlesyndication.com 
+                           https://cdnjs.cloudflare.com 
+                           https://scripts.simpleanalyticscdn.com 
+                           https://*.google.com 
+                           https://*.googleadservices.com 
+                           https://*.googlesyndication.com 
+                           https://*.doubleclick.net 
+                           https://ep1.adtrafficquality.google 
+                           https://ep2.adtrafficquality.google;
+                   style-src 'self' 'unsafe-inline' 
+                           https://cdnjs.cloudflare.com 
+                           https://fonts.googleapis.com;
+                   font-src 'self' 
+                           https://cdnjs.cloudflare.com 
+                           https://fonts.gstatic.com;
+                   img-src 'self' data: https:;
+                   frame-src 'self' 
+                           https://www.google.com 
+                           https://*.google.com 
+                           https://*.doubleclick.net 
+                           https://*.googlesyndication.com 
+                           https://ep1.adtrafficquality.google 
+                           https://ep2.adtrafficquality.google;
+                   connect-src 'self' 
+                           https://www.google-analytics.com 
+                           https://region1.google-analytics.com 
+                           https://raw.githubusercontent.com 
+                           https://*.google.com 
+                           https://*.googleadservices.com 
+                           https://*.doubleclick.net 
+                           https://www.googletagmanager.com 
+                           https://ep1.adtrafficquality.google 
+                           https://ep2.adtrafficquality.google 
+                           https://googleads.g.doubleclick.net;">
+    
     <!-- Google AdSense Auto Ads -->
     <meta name="google-adsense-account" content="ca-pub-7970100235833186">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970100235833186" crossorigin="anonymous"></script>
     
-    <!-- Google Analytics (GA4) - UPDATED MEASUREMENT ID -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5"></script>
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JW2bS0D8YB"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-SW5M9YN8L5', {
+      gtag('config', 'G-JW2bS0D8YB', {
         page_title: document.title,
         page_location: window.location.href
-      });
-    </script>
-    
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970100235833186" crossorigin="anonymous"></script>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({
-        google_ad_client: "ca-pub-7970100235833186",
-        enable_page_level_ads: true,
-        overlays: {bottom: true}
       });
     </script>
     

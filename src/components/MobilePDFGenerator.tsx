@@ -555,6 +555,7 @@ const MobilePDFGenerator = ({
                 });
               }
               
+              // REMOVED: Technologies section from projects
               rightY += 4;
             }
           });
@@ -705,23 +706,7 @@ const MobilePDFGenerator = ({
                       });
                     }
                     
-                    if (project.technologies && project.technologies.length > 0) {
-                      pdf.setFontSize(9);
-                      pdf.setFont('helvetica', 'bold');
-                      const rgb = hexToRgb(primaryColor);
-                      pdf.setTextColor(rgb.r, rgb.g, rgb.b);
-                      pdf.text('Technologies: ', margin, yPosition);
-                      
-                      pdf.setFont('helvetica', 'italic');
-                      pdf.setTextColor(80, 80, 80);
-                      const techText = project.technologies.join(', ');
-                      const lines = pdf.splitTextToSize(techText, contentWidth - pdf.getTextWidth('Technologies: '));
-                      lines.forEach((line: string) => {
-                        checkNewPage(4);
-                        pdf.text(line, margin + pdf.getTextWidth('Technologies: '), yPosition);
-                        yPosition += 3.8;
-                      });
-                    }
+                    // REMOVED: Technologies section from projects
                     
                     addSpacing(4);
                   }
