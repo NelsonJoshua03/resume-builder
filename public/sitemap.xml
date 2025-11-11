@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Main Pages -->
   <url>
     <loc>https://careercraft.in/</loc>
     <lastmod>2024-01-15</lastmod>
@@ -31,6 +32,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://careercraft.in/government-exams</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://careercraft.in/blog</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
@@ -49,6 +56,14 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://careercraft.in/fresh-graduate-guide</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Legal Pages -->
+  <url>
     <loc>https://careercraft.in/privacy</loc>
     <lastmod>2024-01-15</lastmod>
     <changefreq>monthly</changefreq>
@@ -66,13 +81,8 @@
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
-  <url>
-    <loc>https://careercraft.in/fresh-graduate-guide</loc>
-    <lastmod>2024-01-15</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <!-- Job Discipline Pages -->
+
+  <!-- Job Discipline Pages - Engineering -->
   <url>
     <loc>https://careercraft.in/job-disciplines/engineering</loc>
     <lastmod>2024-01-15</lastmod>
@@ -103,6 +113,8 @@
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
+
+  <!-- Job Discipline Pages - Technology -->
   <url>
     <loc>https://careercraft.in/job-disciplines/software-development</loc>
     <lastmod>2024-01-15</lastmod>
@@ -120,5 +132,25 @@
     <lastmod>2024-01-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+
+  <!-- NEW PAGES ADDED (Missing from your current sitemap) -->
+  <url>
+    <loc>https://careercraft.in/admin/job-posting</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://careercraft.in/admin/job-drives</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://careercraft.in/admin/government-exams</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.2</priority>
   </url>
 </urlset>

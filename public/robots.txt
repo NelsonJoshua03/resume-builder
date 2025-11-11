@@ -1,13 +1,174 @@
-# robots.txt for CareerCraft.in
+# CareerCraft.in - Robots.txt
+# Comprehensive crawl directives for resume builder and job portal
+# Last updated: January 2024
+
 User-agent: *
 Allow: /
 
-# Disallow admin pages
+# ================ DISALLOWED PATHS ================
+# Admin and private areas
 Disallow: /admin/
 Disallow: /private/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /user/
+Disallow: /account/
+Disallow: /settings/
 
-# Sitemap location
-Sitemap: https://careercraft.in/sitemap.xml
+# Development and system files
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /build/
+Disallow: /dist/
+Disallow: /config/
+Disallow: /env/
+Disallow: /.env
+Disallow: /.git/
+Disallow: /.github/
+Disallow: /package.json
+Disallow: /yarn.lock
+Disallow: /package-lock.json
 
-# Crawl delay (optional)
+# Search and filter parameters (to avoid duplicate content)
+Disallow: /?search=
+Disallow: /?filter=
+Disallow: /?sort=
+Disallow: /?page=
+Disallow: /?category=
+Disallow: /*?ref=
+Disallow: /*?utm_
+
+# ================ SEARCH ENGINE SPECIFIC RULES ================
+
+# Googlebot specific rules
+User-agent: Googlebot
+Allow: /
 Crawl-delay: 1
+Allow: /*.css$
+Allow: /*.js$
+
+# Bingbot specific rules  
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+# Yandex specific rules
+User-agent: Yandex
+Allow: /
+Crawl-delay: 2
+
+# Baidu specific rules
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 5
+
+# ================ BLOCK MALICIOUS BOTS ================
+
+# Known bad bots and scrapers
+User-agent: AhrefsBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: MJ12bot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: DotBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: MauiBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: PetalBot
+Disallow: /
+Crawl-delay: 10
+
+User-agent: BLEXBot
+Disallow: /
+Crawl-delay: 10
+
+# ================ ALLOW SEO TOOLS ================
+
+# Allow legitimate SEO tools (optional - you can disallow these too)
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: CCBot
+Allow: /
+Crawl-delay: 2
+
+# ================ SITEMAP REFERENCES ================
+
+# Primary sitemaps
+Sitemap: https://careercraft.in/sitemap.xml
+Sitemap: https://careercraft.in/sitemap-pages.xml
+Sitemap: https://careercraft.in/sitemap-blog.xml
+
+# ================ ADDITIONAL DIRECTIVES ================
+
+# Visit rate and crawl delay for general bots
+Crawl-delay: 1
+
+# Preferred host (canonical URL)
+Host: https://careercraft.in
+
+# ================ ALLOWED FILE TYPES ================
+# Explicitly allow important file types
+Allow: /*.pdf$
+Allow: /*.html$
+Allow: /*.xml$
+Allow: /*.css$
+Allow: /*.js$
+
+# ================ CAREERCRAFT SPECIFIC RULES ================
+
+# Allow crawling of all public pages
+Allow: /builder
+Allow: /job-disciplines
+Allow: /job-applications  
+Allow: /job-drives
+Allow: /government-exams
+Allow: /blog
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
+Allow: /fresh-graduate-guide
+
+# Allow all job discipline pages
+Allow: /job-disciplines/engineering
+Allow: /job-disciplines/mechanical-engineering
+Allow: /job-disciplines/static-engineer
+Allow: /job-disciplines/civil-engineering
+Allow: /job-disciplines/electrical-engineering
+Allow: /job-disciplines/software-development
+Allow: /job-disciplines/data-science
+Allow: /job-disciplines/cybersecurity
+
+# ================ PERFORMANCE OPTIMIZATIONS ================
+
+# Request-rate for different bots (requests per second)
+Request-rate: 1/5  # 1 request every 5 seconds for aggressive bots
+
+# ================ SECURITY ENHANCEMENTS ================
+
+# Block access to sensitive files that might be exposed
+Disallow: /wp-admin/  # In case of future WordPress integration
+Disallow: /wp-includes/
+Disallow: /backup/
+Disallow: /tmp/
+Disallow: /database/
+Disallow: /sql/
+Disallow: /.htaccess
+Disallow: /error_log
+Disallow: /debug.log
+
+# End of CareerCraft.in robots.txt
