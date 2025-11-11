@@ -2,15 +2,58 @@
   "posts": [
     {
       "id": 1,
-      "title": "How to Create an ATS-Friendly Resume",
-      "excerpt": "Learn the secrets to making your resume pass through Applicant Tracking Systems...",
-      "category": "ats-optimization",
+      "slug": "ats-friendly-resume-guide",
+      "title": "How to Create an ATS-Friendly Resume for Indian Job Market",
+      "excerpt": "Learn the secrets to making your resume pass through Applicant Tracking Systems used by Indian companies and reach human recruiters.",
+      "category": "resume-tips",
       "date": "2024-01-15",
       "readTime": "5 min read",
-      "slug": "ats-friendly-resume-guide",
-      "author": "Career Experts Team",
-      "authorBio": "Our team of certified career coaches",
-      "content": "<h2>What is an ATS?</h2><p>Applicant Tracking Systems are software used by companies...</p>"
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience"
+    },
+    {
+      "id": 2,
+      "slug": "resume-mistakes-2024",
+      "title": "10 Resume Mistakes Indian Job Seekers Must Avoid in 2024",
+      "excerpt": "Common pitfalls that could be costing you interviews at Indian companies and how to fix them.",
+      "category": "career-advice", 
+      "date": "2024-01-10",
+      "readTime": "7 min read",
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience"
+    },
+    {
+      "id": 3,
+      "slug": "engineering-resume-templates",
+      "title": "Best Resume Templates for Engineering Roles in India",
+      "excerpt": "Industry-specific templates that highlight technical skills and project experience for Indian engineering job market.",
+      "category": "industry-specific",
+      "date": "2024-01-05", 
+      "readTime": "6 min read",
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience"
+    },
+    {
+      "id": 4,
+      "slug": "government-job-resume",
+      "title": "Government Job Resume Format for Indian Exams - Complete Guide",
+      "excerpt": "Specialized resume format for UPSC, SSC, Banking and other government exams in India. What to include and what to avoid.",
+      "category": "industry-specific",
+      "date": "2024-01-03",
+      "readTime": "8 min read", 
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience"
+    },
+    {
+      "id": 5,
+      "slug": "fresher-resume-india",
+      "title": "Fresher Resume Guide for Indian Students - No Experience Needed",
+      "excerpt": "How to create a compelling resume as a fresher with no work experience. Highlight projects, academics and skills effectively.",
+      "category": "fresh-graduate",
+      "date": "2024-01-01",
+      "readTime": "6 min read",
+      "author": "CareerCraft Team", 
+      "authorBio": "Indian Career Experts with 10+ years HR experience"
     }
   ]
 }

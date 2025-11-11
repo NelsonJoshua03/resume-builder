@@ -33,7 +33,7 @@ const Blog: React.FC = () => {
     const fetchBlogPosts = async () => {
       try {
         const response = await fetch(
-          'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main/blog-data.json?t=' + Date.now()
+          'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main/public/blog-data.json?t=' + Date.now()
         );
         
         if (!response.ok) {
