@@ -2,8 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logos/careercraft-favicon.png">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
     <!-- Content Security Policy - COMPLETE GOOGLE ADS FIX -->
     <meta http-equiv="Content-Security-Policy" 
@@ -49,7 +52,7 @@
     <meta name="google-adsense-account" content="ca-pub-7970100235833186">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970100235833186" crossorigin="anonymous"></script>
     
-    <!-- Google Analytics (GA4) - CORRECTED MEASUREMENT ID -->
+    <!-- Google Analytics (GA4) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-JM2050D0Y8"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -64,7 +67,7 @@
     <!-- Google Verification -->
     <meta name="google-site-verification" content="72ogLK0F0xw0H23swyyhs8idWOcyyv7hr1-zAMZ9v7w" />
     
-    <!-- Primary Meta Tags - OPTIMIZED FOR CAREERCRAFT.IN -->
+    <!-- Primary Meta Tags -->
     <title>CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform</title>
     <meta name="title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform">
     <meta name="description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in India. Free resume templates for engineers, IT, developers & freshers.">
@@ -109,7 +112,6 @@
       "@type": "Organization",
       "name": "CareerCraft India",
       "url": "https://careercraft.in/",
-      "logo": "https://careercraft.in/logo.png",
       "description": "India's free ATS-friendly resume builder and job portal",
       "email": "support@careercraft.in",
       "address": {
@@ -120,23 +122,23 @@
     }
     </script>
 
-    <!-- Open Graph / Facebook - OPTIMIZED FOR INDIA -->
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://careercraft.in/" />
     <meta property="og:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
     <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India." />
-    <meta property="og:image" content="https://careercraft.in/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+    <meta property="og:image:width" content="500" />
+    <meta property="og:image:height" content="500" />
     <meta property="og:locale" content="en_IN" />
     <meta property="og:site_name" content="CareerCraft India" />
 
-    <!-- Twitter - OPTIMIZED -->
+    <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://careercraft.in/" />
     <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
     <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
-    <meta property="twitter:image" content="https://careercraft.in/og-image.png" />
+    <meta property="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
     <meta property="twitter:creator" content="@careercraftIN" />
     
     <!-- Preload critical resources -->
@@ -155,13 +157,44 @@
     <meta name="twitter:site" content="@careercraftIN">
     
     <!-- Favicon and App Icons -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/logos/careercraft-logo-square.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/logos/careercraft-favicon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/logos/careercraft-favicon.png">
     <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Critical CSS for Edge Compatibility -->
+    <style>
+      /* Edge-specific fixes */
+      @supports (-ms-ime-align: auto) {
+        body {
+          width: 100% !important;
+          overflow-x: hidden !important;
+        }
+        .container {
+          width: 100% !important;
+          max-width: 100% !important;
+        }
+      }
+      
+      /* Ensure proper width on all browsers */
+      html, body {
+        width: 100%;
+        overflow-x: hidden;
+        position: relative;
+      }
+      
+      /* Force full width containers */
+      .w-full {
+        width: 100% !important;
+      }
+      
+      .max-w-7xl {
+        max-width: 80rem !important;
+      }
+    </style>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin: 0; padding: 0; width: 100%; overflow-x: hidden;">
+    <div id="root" style="width: 100%; overflow-x: hidden;"></div>
     <script type="module" src="/src/main.tsx"></script>
     
     <!-- Simple Analytics Script (Optional) -->

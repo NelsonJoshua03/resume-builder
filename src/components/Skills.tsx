@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { SkillsProps, Skill } from './types';
 
-const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) => {
+const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template }: SkillsProps) => {
   const [newSkill, setNewSkill] = useState('');
   const [newProficiency, setNewProficiency] = useState<Skill['proficiency']>('Intermediate');
+
+  const formStyle = template?.formStyle || {
+    sectionBg: 'bg-white shadow-md rounded-lg',
+    headerColor: 'text-gray-800',
+    borderColor: 'border-gray-200',
+    accentColor: 'text-gray-700'
+  };
 
   const handleAddSkill = () => {
     if (newSkill.trim()) {
@@ -27,20 +34,20 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) =
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
-      <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
+    <div className={`p-6 mb-6 ${formStyle.sectionBg} border ${formStyle.borderColor} rounded-xl`}>
+      <h2 className={`text-2xl font-semibold mb-4 ${formStyle.headerColor} flex items-center`}>
         <i className="fas fa-tools mr-2 text-blue-500"></i> Skills
       </h2>
       
       <div className="space-y-3 mb-4">
         {skills.map((skill, index) => (
-          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-            <span className="font-medium">{skill.name}</span>
-            <div className="flex items-center space-x-2">
+          <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <span className="font-medium text-gray-800">{skill.name}</span>
+            <div className="flex items-center space-x-3">
               <select
                 value={skill.proficiency}
                 onChange={(e) => onUpdateProficiency(index, e.target.value as Skill['proficiency'])}
-                className="text-sm border border-gray-300 rounded px-2 py-1"
+                className="text-sm border border-gray-300 rounded px-3 py-1 bg-white focus:outline-none focus:border-blue-500"
               >
                 {proficiencyOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -49,7 +56,7 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) =
                 ))}
               </select>
               <button 
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 hover:text-red-700 p-1"
                 onClick={() => onRemove(index)}
                 title="Remove skill"
               >
@@ -60,10 +67,10 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) =
         ))}
       </div>
       
-      <div className="flex space-x-2">
+      <div className="flex gap-2">
         <input 
           type="text" 
-          className="flex-grow px-4 py-2 border border-gray-300 rounded-lg" 
+          className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" 
           placeholder="Add a skill"
           value={newSkill}
           onChange={(e) => setNewSkill(e.target.value)}
@@ -72,7 +79,7 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) =
         <select
           value={newProficiency}
           onChange={(e) => setNewProficiency(e.target.value as Skill['proficiency'])}
-          className="px-3 py-2 border border-gray-300 rounded-lg"
+          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
         >
           {proficiencyOptions.map(option => (
             <option key={option.value} value={option.value}>
@@ -81,12 +88,18 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency }: SkillsProps) =
           ))}
         </select>
         <button 
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
           onClick={handleAddSkill}
         >
           <i className="fas fa-plus"></i>
         </button>
       </div>
+
+      {skills.length === 0 && (
+        <div className="text-center py-4 text-gray-500">
+          <p>No skills added yet. Add your first skill above!</p>
+        </div>
+      )}
     </div>
   );
 };

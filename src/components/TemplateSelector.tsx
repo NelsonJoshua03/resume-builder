@@ -1,6 +1,5 @@
-
 // src/components/TemplateSelector.tsx
-import { TemplateSelectorProps } from './types';
+import { TemplateSelectorProps, TemplatesMap } from './types';
 
 const TemplateSelector = ({ selectedTemplate, onSelect, templates }: TemplateSelectorProps) => {
   return (
@@ -69,4 +68,3 @@ const TemplateSelector = ({ selectedTemplate, onSelect, templates }: TemplateSel
 };
 
 export default TemplateSelector;
-

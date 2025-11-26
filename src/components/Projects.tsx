@@ -1,8 +1,15 @@
 import { useState } from 'react';
 import { ProjectsProps } from './types';
 
-const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
+const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsProps) => {
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
+
+  const formStyle = template?.formStyle || {
+    sectionBg: 'bg-white shadow-md rounded-lg',
+    headerColor: 'text-gray-800',
+    borderColor: 'border-gray-200',
+    accentColor: 'text-gray-700'
+  };
 
   const toggleExpand = (id: number) => {
     if (expandedProject === id) {
@@ -10,6 +17,16 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
     } else {
       setExpandedProject(id);
     }
+  };
+
+  const addProject = () => {
+    const newId = onAdd();
+    setTimeout(() => {
+      const newProjectInput = document.getElementById(`project-name-${newId}`);
+      if (newProjectInput) {
+        newProjectInput.focus();
+      }
+    }, 100);
   };
 
   const addBulletPoint = (projectId: number) => {
@@ -38,19 +55,34 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-6">
-      <h2 className="text-2xl font-semibold mb-4 text-gray-800 flex items-center">
-        <i className="fas fa-laptop-code mr-2 text-blue-500"></i> Projects & Portfolio
-      </h2>
+    <div className={`p-6 mb-6 ${formStyle.sectionBg} border ${formStyle.borderColor} rounded-xl`}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className={`text-2xl font-semibold ${formStyle.headerColor} flex items-center`}>
+          <i className="fas fa-laptop-code mr-2 text-blue-500"></i> Projects & Portfolio
+        </h2>
+        <button
+          onClick={addProject}
+          className="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+        >
+          <span>+ Add Project</span>
+        </button>
+      </div>
       
-      <div className="space-y-4">
+      <div className="space-y-6">
         {projects.map((project, index) => (
-          <div key={project.id} className="p-4 border border-gray-200 rounded-lg">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="font-semibold text-gray-800">Project #{index + 1}</h3>
-              <div className="flex space-x-2">
+          <div key={project.id} className="p-4 border border-gray-200 rounded-lg bg-white/50">
+            <div className="flex justify-between items-start mb-3">
+              <input
+                id={`project-name-${project.id}`}
+                type="text"
+                placeholder="Project Name"
+                value={project.name}
+                onChange={(e) => onUpdate(project.id, 'name', e.target.value)}
+                className={`w-full text-lg font-semibold p-2 border-b ${formStyle.borderColor} focus:outline-none focus:border-blue-500 bg-transparent`}
+              />
+              <div className="flex space-x-2 ml-4">
                 <button 
-                  className="text-blue-500 hover:text-blue-700"
+                  className="text-blue-500 hover:text-blue-700 p-2"
                   onClick={() => toggleExpand(project.id)}
                   title={expandedProject === project.id ? "Collapse" : "Expand"}
                 >
@@ -58,7 +90,7 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
                 </button>
                 {index > 0 && (
                   <button 
-                    className="text-red-500 hover:text-red-700"
+                    className="text-red-500 hover:text-red-700 p-2"
                     onClick={() => onRemove(project.id)}
                     title="Remove Project"
                   >
@@ -68,78 +100,87 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove }: ProjectsProps) => {
               </div>
             </div>
             
-            <div className="mb-2">
-              <input 
-                type="text" 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2" 
-                placeholder="Project Name"
-                value={project.name}
-                onChange={(e) => onUpdate(project.id, 'name', e.target.value)}
-              />
-              <input 
-                type="text" 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2" 
-                placeholder="Period (e.g., Jan 2023 - Mar 2023)"
-                value={project.period}
-                onChange={(e) => onUpdate(project.id, 'period', e.target.value)}
-              />
-              <input 
-                type="url" 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2" 
-                placeholder="Project Link (optional)"
-                value={project.link || ''}
-                onChange={(e) => onUpdate(project.id, 'link', e.target.value)}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Period
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Jan 2023 - Mar 2023"
+                  value={project.period}
+                  onChange={(e) => onUpdate(project.id, 'period', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Project Link
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={project.link || ''}
+                  onChange={(e) => onUpdate(project.id, 'link', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Technologies (comma-separated)
+              </label>
+              <input
+                type="text"
+                placeholder="React, Node.js, MongoDB"
+                value={project.technologies?.join(', ') || ''}
+                onChange={(e) => onUpdate(project.id, 'technologies', e.target.value.split(',').map(t => t.trim()))}
+                className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
               />
             </div>
             
-            {expandedProject === project.id && (
-              <>
-                <div className="mt-4">
-                  <h4 className="font-medium text-gray-700 mb-2">Project Description</h4>
-                  <div className="space-y-2">
-                    {project.description.map((bullet, bulletIndex) => (
-                      <div key={bulletIndex} className="flex items-start">
-                        <span className="mt-2 mr-2 text-gray-500">•</span>
-                        <input
-                          type="text"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
-                          placeholder="Describe the project"
-                          value={bullet}
-                          onChange={(e) => updateBulletPoint(project.id, bulletIndex, e.target.value)}
-                        />
-                        {project.description.length > 1 && (
-                          <button
-                            type="button"
-                            className="ml-2 text-red-500 hover:text-red-700 mt-2"
-                            onClick={() => removeBulletPoint(project.id, bulletIndex)}
-                            title="Remove this bullet point"
-                          >
-                            <i className="fas fa-times"></i>
-                          </button>
-                        )}
-                      </div>
-                    ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Project Description
+              </label>
+              {project.description.map((item, itemIndex) => (
+                <div key={itemIndex} className="flex gap-2 mb-2">
+                  <span className="mt-2 text-gray-500">•</span>
+                  <textarea
+                    placeholder="Describe your project achievements and responsibilities..."
+                    value={item}
+                    onChange={(e) => updateBulletPoint(project.id, itemIndex, e.target.value)}
+                    rows={2}
+                    className="flex-1 p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 resize-vertical"
+                  />
+                  {project.description.length > 1 && (
                     <button
-                      type="button"
-                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center mt-2"
-                      onClick={() => addBulletPoint(project.id)}
+                      onClick={() => removeBulletPoint(project.id, itemIndex)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded self-start mt-2"
                     >
-                      <i className="fas fa-plus-circle mr-1"></i> Add Another Point
+                      ✕
                     </button>
-                  </div>
+                  )}
                 </div>
-              </>
-            )}
+              ))}
+              <button
+                onClick={() => addBulletPoint(project.id)}
+                className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center gap-1"
+              >
+                + Add Description Point
+              </button>
+            </div>
           </div>
         ))}
-        
-        <button 
-          className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
-          onClick={onAdd}
-        >
-          <i className="fas fa-plus-circle mr-2"></i> Add Another Project
-        </button>
       </div>
+
+      {projects.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>No projects added yet.</p>
+          <p className="text-sm">Click "Add Project" to get started!</p>
+        </div>
+      )}
     </div>
   );
 };

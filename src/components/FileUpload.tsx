@@ -37,6 +37,7 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
       console.log('Length:', extractedText.length);
       console.log('Full text:', extractedText);
       console.log('First 500 chars:', extractedText.substring(0, 500));
+      console.log('First 20 lines:', extractedText.split('\n').slice(0, 20));
       console.log('===============================');
 
       setProcessingStatus('Parsing resume data...');
@@ -69,6 +70,7 @@ const FileUpload = ({ onUpload }: FileUploadProps) => {
     }
   };
 
+  // ... rest of the component remains the same
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);

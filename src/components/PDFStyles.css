@@ -1,0 +1,222 @@
+/* PDF Full Scale Styles - Enhanced for A4 fitting with Color Preservation */
+.pdf-full-scale {
+  transform: none !important;
+  transform-origin: unset !important;
+  width: 793.7px !important;
+  min-height: 1122.5px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  page-break-inside: avoid !important;
+  box-sizing: border-box !important;
+  max-width: none !important;
+  position: relative !important;
+  overflow: visible !important;
+  background: white !important;
+  display: block !important;
+  
+  /* CRITICAL: Force color preservation */
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+.pdf-full-scale .container,
+.pdf-full-scale .mx-auto,
+.pdf-full-scale [class*="max-w-"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* Ensure proper scaling for A4 */
+.pdf-full-scale > div {
+  width: 793.7px !important;
+  min-height: 1122.5px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+  background: white !important;
+}
+
+/* Prevent content overflow and ensure proper box sizing */
+.pdf-full-scale * {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  
+  /* Force color preservation on all elements */
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+/* Better text rendering for PDF */
+.pdf-full-scale {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Specific template adjustments for A4 */
+.pdf-full-scale .bg-white {
+  background: white !important;
+}
+
+/* CRITICAL: Preserve gradient backgrounds as solid colors for PDF */
+.pdf-full-scale [class*="bg-gradient-to-r"],
+.pdf-full-scale [class*="bg-gradient-to-l"],
+.pdf-full-scale [class*="bg-gradient-to-t"],
+.pdf-full-scale [class*="bg-gradient-to-b"],
+.pdf-full-scale [class*="bg-gradient"] {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+  /* Gradients will be replaced with solid colors via JavaScript */
+}
+
+/* Preserve all background colors */
+.pdf-full-scale [class*="bg-blue"],
+.pdf-full-scale [class*="bg-purple"],
+.pdf-full-scale [class*="bg-pink"],
+.pdf-full-scale [class*="bg-slate"],
+.pdf-full-scale [class*="bg-gray"],
+.pdf-full-scale [class*="bg-green"],
+.pdf-full-scale [class*="bg-yellow"],
+.pdf-full-scale [class*="bg-amber"],
+.pdf-full-scale [class*="bg-red"] {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+/* Preserve all text colors */
+.pdf-full-scale [class*="text-white"],
+.pdf-full-scale [class*="text-blue"],
+.pdf-full-scale [class*="text-purple"],
+.pdf-full-scale [class*="text-pink"],
+.pdf-full-scale [class*="text-gray"],
+.pdf-full-scale [class*="text-green"],
+.pdf-full-scale [class*="text-yellow"],
+.pdf-full-scale [class*="text-amber"] {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+/* Remove shadows for cleaner PDF */
+.pdf-full-scale .shadow-2xl,
+.pdf-full-scale .shadow-lg,
+.pdf-full-scale .shadow-md,
+.pdf-full-scale .shadow-xl,
+.pdf-full-scale .shadow-sm {
+  box-shadow: none !important;
+}
+
+/* Keep rounded corners minimal for PDF */
+.pdf-full-scale .rounded-3xl {
+  border-radius: 12px !important;
+}
+
+.pdf-full-scale .rounded-2xl {
+  border-radius: 10px !important;
+}
+
+.pdf-full-scale .rounded-xl {
+  border-radius: 8px !important;
+}
+
+.pdf-full-scale .rounded-lg {
+  border-radius: 6px !important;
+}
+
+.pdf-full-scale .rounded-md {
+  border-radius: 4px !important;
+}
+
+/* Ensure proper spacing in PDF */
+.pdf-full-scale {
+  line-height: 1.5 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif !important;
+}
+
+/* Fix for template-specific issues */
+.pdf-full-scale img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.pdf-full-scale .overflow-hidden {
+  overflow: visible !important;
+}
+
+/* Ensure backgrounds are preserved */
+.pdf-full-scale [style*="background"] {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+/* Fix for profile pictures in PDF */
+.pdf-full-scale img[alt*="profile"] {
+  max-width: 100% !important;
+  height: auto !important;
+  object-fit: cover !important;
+}
+
+/* Ensure proper text rendering */
+.pdf-full-scale p,
+.pdf-full-scale span,
+.pdf-full-scale div,
+.pdf-full-scale h1,
+.pdf-full-scale h2,
+.pdf-full-scale h3,
+.pdf-full-scale h4,
+.pdf-full-scale li {
+  color: inherit !important;
+  font-family: inherit !important;
+}
+
+/* Remove any transforms that might interfere */
+.pdf-full-scale .transform {
+  transform: none !important;
+}
+
+/* Ensure visibility */
+.pdf-full-scale .invisible {
+  visibility: visible !important;
+}
+
+.pdf-full-scale .opacity-0 {
+  opacity: 1 !important;
+}
+
+/* Print styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .pdf-full-scale,
+  .pdf-full-scale * {
+    visibility: visible;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  .pdf-full-scale {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 768px) {
+  .pdf-full-scale {
+    /* Ensure consistent rendering on mobile */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+  }
+}

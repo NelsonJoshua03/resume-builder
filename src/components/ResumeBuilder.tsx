@@ -1,64 +1,45 @@
-import { useState, useRef, useEffect } from 'react';
-import PersonalInfo from './PersonalInfo';
-import Experience from './Experience';
-import Education from './Education';
-import Skills from './Skills';
+// ResumeBuilder.tsx - ATS Templates Page
+import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { useResume } from './ResumeContext';
 import TemplateSelector from './TemplateSelector';
 import FileUpload from './FileUpload';
 import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
-import { ResumeData, Template, PersonalInfoData, Skill, SectionItem, ParsedResumeData, Experience as ExperienceType, Education as EducationType, Project } from './types';
-import Projects from './Projects';
-import Awards from './Awards';
-import CustomFields from './CustomFields';
 import MobilePDFGenerator from './MobilePDFGenerator';
+import SocialSharing from './SocialSharing';
 import SEO from './SEO';
 import SectionOrderCustomizer from './SectionOrderCustomizer';
-import SocialSharing from './SocialSharing';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
+import { TemplatesMap } from './types';
 
-// Enhanced template configuration with color customization
-const TEMPLATES: Record<string, Template> = {
-  ats: {
-    id: 'ats',
-    name: 'ATS Optimized',
-    background: 'bg-white',
+// Enhanced template configuration with unique styling for each template
+const TEMPLATES: TemplatesMap = {
+  modern: {
+    id: 'modern',
+    name: 'Modern',
+    background: 'bg-gradient-to-br from-gray-50 to-gray-100',
     textColor: 'text-gray-900',
     accentColor: 'text-gray-800',
-    borderColor: 'border-gray-600',
+    borderColor: 'border-gray-400',
     buttonColor: 'bg-gray-800 hover:bg-gray-700',
-    headerBg: 'bg-gray-800',
+    headerBg: 'bg-gradient-to-r from-gray-800 to-gray-900',
     headerText: 'text-white',
-    sectionBg: 'bg-gray-50',
-    description: 'Maximum ATS compatibility with clean, single-column layout',
-    layout: 'ats',
+    sectionBg: 'bg-white bg-opacity-90',
+    description: 'Clean, modern design with professional appeal',
+    layout: 'modern',
     colors: {
-      primary: '#1f2937', // gray-800
-      secondary: '#374151', // gray-700
-      accent: '#6b7280', // gray-500
-      background: '#ffffff',
+      primary: '#374151',
+      secondary: '#1f2937',
+      accent: '#6b7280',
+      background: '#f9fafb',
       text: '#111827'
-    }
-  },
-  professional: {
-    id: 'professional',
-    name: 'Professional',
-    background: 'bg-white',
-    textColor: 'text-gray-900',
-    accentColor: 'text-blue-900',
-    borderColor: 'border-blue-900',
-    buttonColor: 'bg-blue-900 hover:bg-blue-800',
-    headerBg: 'bg-blue-900',
-    headerText: 'text-white',
-    sectionBg: 'bg-gray-50',
-    description: 'Classic professional design for corporate environments',
-    layout: 'professional',
-    colors: {
-      primary: '#1e3a8a', // blue-900
-      secondary: '#1e40af', // blue-800
-      accent: '#3b82f6', // blue-500
-      background: '#ffffff',
-      text: '#111827'
+    },
+    formStyle: {
+      sectionBg: 'bg-white shadow-lg rounded-xl',
+      headerColor: 'text-gray-800',
+      borderColor: 'border-gray-200',
+      accentColor: 'text-gray-700'
     }
   },
   creative: {
@@ -75,11 +56,17 @@ const TEMPLATES: Record<string, Template> = {
     description: 'Colorful and expressive design for creative fields',
     layout: 'creative',
     colors: {
-      primary: '#9333ea', // purple-600
-      secondary: '#7e22ce', // purple-700
-      accent: '#d8b4fe', // purple-300
+      primary: '#9333ea',
+      secondary: '#7e22ce',
+      accent: '#d8b4fe',
       background: '#faf5ff',
       text: '#1f2937'
+    },
+    formStyle: {
+      sectionBg: 'bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl',
+      headerColor: 'text-purple-700',
+      borderColor: 'border-purple-200',
+      accentColor: 'text-purple-600'
     }
   },
   executive: {
@@ -96,11 +83,44 @@ const TEMPLATES: Record<string, Template> = {
     description: 'Elegant corporate design for senior roles',
     layout: 'executive',
     colors: {
-      primary: '#312e81', // indigo-900
-      secondary: '#3730a3', // indigo-800
-      accent: '#6366f1', // indigo-500
+      primary: '#312e81',
+      secondary: '#3730a3',
+      accent: '#6366f1',
       background: '#ffffff',
       text: '#111827'
+    },
+    formStyle: {
+      sectionBg: 'bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg border border-indigo-100',
+      headerColor: 'text-indigo-900',
+      borderColor: 'border-indigo-200',
+      accentColor: 'text-indigo-700'
+    }
+  },
+  professional: {
+    id: 'professional',
+    name: 'Professional',
+    background: 'bg-white',
+    textColor: 'text-gray-900',
+    accentColor: 'text-blue-900',
+    borderColor: 'border-blue-900',
+    buttonColor: 'bg-blue-900 hover:bg-blue-800',
+    headerBg: 'bg-blue-900',
+    headerText: 'text-white',
+    sectionBg: 'bg-gray-50',
+    description: 'Classic professional design for corporate environments',
+    layout: 'professional',
+    colors: {
+      primary: '#1e3a8a',
+      secondary: '#1e40af',
+      accent: '#3b82f6',
+      background: '#ffffff',
+      text: '#111827'
+    },
+    formStyle: {
+      sectionBg: 'bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200',
+      headerColor: 'text-blue-900',
+      borderColor: 'border-blue-300',
+      accentColor: 'text-blue-700'
     }
   },
   tech: {
@@ -117,11 +137,44 @@ const TEMPLATES: Record<string, Template> = {
     description: 'Modern tech-focused design for developers',
     layout: 'tech',
     colors: {
-      primary: '#1f2937', // gray-800
-      secondary: '#374151', // gray-700
-      accent: '#9ca3af', // gray-400
+      primary: '#1f2937',
+      secondary: '#374151',
+      accent: '#9ca3af',
       background: '#f9fafb',
       text: '#1f2937'
+    },
+    formStyle: {
+      sectionBg: 'bg-gradient-to-br from-gray-100 to-blue-100 rounded-lg border border-gray-300',
+      headerColor: 'text-gray-900',
+      borderColor: 'border-gray-400',
+      accentColor: 'text-gray-700'
+    }
+  },
+  ats: {
+    id: 'ats',
+    name: 'ATS Optimized',
+    background: 'bg-white',
+    textColor: 'text-gray-900',
+    accentColor: 'text-gray-800',
+    borderColor: 'border-gray-600',
+    buttonColor: 'bg-gray-800 hover:bg-gray-700',
+    headerBg: 'bg-gray-800',
+    headerText: 'text-white',
+    sectionBg: 'bg-gray-50',
+    description: 'Maximum ATS compatibility with clean, single-column layout',
+    layout: 'ats',
+    colors: {
+      primary: '#1f2937',
+      secondary: '#374151',
+      accent: '#6b7280',
+      background: '#ffffff',
+      text: '#111827'
+    },
+    formStyle: {
+      sectionBg: 'bg-white border border-gray-300 rounded-md',
+      headerColor: 'text-gray-900',
+      borderColor: 'border-gray-400',
+      accentColor: 'text-gray-700'
     }
   },
   twoColumn: {
@@ -138,582 +191,316 @@ const TEMPLATES: Record<string, Template> = {
     description: 'Modern two-column layout with sidebar',
     layout: 'twoColumn',
     colors: {
-      primary: '#0f766e', // teal-700
-      secondary: '#115e59', // teal-800
-      accent: '#5eead4', // teal-300
+      primary: '#0f766e',
+      secondary: '#115e59',
+      accent: '#5eead4',
       background: '#ffffff',
       text: '#111827'
+    },
+    formStyle: {
+      sectionBg: 'bg-gradient-to-br from-teal-50 to-green-50 rounded-xl border border-teal-200',
+      headerColor: 'text-teal-800',
+      borderColor: 'border-teal-300',
+      accentColor: 'text-teal-700'
     }
   }
 };
 
 const ResumeBuilder = () => {
-  const [resumeData, setResumeData] = useState<ResumeData>({
-    personalInfo: {
-      name: 'John Doe',
-      title: 'Software Developer',
-      email: 'john.doe@email.com',
-      phone: '(555) 123-4567',
-      summary: [
-        'Full-stack developer with 5+ years of experience in React, Node.js, and cloud technologies.',
-        'Passionate about building scalable web applications with clean architecture.',
-        'Strong problem-solving skills and experience in agile development environments.'
-      ]
-    },
-    experiences: [
-      {
-        id: 1,
-        title: 'Senior Developer',
-        company: 'Tech Solutions Inc.',
-        period: '2020 - Present',
-        description: [
-          'Led frontend development team and implemented new features',
-          'Mentored junior developers and conducted code reviews',
-          'Optimized application performance reducing load time by 40%'
-        ]
-      },
-      {
-        id: 2,
-        title: 'Junior Developer',
-        company: 'StartUp Co.',
-        period: '2018 - 2020',
-        description: [
-          'Developed and maintained web applications using React',
-          'Collaborated with design team to implement responsive UI',
-          'Participated in agile development processes'
-        ]
-      }
-    ],
-    education: [
-      {
-        id: 1,
-        degree: 'Bachelor of Computer Science',
-        institution: 'University of Technology',
-        year: '2018',
-        gpa: '3.8/4.0'
-      }
-    ],
-    projects: [
-      {
-        id: 1,
-        name: 'E-commerce Platform',
-        description: [
-          'Developed a full-stack e-commerce solution with React and Node.js',
-          'Implemented payment processing with Stripe API',
-          'Designed responsive UI with Tailwind CSS'
-        ],
-        technologies: ['React', 'Node.js', 'MongoDB', 'Stripe'],
-        period: '2022',
-        link: 'https://example.com/ecommerce'
-      }
-    ],
-    awards: [
-      {
-        id: 1,
-        title: 'Best Hackathon Project',
-        issuer: 'Tech Conference 2021',
-        year: '2021',
-        description: 'Awarded for innovative use of AI in healthcare application'
-      }
-    ],
-    customFields: [
-      {
-        id: 1,
-        label: 'Languages',
-        value: 'English (Native), Spanish (Intermediate)',
-        type: 'text'
-      }
-    ],
-    skills: [
-      { name: 'React', proficiency: 'Advanced' },
-      { name: 'Node.js', proficiency: 'Intermediate' },
-      { name: 'JavaScript', proficiency: 'Advanced' },
-      { name: 'HTML/CSS', proficiency: 'Expert' },
-      { name: 'MongoDB', proficiency: 'Intermediate' },
-      { name: 'AWS', proficiency: 'Beginner' }
-    ],
-    selectedTemplate: 'ats',
-    customColors: {}
-  });
-
-  const [sectionOrder, setSectionOrder] = useState<SectionItem[]>([
-    { id: 'summary', label: 'Professional Summary', enabled: true, order: 0 },
-    { id: 'experience', label: 'Work Experience', enabled: true, order: 1 },
-    { id: 'education', label: 'Education', enabled: true, order: 2 },
-    { id: 'projects', label: 'Projects', enabled: true, order: 3 },
-    { id: 'skills', label: 'Skills', enabled: true, order: 4 },
-    { id: 'awards', label: 'Awards', enabled: true, order: 5 },
-    { id: 'custom', label: 'Additional Sections', enabled: true, order: 6 }
-  ]);
-
-  const [formKey, setFormKey] = useState(0); // Add this key to force re-render
+  const { 
+    resumeData, 
+    sectionOrder, 
+    handleSectionReorder, 
+    handleFileUpload,
+    updateSelectedTemplate,
+    updateCustomColors
+  } = useResume();
+  const [formKey, setFormKey] = useState(0);
   const resumeRef = useRef<HTMLDivElement>(null);
+  const [isMobilePreview, setIsMobilePreview] = useState(false);
   
-  // Google Analytics tracking
   const { trackResumeGeneration, trackButtonClick, trackTemplateChange } = useGoogleAnalytics();
 
-  // Debug effect to log state changes
-  useEffect(() => {
-    console.log('ResumeData updated:', resumeData);
-    console.log('Personal Info:', resumeData.personalInfo);
-    console.log('Experiences:', resumeData.experiences);
-    console.log('Education:', resumeData.education);
-    console.log('Skills:', resumeData.skills);
-  }, [resumeData]);
-
-  const updatePersonalInfo = (field: keyof PersonalInfoData, value: string | string[]) => {
-    setResumeData(prev => ({
-      ...prev,
-      personalInfo: { ...prev.personalInfo, [field]: value }
-    }));
-  };
-
-  const updateExperience = (id: number, field: string, value: any) => {
-    setResumeData(prev => ({
-      ...prev,
-      experiences: prev.experiences.map(exp => 
-        exp.id === id ? { ...exp, [field]: value } : exp
-      )
-    }));
-  };
-
-  const addExperience = () => {
-    const newId = Date.now();
-    setResumeData(prev => ({
-      ...prev,
-      experiences: [
-        ...prev.experiences,
-        {
-          id: newId,
-          title: '',
-          company: '',
-          period: '',
-          description: ['']
-        }
-      ]
-    }));
-    trackButtonClick('add_experience', 'experience_section', 'resume_builder');
-    return newId;
-  };
-
-  const removeExperience = (id: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      experiences: prev.experiences.filter(exp => exp.id !== id)
-    }));
-    trackButtonClick('remove_experience', 'experience_section', 'resume_builder');
-  };
-
-  const updateEducation = (id: number, field: string, value: string) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.map(edu => 
-        edu.id === id ? { ...edu, [field]: value } : edu
-      )
-    }));
-  };
-
-  const addEducation = () => {
-    const newId = Date.now();
-    setResumeData(prev => ({
-      ...prev,
-      education: [
-        ...prev.education,
-        {
-          id: newId,
-          degree: '',
-          institution: '',
-          year: '',
-          gpa: ''
-        }
-      ]
-    }));
-    trackButtonClick('add_education', 'education_section', 'resume_builder');
-    return newId;
-  };
-
-  const removeEducation = (id: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.filter(edu => edu.id !== id)
-    }));
-    trackButtonClick('remove_education', 'education_section', 'resume_builder');
-  };
-
-  const addSkill = (skill: Skill) => {
-    if (skill.name && !resumeData.skills.some(s => s.name === skill.name)) {
-      setResumeData(prev => ({
-        ...prev,
-        skills: [...prev.skills, skill]
-      }));
-      trackButtonClick('add_skill', 'skills_section', 'resume_builder');
-    }
-  };
-
-  const removeSkill = (index: number) => {
-    setResumeData(prev => ({
-      ...prev,
-        skills: prev.skills.filter((_, i) => i !== index)
-    }));
-    trackButtonClick('remove_skill', 'skills_section', 'resume_builder');
-  };
-
-  const updateSkillProficiency = (index: number, proficiency: Skill['proficiency']) => {
-    setResumeData(prev => ({
-      ...prev,
-      skills: prev.skills.map((skill, i) => 
-        i === index ? { ...skill, proficiency } : skill
-      )
-    }));
-  };
-
   const selectTemplate = (template: string) => {
-    setResumeData(prev => ({
-      ...prev,
-      selectedTemplate: template
-    }));
+    updateSelectedTemplate(template);
+    console.log('Template selected:', template);
     trackTemplateChange(template);
     trackButtonClick('template_select', 'template_selector', 'resume_builder');
   };
 
   const updateTemplateColors = (colors: any) => {
-    setResumeData(prev => ({
-      ...prev,
-      customColors: {
-        ...prev.customColors,
-        [prev.selectedTemplate]: colors
-      }
-    }));
+    updateCustomColors(resumeData.selectedTemplate, colors);
+    console.log('Colors updated:', colors);
     trackButtonClick('update_colors', 'color_customizer', 'resume_builder');
   };
 
-  const updateProject = (id: number, field: string, value: any) => {
-    setResumeData(prev => ({
-      ...prev,
-      projects: prev.projects.map(proj => 
-        proj.id === id ? { ...proj, [field]: value } : proj
-      )
-    }));
-  };
-
-  const addProject = () => {
-    const newId = Date.now();
-    setResumeData(prev => ({
-      ...prev,
-      projects: [
-        ...prev.projects,
-        {
-          id: newId,
-          name: '',
-          description: [''],
-          technologies: [],
-          period: '',
-          link: ''
-        }
-      ]
-    }));
-    trackButtonClick('add_project', 'projects_section', 'resume_builder');
-    return newId;
-  };
-
-  const removeProject = (id: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      projects: prev.projects.filter(proj => proj.id !== id)
-    }));
-    trackButtonClick('remove_project', 'projects_section', 'resume_builder');
-  };
-
-  const updateAward = (id: number, field: string, value: string) => {
-    setResumeData(prev => ({
-      ...prev,
-      awards: prev.awards.map(award => 
-        award.id === id ? { ...award, [field]: value } : award
-      )
-    }));
-  };
-
-  const addAward = () => {
-    const newId = Date.now();
-    setResumeData(prev => ({
-      ...prev,
-      awards: [
-        ...prev.awards,
-        {
-          id: newId,
-          title: '',
-          issuer: '',
-          year: '',
-          description: ''
-        }
-      ]
-    }));
-    trackButtonClick('add_award', 'awards_section', 'resume_builder');
-    return newId;
-  };
-
-  const removeAward = (id: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      awards: prev.awards.filter(award => award.id !== id)
-    }));
-    trackButtonClick('remove_award', 'awards_section', 'resume_builder');
-  };
-
-  const updateCustomField = (id: number, field: string, value: string) => {
-    setResumeData(prev => ({
-      ...prev,
-      customFields: prev.customFields.map(cf => 
-        cf.id === id ? { ...cf, [field]: value } : cf
-      )
-    }));
-  };
-
-  const changeCustomFieldType = (id: number, type: 'text' | 'textarea' | 'date' | 'url') => {
-    setResumeData(prev => ({
-      ...prev,
-      customFields: prev.customFields.map(cf => 
-        cf.id === id ? { ...cf, type } : cf
-      )
-    }));
-  };
-
-  const addCustomField = () => {
-    const newId = Date.now();
-    setResumeData(prev => ({
-      ...prev,
-      customFields: [
-        ...prev.customFields,
-        {
-          id: newId,
-          label: 'New Section',
-          value: '',
-          type: 'text'
-        }
-      ]
-    }));
-    trackButtonClick('add_custom_field', 'custom_fields', 'resume_builder');
-    return newId;
-  };
-
-  const removeCustomField = (id: number) => {
-    setResumeData(prev => ({
-      ...prev,
-      customFields: prev.customFields.filter(cf => cf.id !== id)
-    }));
-    trackButtonClick('remove_custom_field', 'custom_fields', 'resume_builder');
-  };
-
-  const handleFileUpload = (parsedData: ParsedResumeData) => {
-    console.log('Parsed resume data:', parsedData);
-    console.log('Parsed data details:', {
-      personalInfo: parsedData.personalInfo,
-      experiences: parsedData.experiences,
-      education: parsedData.education,
-      skills: parsedData.skills,
-      projects: parsedData.projects
-    });
-    
-    trackButtonClick('file_upload', 'file_upload', 'resume_builder');
-    
-    // Create a completely new state with parsed data
-    const newResumeData: ResumeData = {
-      personalInfo: {
-        name: parsedData.personalInfo.name || 'Your Name',
-        title: parsedData.personalInfo.title || 'Your Title',
-        email: parsedData.personalInfo.email || 'your.email@example.com',
-        phone: parsedData.personalInfo.phone || '(555) 123-4567',
-        summary: parsedData.personalInfo.summary.length > 0 
-          ? parsedData.personalInfo.summary 
-          : ['Professional summary will appear here.']
-      },
-      experiences: parsedData.experiences.length > 0 
-        ? parsedData.experiences.map((exp: ExperienceType, index: number) => ({
-            ...exp,
-            id: Date.now() + index,
-            description: exp.description.length > 0 ? exp.description : ['']
-          }))
-        : [{
-            id: Date.now(),
-            title: '',
-            company: '',
-            period: '',
-            description: ['']
-          }],
-      education: parsedData.education.length > 0 
-        ? parsedData.education.map((edu: EducationType, index: number) => ({
-            ...edu,
-            id: Date.now() + index,
-            gpa: edu.gpa || ''
-          }))
-        : [{
-            id: Date.now(),
-            degree: '',
-            institution: '',
-            year: '',
-            gpa: ''
-          }],
-      skills: parsedData.skills.length > 0 
-        ? parsedData.skills 
-        : [{ name: 'JavaScript', proficiency: 'Intermediate' }],
-      projects: parsedData.projects.length > 0 
-        ? parsedData.projects.map((proj: Project, index: number) => ({
-            ...proj,
-            id: Date.now() + index,
-            description: proj.description.length > 0 ? proj.description : [''],
-            technologies: proj.technologies || []
-          }))
-        : [{
-            id: Date.now(),
-            name: '',
-            description: [''],
-            technologies: [],
-            period: '',
-            link: ''
-          }],
-      awards: [{
-        id: Date.now(),
-        title: '',
-        issuer: '',
-        year: '',
-        description: ''
-      }],
-      customFields: [{
-        id: Date.now(),
-        label: 'Languages',
-        value: '',
-        type: 'text'
-      }],
-      selectedTemplate: 'ats',
-      customColors: {}
-    };
-
-    console.log('New resume data to set:', newResumeData);
-    
-    setResumeData(newResumeData);
-    setFormKey(prev => prev + 1); // Force re-render of form components
-    
-    alert('Resume information has been auto-filled! Please review and make any necessary edits.');
-  };
-
-  const handleSectionReorder = (reorderedSections: SectionItem[]) => {
-    setSectionOrder(reorderedSections);
-    trackButtonClick('reorder_sections', 'section_ordering', 'resume_builder');
-  };
-
-  // Get the current template configuration
-  const currentTemplate = TEMPLATES[resumeData.selectedTemplate] || TEMPLATES.ats;
-  
-  // Get custom colors for the current template if they exist
+  const currentTemplate = TEMPLATES[resumeData.selectedTemplate as keyof typeof TEMPLATES] || TEMPLATES.creative;
   const customColors = resumeData.customColors[resumeData.selectedTemplate] || currentTemplate.colors;
+
+  const toggleMobilePreview = () => {
+    setIsMobilePreview(!isMobilePreview);
+  };
 
   return (
     <>
       <SEO
         title="Free Resume Builder - Create ATS-Friendly CV Online | CareerCraft"
-        description="Build professional, ATS-optimized resumes with CareerCraft's free online builder. 6+ templates for engineers, developers, and professionals. Download PDF instantly."
+        description="Build professional, ATS-optimized resumes with CareerCraft's free online builder. 8+ templates for engineers, developers, and professionals. Download PDF instantly."
         keywords="free resume builder, online CV maker, ATS resume template, professional resume download, resume builder no sign up, create resume free, career craft"
         canonicalUrl="https://careercraft.in/builder"
       />
       
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <header className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-800 mb-3">CareerCraft Resume Builder</h1>
-          <p className="text-xl text-gray-600">Create professional resumes in minutes</p>
-        </header>
-
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="w-full lg:w-2/5" key={formKey}>
-            {/* Fixed PersonalInfo section */}
-            <PersonalInfo 
-              data={resumeData.personalInfo} 
-              onChange={updatePersonalInfo} 
-            />
+      <div className="min-h-screen bg-gray-50 py-1">
+        <div className="mx-auto px-1 max-w-[100rem]">
+          <header className="text-center mb-3">
+            <h1 className="text-xl font-bold text-gray-800 mb-1">CareerCraft Resume Builder</h1>
+            <p className="text-sm text-gray-600">Create professional ATS-optimized resumes in minutes</p>
             
-            {/* Static sections without drag-and-drop */}
-            <div className="space-y-6">
-              <Experience 
-                experiences={resumeData.experiences}
-                onUpdate={updateExperience}
-                onAdd={addExperience}
-                onRemove={removeExperience}
-              />
-              <Education 
-                education={resumeData.education}
-                onUpdate={updateEducation}
-                onAdd={addEducation}
-                onRemove={removeEducation}
-              />
-              <Projects
-                projects={resumeData.projects}
-                onUpdate={updateProject}
-                onAdd={addProject}
-                onRemove={removeProject}
-              />
-              <Awards
-                awards={resumeData.awards}
-                onUpdate={updateAward}
-                onAdd={addAward}
-                onRemove={removeAward}
-              />
-              <Skills 
-                skills={resumeData.skills}
-                onAdd={addSkill}
-                onRemove={removeSkill}
-                onUpdateProficiency={updateSkillProficiency}
-              />
-              <CustomFields
-                customFields={resumeData.customFields}
-                onUpdate={updateCustomField}
-                onAdd={addCustomField}
-                onRemove={removeCustomField}
-                onChangeType={changeCustomFieldType}
-              />
-              <FileUpload 
-                onUpload={handleFileUpload}
-              />
+            <div className="mt-2">
+              <Link
+                to="/edit"
+                className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors font-semibold inline-flex items-center gap-1 text-xs"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Edit Resume
+              </Link>
+            </div>
+          </header>
+
+          {/* MOBILE LAYOUT: Vertical stack for mobile */}
+          <div className="block lg:hidden space-y-2">
+            {/* Template Selector - Compact Horizontal Scroll */}
+            <div className="bg-white rounded-md shadow-sm p-2">
+              <div className="flex space-x-1 overflow-x-auto pb-1">
+                {Object.values(TEMPLATES).map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => selectTemplate(template.id)}
+                    className={`flex-shrink-0 px-2 py-1 rounded text-xs font-medium transition-all ${
+                      resumeData.selectedTemplate === template.id
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {template.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview Container - Default zoomed out view */}
+            <div className="bg-white rounded-md shadow-sm p-2">
+              {/* Mobile Preview Toggle and Download Button */}
+              <div className="flex justify-between items-center mb-2">
+                <button
+                  onClick={toggleMobilePreview}
+                  className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
+                    isMobilePreview
+                      ? 'bg-green-600 text-white shadow-sm'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {isMobilePreview ? '📄 Back to Preview' : '🔍 Read Full Resume'}
+                </button>
+
+                <MobilePDFGenerator 
+                  resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
+                  personalInfo={resumeData.personalInfo}
+                  resumeData={resumeData}
+                  template={currentTemplate}
+                  sectionOrder={sectionOrder}
+                />
+              </div>
+
+              {/* Resume Preview - FULL WIDTH FIT with entire page visible */}
+              <div className="border border-gray-300 rounded bg-gray-50 overflow-auto" style={{ 
+                height: isMobilePreview ? 'auto' : '80vh'
+              }}>
+                <div 
+                  className="bg-white mx-auto"
+                  style={{ 
+                    width: isMobilePreview ? '100%' : '100%',
+                    maxWidth: isMobilePreview ? 'none' : '100%',
+                    transform: isMobilePreview ? 'scale(1)' : 'none',
+                    transition: 'transform 0.3s ease'
+                  }}
+                >
+                  <div ref={resumeRef}>
+                    <ResumePreview 
+                      data={resumeData} 
+                      template={currentTemplate}
+                      customColors={customColors}
+                      sectionOrder={sectionOrder}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Social Sharing */}
+              <div className="mt-2">
+                <SocialSharing 
+                  resumeTitle={resumeData.personalInfo.title}
+                />
+              </div>
+            </div>
+
+            {/* Controls Section */}
+            <div className="space-y-2">
+              <div className="bg-white rounded-md shadow-sm p-2">
+                <ColorCustomizer
+                  template={currentTemplate}
+                  colors={customColors}
+                  onUpdate={updateTemplateColors}
+                />
+              </div>
+
+              <div className="bg-white rounded-md shadow-sm p-2">
+                <SectionOrderCustomizer 
+                  sections={sectionOrder}
+                  onReorder={handleSectionReorder}
+                />
+              </div>
+
+              <div className="bg-white rounded-md shadow-sm p-2">
+                <FileUpload 
+                  onUpload={handleFileUpload}
+                />
+              </div>
+
+              <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                <h3 className="font-semibold text-blue-800 mb-1 text-xs">Need to edit your information?</h3>
+                <Link
+                  to="/edit"
+                  className="bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors w-full text-center block text-xs"
+                >
+                  Edit Resume Details
+                </Link>
+              </div>
             </div>
           </div>
 
-          <div className="w-full lg:w-3/5">
-            <ResumePreview 
-              ref={resumeRef} 
-              data={resumeData} 
-              template={currentTemplate}
-              customColors={customColors}
-              sectionOrder={sectionOrder}
-            />
-            
-            {/* Updated MobilePDFGenerator with sectionOrder prop */}
-            <MobilePDFGenerator 
-              resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
-              personalInfo={resumeData.personalInfo}
-              resumeData={resumeData}
-              template={currentTemplate}
-              sectionOrder={sectionOrder}
-            />
+          {/* DESKTOP LAYOUT: Standard side-by-side */}
+          <div className="hidden lg:flex flex-col xl:flex-row gap-4">
+            {/* Preview Section */}
+            <div className="xl:w-3/5">
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <ResumePreview 
+                  ref={resumeRef} 
+                  data={resumeData} 
+                  template={currentTemplate}
+                  customColors={customColors}
+                  sectionOrder={sectionOrder}
+                />
+                
+                <div className="flex gap-3 justify-center mt-6">
+                  <MobilePDFGenerator 
+                    resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
+                    personalInfo={resumeData.personalInfo}
+                    resumeData={resumeData}
+                    template={currentTemplate}
+                    sectionOrder={sectionOrder}
+                  />
 
-            {/* Social Sharing Component */}
-            <SocialSharing 
-              resumeTitle={resumeData.personalInfo.title}
-            />
-            
-            <TemplateSelector 
-              selectedTemplate={resumeData.selectedTemplate}
-              onSelect={selectTemplate}
-              templates={TEMPLATES}
-            />
-            
-            <ColorCustomizer
-              template={currentTemplate}
-              colors={customColors}
-              onUpdate={updateTemplateColors}
-            />
+                  <SocialSharing 
+                    resumeTitle={resumeData.personalInfo.title}
+                  />
+                </div>
+              </div>
+            </div>
 
-            <SectionOrderCustomizer 
-              sections={sectionOrder}
-              onReorder={handleSectionReorder}
-            />
+            {/* Controls Section */}
+            <div className="xl:w-2/5 space-y-4">
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <TemplateSelector 
+                  selectedTemplate={resumeData.selectedTemplate}
+                  onSelect={selectTemplate}
+                  templates={TEMPLATES}
+                />
+              </div>
+              
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <ColorCustomizer
+                  template={currentTemplate}
+                  colors={customColors}
+                  onUpdate={updateTemplateColors}
+                />
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <SectionOrderCustomizer 
+                  sections={sectionOrder}
+                  onReorder={handleSectionReorder}
+                />
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <FileUpload 
+                  onUpload={handleFileUpload}
+                />
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                <h3 className="font-semibold text-blue-800 mb-2">Need to edit your information?</h3>
+                <p className="text-blue-700 text-sm mb-3">Update your personal details, experience, education, and more.</p>
+                <Link
+                  to="/edit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors w-full text-center block"
+                >
+                  Edit Resume Details
+                </Link>
+              </div>
+
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-xl border border-purple-200">
+                <h3 className="font-semibold text-gray-800 mb-3">Explore More Templates</h3>
+                <div className="flex gap-3">
+                  <Link
+                    to="/premium"
+                    className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-center text-sm"
+                  >
+                    Premium Templates
+                  </Link>
+                  <button className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm">
+                    ATS Templates
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Features Section */}
+          <div className="mt-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 border border-gray-200">
+            <h2 className="text-lg font-bold text-center text-gray-800 mb-2">Why Choose ATS Templates?</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="text-center">
+                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-1">
+                  <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-xs">ATS Friendly</h3>
+                <p className="text-gray-600 text-xs">Optimized for Applicant Tracking Systems</p>
+              </div>
+              <div className="text-center">
+                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-1">
+                  <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-xs">Fast Processing</h3>
+                <p className="text-gray-600 text-xs">Quick parsing by automated systems</p>
+              </div>
+              <div className="text-center">
+                <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-1">
+                  <svg className="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-xs">Professional</h3>
+                <p className="text-gray-600 text-xs">Clean designs that impress recruiters</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
