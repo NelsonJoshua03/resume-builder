@@ -8,20 +8,13 @@
     
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <!-- Content Security Policy - COMPLETE GOOGLE ADS FIX -->
+    <!-- Content Security Policy - SIMPLIFIED -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
                    script-src 'self' 'unsafe-inline' 'unsafe-eval' 
                            https://www.googletagmanager.com 
                            https://pagead2.googlesyndication.com 
-                           https://cdnjs.cloudflare.com 
-                           https://scripts.simpleanalyticscdn.com 
-                           https://*.google.com 
-                           https://*.googleadservices.com 
-                           https://*.googlesyndication.com 
-                           https://*.doubleclick.net 
-                           https://ep1.adtrafficquality.google 
-                           https://ep2.adtrafficquality.google;
+                           https://cdnjs.cloudflare.com;
                    style-src 'self' 'unsafe-inline' 
                            https://cdnjs.cloudflare.com 
                            https://fonts.googleapis.com;
@@ -29,40 +22,15 @@
                            https://cdnjs.cloudflare.com 
                            https://fonts.gstatic.com;
                    img-src 'self' data: https:;
-                   frame-src 'self' 
-                           https://www.google.com 
-                           https://*.google.com 
-                           https://*.doubleclick.net 
-                           https://*.googlesyndication.com 
-                           https://ep1.adtrafficquality.google 
-                           https://ep2.adtrafficquality.google;
+                   frame-src 'self' https:;
                    connect-src 'self' 
                            https://www.google-analytics.com 
                            https://region1.google-analytics.com 
-                           https://raw.githubusercontent.com 
-                           https://*.google.com 
-                           https://*.googleadservices.com 
-                           https://*.doubleclick.net 
-                           https://www.googletagmanager.com 
-                           https://ep1.adtrafficquality.google 
-                           https://ep2.adtrafficquality.google 
-                           https://googleads.g.doubleclick.net;">
+                           https://raw.githubusercontent.com;">
     
     <!-- Google AdSense Auto Ads -->
     <meta name="google-adsense-account" content="ca-pub-7970100235833186">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970100235833186" crossorigin="anonymous"></script>
-    
-    <!-- Google Analytics (GA4) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JM2050D0Y8"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-JM2050D0Y8', {
-        page_title: document.title,
-        page_location: window.location.href
-      });
-    </script>
     
     <!-- Google Verification -->
     <meta name="google-site-verification" content="72ogLK0F0xw0H23swyyhs8idWOcyyv7hr1-zAMZ9v7w" />
@@ -113,12 +81,15 @@
       "name": "CareerCraft India",
       "url": "https://careercraft.in/",
       "description": "India's free ATS-friendly resume builder and job portal",
-      "email": "support@careercraft.in",
+      "email": "contact@careercraft.in",
       "address": {
         "@type": "PostalAddress",
         "addressCountry": "IN"
       },
-      "sameAs": []
+      "sameAs": [
+        "https://www.linkedin.com/in/career-coach-expert-2a47a0399",
+        "https://www.instagram.com/career_craft_india/"
+      ]
     }
     </script>
 
@@ -139,7 +110,6 @@
     <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
     <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
     <meta property="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
-    <meta property="twitter:creator" content="@careercraftIN" />
     
     <!-- Preload critical resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,7 +124,6 @@
     <meta name="geo.placename" content="India">
     <meta name="rating" content="general">
     <meta name="revisit-after" content="7 days">
-    <meta name="twitter:site" content="@careercraftIN">
     
     <!-- Favicon and App Icons -->
     <link rel="apple-touch-icon" sizes="180x180" href="/logos/careercraft-logo-square.png">
@@ -196,9 +165,5 @@
   <body style="margin: 0; padding: 0; width: 100%; overflow-x: hidden;">
     <div id="root" style="width: 100%; overflow-x: hidden;"></div>
     <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Simple Analytics Script (Optional) -->
-    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-    <noscript><img src="https://queue.simpleanalyticscdn.com/noscript.gif" alt="" referrerpolicy="no-referrer-when-downgrade" /></noscript>
   </body>
 </html>

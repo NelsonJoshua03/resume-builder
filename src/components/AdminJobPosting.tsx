@@ -1,7 +1,8 @@
-// src/components/AdminJobPosting.tsx
+// src/components/AdminJobPosting.tsx - UPDATED WITH SEO & ANALYTICS
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { Zap, Copy, Download, Upload } from 'lucide-react';
 
 interface Job {
@@ -54,6 +55,7 @@ const AdminJobPosting: React.FC = () => {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { trackButtonClick, trackCTAClick, trackUserFlow, trackEvent } = useGoogleAnalytics();
 
   // Quick job templates optimized for Indian market
   const quickTemplates = {
@@ -113,7 +115,8 @@ const AdminJobPosting: React.FC = () => {
   useEffect(() => {
     const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
     setManualJobs(savedJobs);
-  }, []);
+    trackEvent('admin_page_view', { page: 'job_posting_admin' });
+  }, [trackEvent]);
 
   // Apply quick template
   const applyTemplate = (templateKey: keyof typeof quickTemplates) => {
@@ -124,6 +127,7 @@ const AdminJobPosting: React.FC = () => {
     });
     setRequirementsInput(template.requirements.join('\n'));
     setActiveTab('single');
+    trackButtonClick(`apply_template_${templateKey}`, 'quick_templates', 'admin_job_posting');
   };
 
   // Single job submission
@@ -144,6 +148,16 @@ const AdminJobPosting: React.FC = () => {
     const updatedJobs = [...manualJobs, newJob];
     setManualJobs(updatedJobs);
     localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+    
+    // Track job posting
+    trackButtonClick('post_single_job', 'job_form', 'admin_job_posting');
+    trackUserFlow('admin_job_posting', 'job_posted', 'job_creation');
+    trackEvent('job_posted', {
+      job_type: 'single',
+      job_title: job.title,
+      company: job.company,
+      sector: job.sector
+    });
     
     setShowSuccess(true);
     // Reset form
@@ -170,6 +184,7 @@ const AdminJobPosting: React.FC = () => {
     
     try {
       const jobsData = JSON.parse(bulkJsonInput);
+      trackButtonClick('bulk_upload_jobs', 'bulk_upload', 'admin_job_posting');
       
       if (!Array.isArray(jobsData)) {
         throw new Error('JSON must be an array of job objects');
@@ -217,6 +232,12 @@ const AdminJobPosting: React.FC = () => {
         const updatedJobs = [...manualJobs, ...newJobs];
         setManualJobs(updatedJobs);
         localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+        trackUserFlow('admin_job_posting', 'bulk_jobs_uploaded', 'job_creation');
+        trackEvent('bulk_jobs_uploaded', {
+          total_jobs: jobsData.length,
+          successful_uploads: successCount,
+          failed_uploads: failedCount
+        });
       }
 
       setBulkUploadResults({
@@ -229,6 +250,7 @@ const AdminJobPosting: React.FC = () => {
         setBulkJsonInput('');
       }
     } catch (error) {
+      trackButtonClick('bulk_upload_error', 'bulk_upload', 'admin_job_posting');
       setBulkUploadResults({
         success: 0,
         failed: 0,
@@ -242,6 +264,8 @@ const AdminJobPosting: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    trackButtonClick('upload_json_file', 'file_upload', 'admin_job_posting');
+    
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -281,6 +305,7 @@ const AdminJobPosting: React.FC = () => {
       });
     }
     setBulkJsonInput(JSON.stringify(jobs, null, 2));
+    trackButtonClick('generate_batch_jobs', 'batch_creator', 'admin_job_posting');
   };
 
   // Download template JSON
@@ -329,6 +354,8 @@ const AdminJobPosting: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    trackButtonClick('download_template', 'template_download', 'admin_job_posting');
   };
 
   // Export current jobs
@@ -342,18 +369,22 @@ const AdminJobPosting: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    trackButtonClick('export_jobs', 'job_management', 'admin_job_posting');
   };
 
   const deleteJob = (jobId: string) => {
     const updatedJobs = manualJobs.filter(job => job.id !== jobId);
     setManualJobs(updatedJobs);
     localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+    trackButtonClick('delete_job', 'job_management', 'admin_job_posting');
   };
 
   const clearAllJobs = () => {
     if (window.confirm('Are you sure you want to delete all manually posted jobs? This action cannot be undone.')) {
       setManualJobs([]);
       localStorage.setItem('manualJobs', '[]');
+      trackButtonClick('clear_all_jobs', 'job_management', 'admin_job_posting');
     }
   };
 
@@ -372,15 +403,39 @@ const AdminJobPosting: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Admin Job Posting | CareerCraft.in</title>
-        <meta name="description" content="Post new job opportunities on CareerCraft.in - India's premier career platform" />
+        <title>Admin Job Posting - Add Job Opportunities | CareerCraft.in</title>
+        <meta name="description" content="Post new job opportunities on CareerCraft.in - India's premier career platform for IT, engineering, marketing and business jobs." />
+        <meta name="keywords" content="post jobs India, admin job portal, career opportunities, hire candidates India, job posting platform" />
+        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href="https://careercraft.in/admin/job-posting" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Admin Job Posting - CareerCraft.in" />
+        <meta property="og:description" content="Post new job opportunities on CareerCraft.in" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": "Admin Job Posting - CareerCraft.in",
+            "description": "Admin panel for posting job opportunities on CareerCraft.in",
+            "url": "https://careercraft.in/admin/job-posting"
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
           {/* Header */}
           <div className="mb-8">
-            <Link to="/job-applications" className="text-blue-600 hover:text-blue-800 mb-4 inline-block">
+            <Link 
+              to="/job-applications" 
+              className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
+              onClick={() => trackCTAClick('back_to_jobs', 'navigation', 'admin_job_posting')}
+            >
               ← Back to Job Applications
             </Link>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Posting</h1>
@@ -409,7 +464,10 @@ const AdminJobPosting: React.FC = () => {
             <div className="border-b border-gray-200">
               <nav className="flex -mb-px">
                 <button
-                  onClick={() => setActiveTab('single')}
+                  onClick={() => {
+                    setActiveTab('single');
+                    trackButtonClick('switch_tab_single', 'tab_navigation', 'admin_job_posting');
+                  }}
                   className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
                     activeTab === 'single'
                       ? 'border-blue-500 text-blue-600'
@@ -419,7 +477,10 @@ const AdminJobPosting: React.FC = () => {
                   Single Job Posting
                 </button>
                 <button
-                  onClick={() => setActiveTab('bulk')}
+                  onClick={() => {
+                    setActiveTab('bulk');
+                    trackButtonClick('switch_tab_bulk', 'tab_navigation', 'admin_job_posting');
+                  }}
                   className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
                     activeTab === 'bulk'
                       ? 'border-blue-500 text-blue-600'

@@ -1,4 +1,4 @@
-// src/components/MobilePDFGenerator.tsx
+// MobilePDFGenerator.tsx
 import { useState } from 'react';
 import jsPDF from 'jspdf';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
@@ -92,20 +92,111 @@ const MobilePDFGenerator = ({
         checkNewPage();
       };
       
-      const addSectionHeader = (title: string) => {
+      const addSectionHeader = (title: string, color?: string) => {
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(0, 0, 0);
+        
+        // Use provided color or default to primary color for specific templates
+        if (color) {
+          const rgb = hexToRgb(color);
+          pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+        } else {
+          pdf.setTextColor(0, 0, 0);
+        }
         
         pdf.text(title.toUpperCase(), margin, yPosition);
         yPosition += 2;
         
-        // Brighter and clearer underline
+        // Thinner horizontal line across the page
         pdf.setDrawColor(100, 100, 100);
-        pdf.setLineWidth(0.5);
-        pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+        pdf.setLineWidth(0.3); // Thinner line
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Across entire content width
+        yPosition += 8;
+      };
+
+      // Tech template section header with primary color and full-width thin line
+      const addTechSectionHeader = (title: string) => {
+        checkNewPage(15);
+        addSpacing(5);
+        pdf.setFontSize(14);
+        pdf.setFont('courier', 'bold');
+        
+        // Use primary color for tech template
+        const rgb = hexToRgb(primaryColor);
+        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+        
+        pdf.text(`< ${title.toUpperCase()} />`, margin, yPosition);
+        yPosition += 2;
+        
+        // Tech-style thin horizontal line across entire page
+        pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
+        pdf.setLineWidth(0.3); // Very thin line
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
+        yPosition += 8;
+      };
+
+      // Creative template section header with primary color and full-width thin line
+      const addCreativeSectionHeader = (title: string) => {
+        checkNewPage(15);
+        addSpacing(5);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        
+        // Use primary color for creative template
+        const rgb = hexToRgb(primaryColor);
+        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+        
+        pdf.text(title.toUpperCase(), margin, yPosition);
+        yPosition += 2;
+        
+        // Creative style thin decorative line across entire page
+        pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
+        pdf.setLineWidth(0.3); // Very thin line
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
+        yPosition += 8;
+      };
+
+      // Professional template section header with primary color and full-width thin line
+      const addProfessionalSectionHeader = (title: string) => {
+        checkNewPage(15);
+        addSpacing(5);
+        pdf.setFontSize(14);
+        pdf.setFont('times', 'bold');
+        
+        // Use primary color for professional template
+        const rgb = hexToRgb(primaryColor);
+        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+        
+        pdf.text(title.toUpperCase(), margin, yPosition);
+        yPosition += 2;
+        
+        // Professional style thin solid line across entire page
+        pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
+        pdf.setLineWidth(0.4); // Thin line
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
+        yPosition += 8;
+      };
+
+      // Executive template section header with primary color and full-width thin line
+      const addExecutiveSectionHeader = (title: string) => {
+        checkNewPage(15);
+        addSpacing(5);
+        pdf.setFontSize(14);
+        pdf.setFont('times', 'bold');
+        
+        // Use primary color for executive template
+        const rgb = hexToRgb(primaryColor);
+        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+        
+        pdf.text(title.toUpperCase(), margin, yPosition);
+        yPosition += 2;
+        
+        // Executive style thin solid line across entire page
+        pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
+        pdf.setLineWidth(0.4); // Thin line
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
         yPosition += 8;
       };
       
@@ -154,7 +245,17 @@ const MobilePDFGenerator = ({
       // COMMON SECTION RENDERING FUNCTIONS
       const renderSummarySection = () => {
         if (personalInfo.summary && personalInfo.summary.length > 0) {
-          addSectionHeader('PROFESSIONAL SUMMARY');
+          if (template.layout === 'tech') {
+            addTechSectionHeader('PROFESSIONAL SUMMARY');
+          } else if (template.layout === 'creative') {
+            addCreativeSectionHeader('PROFESSIONAL SUMMARY');
+          } else if (template.layout === 'professional') {
+            addProfessionalSectionHeader('PROFESSIONAL SUMMARY');
+          } else if (template.layout === 'executive') {
+            addExecutiveSectionHeader('PROFESSIONAL SUMMARY');
+          } else {
+            addSectionHeader('PROFESSIONAL SUMMARY');
+          }
           personalInfo.summary.forEach(item => {
             addBulletPoint(item);
           });
@@ -164,7 +265,17 @@ const MobilePDFGenerator = ({
 
       const renderExperienceSection = () => {
         if (resumeData.experiences && resumeData.experiences.length > 0) {
-          addSectionHeader('WORK EXPERIENCE');
+          if (template.layout === 'tech') {
+            addTechSectionHeader('WORK EXPERIENCE');
+          } else if (template.layout === 'creative') {
+            addCreativeSectionHeader('WORK EXPERIENCE');
+          } else if (template.layout === 'professional') {
+            addProfessionalSectionHeader('WORK EXPERIENCE');
+          } else if (template.layout === 'executive') {
+            addExecutiveSectionHeader('WORK EXPERIENCE');
+          } else {
+            addSectionHeader('WORK EXPERIENCE');
+          }
           
           resumeData.experiences.forEach((exp: any, index: number) => {
             if (exp.title || exp.company) {
@@ -201,7 +312,17 @@ const MobilePDFGenerator = ({
 
       const renderEducationSection = () => {
         if (resumeData.education && resumeData.education.length > 0) {
-          addSectionHeader('EDUCATION');
+          if (template.layout === 'tech') {
+            addTechSectionHeader('EDUCATION');
+          } else if (template.layout === 'creative') {
+            addCreativeSectionHeader('EDUCATION');
+          } else if (template.layout === 'professional') {
+            addProfessionalSectionHeader('EDUCATION');
+          } else if (template.layout === 'executive') {
+            addExecutiveSectionHeader('EDUCATION');
+          } else {
+            addSectionHeader('EDUCATION');
+          }
           
           resumeData.education.forEach((edu: any) => {
             if (edu.degree || edu.institution) {
@@ -238,7 +359,17 @@ const MobilePDFGenerator = ({
 
       const renderSkillsSection = () => {
         if (resumeData.skills && resumeData.skills.length > 0) {
-          addSectionHeader('SKILLS');
+          if (template.layout === 'tech') {
+            addTechSectionHeader('SKILLS');
+          } else if (template.layout === 'creative') {
+            addCreativeSectionHeader('SKILLS');
+          } else if (template.layout === 'professional') {
+            addProfessionalSectionHeader('SKILLS');
+          } else if (template.layout === 'executive') {
+            addExecutiveSectionHeader('SKILLS');
+          } else {
+            addSectionHeader('SKILLS');
+          }
           
           checkNewPage(15);
           
@@ -261,7 +392,17 @@ const MobilePDFGenerator = ({
 
       const renderProjectsSection = () => {
         if (resumeData.projects && resumeData.projects.length > 0) {
-          addSectionHeader('PROJECTS');
+          if (template.layout === 'tech') {
+            addTechSectionHeader('PROJECTS');
+          } else if (template.layout === 'creative') {
+            addCreativeSectionHeader('PROJECTS');
+          } else if (template.layout === 'professional') {
+            addProfessionalSectionHeader('PROJECTS');
+          } else if (template.layout === 'executive') {
+            addExecutiveSectionHeader('PROJECTS');
+          } else {
+            addSectionHeader('PROJECTS');
+          }
           
           resumeData.projects.forEach((project: any) => {
             if (project.name) {
@@ -299,7 +440,17 @@ const MobilePDFGenerator = ({
 
       const renderAwardsSection = () => {
         if (resumeData.awards && resumeData.awards.length > 0 && resumeData.awards[0].title) {
-          addSectionHeader('AWARDS & HONORS');
+          if (template.layout === 'tech') {
+            addTechSectionHeader('AWARDS & HONORS');
+          } else if (template.layout === 'creative') {
+            addCreativeSectionHeader('AWARDS & HONORS');
+          } else if (template.layout === 'professional') {
+            addProfessionalSectionHeader('AWARDS & HONORS');
+          } else if (template.layout === 'executive') {
+            addExecutiveSectionHeader('AWARDS & HONORS');
+          } else {
+            addSectionHeader('AWARDS & HONORS');
+          }
           
           resumeData.awards.forEach((award: any) => {
             if (award.title) {
@@ -339,7 +490,17 @@ const MobilePDFGenerator = ({
         if (resumeData.customFields && resumeData.customFields.length > 0) {
           resumeData.customFields.forEach((field: any) => {
             if (field.label && field.value) {
-              addSectionHeader(`${field.label.toUpperCase()}`);
+              if (template.layout === 'tech') {
+                addTechSectionHeader(`${field.label.toUpperCase()}`);
+              } else if (template.layout === 'creative') {
+                addCreativeSectionHeader(`${field.label.toUpperCase()}`);
+              } else if (template.layout === 'professional') {
+                addProfessionalSectionHeader(`${field.label.toUpperCase()}`);
+              } else if (template.layout === 'executive') {
+                addExecutiveSectionHeader(`${field.label.toUpperCase()}`);
+              } else {
+                addSectionHeader(`${field.label.toUpperCase()}`);
+              }
               
               pdf.setFontSize(10);
               pdf.setFont('helvetica', 'normal');
@@ -356,35 +517,11 @@ const MobilePDFGenerator = ({
         }
       };
 
-      // PERSONAL INFO RENDERING FOR DIFFERENT TEMPLATES
-      const renderModernPersonalInfo = () => {
-        // Clean centered header
-        pdf.setFontSize(28);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(0, 0, 0);
-        const nameWidth = pdf.getTextWidth(personalInfo.name);
-        pdf.text(personalInfo.name, (pageWidth - nameWidth) / 2, yPosition);
-        yPosition += 10;
-        
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(80, 80, 80);
-        const titleWidth = pdf.getTextWidth(personalInfo.title);
-        pdf.text(personalInfo.title, (pageWidth - titleWidth) / 2, yPosition);
-        yPosition += 8;
-        
-        pdf.setFontSize(10);
-        pdf.setTextColor(100, 100, 100);
-        const contactText = `${personalInfo.email}  |  ${personalInfo.phone}`;
-        const contactWidth = pdf.getTextWidth(contactText);
-        pdf.text(contactText, (pageWidth - contactWidth) / 2, yPosition);
-        yPosition += 15;
-      };
-
       const renderProfessionalPersonalInfo = () => {
+        const rgb = hexToRgb(primaryColor);
+        
         pdf.setFontSize(32);
         pdf.setFont('times', 'bold');
-        const rgb = hexToRgb(primaryColor);
         pdf.setTextColor(rgb.r, rgb.g, rgb.b);
         pdf.text(personalInfo.name.toUpperCase(), margin, yPosition);
         yPosition += 10;
@@ -408,87 +545,103 @@ const MobilePDFGenerator = ({
         yPosition += 12;
       };
 
-      const renderCreativePersonalInfo = () => {
-        // FIXED: Creative Template Personal Info
-        // Add colored header section
-        const headerHeight = 24;
-        const rgb = hexToRgb(primaryColor);
-        pdf.setFillColor(rgb.r, rgb.g, rgb.b);
-        pdf.rect(0, 0, pageWidth, headerHeight, 'F');
-        
-        // Circle with initials in header
-        const circleY = headerHeight - 12;
-        const circleX = margin + 15;
-        
-        // Outer circle (darker)
-        pdf.setFillColor(rgb.r - 30, rgb.g - 30, rgb.b - 30);
-        pdf.circle(circleX, circleY, 16, 'F');
-        
-        // Inner circle (lighter)
-        pdf.setFillColor(255, 255, 255);
-        pdf.circle(circleX, circleY, 14, 'F');
-        
-        // Initials with creative font
-        pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
-        const initials = personalInfo.name.split(' ').map(n => n[0]).join('');
-        const initialsWidth = pdf.getTextWidth(initials);
-        pdf.text(initials, circleX - initialsWidth / 2, circleY + 2);
-        
-        yPosition = headerHeight + 20;
-        
-        // Name and title below header
-        pdf.setFontSize(24);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(30, 30, 30);
-        const nameWidth = pdf.getTextWidth(personalInfo.name);
-        pdf.text(personalInfo.name, (pageWidth - nameWidth) / 2, yPosition);
-        yPosition += 8;
-        
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'italic');
-        pdf.setTextColor(rgb.r, rgb.g, rgb.b);
-        const titleWidth = pdf.getTextWidth(personalInfo.title);
-        pdf.text(personalInfo.title, (pageWidth - titleWidth) / 2, yPosition);
-        yPosition += 6;
-        
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(100, 100, 100);
-        const contactText = `${personalInfo.email}  •  ${personalInfo.phone}`;
-        const contactWidth = pdf.getTextWidth(contactText);
-        pdf.text(contactText, (pageWidth - contactWidth) / 2, yPosition);
-        yPosition += 12;
-      };
-
       const renderExecutivePersonalInfo = () => {
-        // Header background
-        const headerHeight = 40;
+        const headerHeight = 35;
         const rgb = hexToRgb(primaryColor);
+        
+        // Header background
         pdf.setFillColor(rgb.r, rgb.g, rgb.b);
         pdf.rect(0, 0, pageWidth, headerHeight, 'F');
         
-        yPosition = 16;
-        pdf.setFontSize(30);
+        yPosition = 13;
+        pdf.setFontSize(26);
         pdf.setFont('times', 'bold');
         pdf.setTextColor(255, 255, 255);
         pdf.text(personalInfo.name.toUpperCase(), margin, yPosition);
-        yPosition += 9;
+        yPosition += 8;
         
-        pdf.setFontSize(13);
-        pdf.setFont('helvetica', 'italic');
-        pdf.setTextColor(240, 240, 240);
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(220, 220, 220);
         pdf.text(personalInfo.title, margin, yPosition);
-        yPosition += 7;
+        yPosition += 6;
         
         pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(220, 220, 220);
         pdf.text(`${personalInfo.email}  |  ${personalInfo.phone}`, margin, yPosition);
         
         yPosition = headerHeight + 10;
-        pdf.setTextColor(0, 0, 0);
       };
+
+     const renderCreativePersonalInfo = () => {
+  // UPDATED: Creative Template Personal Info with purple and white gradient circle and WHITE border
+  const headerHeight = 32; // Increased header height to accommodate the circle
+  const rgb = hexToRgb(primaryColor);
+  
+  // Add colored header section
+  pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+  pdf.rect(0, 0, pageWidth, headerHeight, 'F');
+  
+  // Circle positioned at the boundary between header and content
+  const circleY = headerHeight; // Position circle at the bottom of header
+  const circleX = margin + 20;
+  const circleRadius = 18;
+  
+  // Draw circle that spans both header and content areas
+  // Outer circle with purple tint
+  const purpleTint = { r: 147, g: 112, b: 219 }; // Medium purple color
+  pdf.setFillColor(purpleTint.r, purpleTint.g, purpleTint.b);
+  pdf.circle(circleX, circleY, circleRadius, 'F');
+  
+  // Inner circle with purple and white gradient effect
+  // Create gradient effect by using a lighter purple/white mix
+  const gradientPurple = { 
+    r: Math.min(255, purpleTint.r + 80), 
+    g: Math.min(255, purpleTint.g + 80), 
+    b: Math.min(255, purpleTint.b + 80) 
+  };
+  pdf.setFillColor(gradientPurple.r, gradientPurple.g, gradientPurple.b);
+  pdf.circle(circleX, circleY, circleRadius - 2, 'F');
+  
+  // UPDATED: White border for the circle
+  pdf.setDrawColor(255, 255, 255); // WHITE border
+  pdf.setLineWidth(0.8); // Slightly thicker border for better visibility
+  pdf.circle(circleX, circleY, circleRadius - 2, 'S');
+  
+  // Initials with creative font - positioned in center of circle
+  pdf.setFontSize(14);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(255, 255, 255); // White text for better contrast on purple
+  const initials = personalInfo.name.split(' ').map(n => n[0]).join('');
+  const initialsWidth = pdf.getTextWidth(initials);
+  pdf.text(initials, circleX - initialsWidth / 2, circleY + 2);
+  
+  // Start content below the circle
+  yPosition = headerHeight + circleRadius + 10;
+  
+  // Name and title below header
+  pdf.setFontSize(24);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(30, 30, 30);
+  const nameWidth = pdf.getTextWidth(personalInfo.name);
+  pdf.text(personalInfo.name, (pageWidth - nameWidth) / 2, yPosition);
+  yPosition += 8;
+  
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'italic');
+  pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+  const titleWidth = pdf.getTextWidth(personalInfo.title);
+  pdf.text(personalInfo.title, (pageWidth - titleWidth) / 2, yPosition);
+  yPosition += 6;
+  
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(100, 100, 100);
+  const contactText = `${personalInfo.email}  •  ${personalInfo.phone}`;
+  const contactWidth = pdf.getTextWidth(contactText);
+  pdf.text(contactText, (pageWidth - contactWidth) / 2, yPosition);
+  yPosition += 12;
+};
 
       const renderTechPersonalInfo = () => {
         // Header background
@@ -518,9 +671,10 @@ const MobilePDFGenerator = ({
       };
 
       const renderATSPersonalInfo = () => {
+        const rgb = hexToRgb(primaryColor);
+        
         pdf.setFontSize(28);
         pdf.setFont('helvetica', 'bold');
-        const rgb = hexToRgb(primaryColor);
         pdf.setTextColor(rgb.r, rgb.g, rgb.b);
         const nameWidth = pdf.getTextWidth(personalInfo.name);
         pdf.text(personalInfo.name, (pageWidth - nameWidth) / 2, yPosition);
@@ -602,89 +756,11 @@ const MobilePDFGenerator = ({
 
       // TEMPLATE-SPECIFIC LAYOUTS
 
-      if (template.layout === 'modern') {
-        // Modern Template - Clean Minimal Design
-        renderModernPersonalInfo();
-        
-        // Render sections dynamically
-        enabledSections.forEach(section => {
-          switch(section.id) {
-            case 'summary':
-              renderSummarySection();
-              break;
-            case 'experience':
-              renderExperienceSection();
-              break;
-            case 'education':
-              renderEducationSection();
-              break;
-            case 'skills':
-              renderSkillsSection();
-              break;
-            case 'projects':
-              renderProjectsSection();
-              break;
-            case 'awards':
-              renderAwardsSection();
-              break;
-            case 'custom':
-              renderCustomFieldsSection();
-              break;
-          }
-        });
-        
-        // Simple footer
-        if (yPosition > pageHeight - 20) {
-          pdf.addPage();
-          yPosition = margin;
-        }
-        
-        yPosition = pageHeight - 15;
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(150, 150, 150);
-        const footerText = `Resume crafted with CareerCraft • ${new Date().getFullYear()}`;
-        const footerWidth = pdf.getTextWidth(footerText);
-        pdf.text(footerText, (pageWidth - footerWidth) / 2, yPosition);
-      }
-      
-      else if (template.layout === 'professional') {
+      if (template.layout === 'professional') {
         // Professional Template - Elegant serif-style with bold headers
         renderProfessionalPersonalInfo();
         
-        // Render sections for professional template
-        enabledSections.forEach(section => {
-          switch(section.id) {
-            case 'summary':
-              renderSummarySection();
-              break;
-            case 'experience':
-              renderExperienceSection();
-              break;
-            case 'education':
-              renderEducationSection();
-              break;
-            case 'projects':
-              renderProjectsSection();
-              break;
-            case 'skills':
-              renderSkillsSection();
-              break;
-            case 'awards':
-              renderAwardsSection();
-              break;
-            case 'custom':
-              renderCustomFieldsSection();
-              break;
-          }
-        });
-      } 
-      
-      else if (template.layout === 'creative') {
-        // FIXED: Creative Template - Now properly renders personal info
-        renderCreativePersonalInfo();
-        
-        // Render sections for creative template
+        // Render sections for professional template with primary color headers
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -716,7 +792,39 @@ const MobilePDFGenerator = ({
         // Executive Template - Premium look with elegant spacing
         renderExecutivePersonalInfo();
         
-        // Render sections for executive template
+        // Render sections for executive template with primary color headers
+        enabledSections.forEach(section => {
+          switch(section.id) {
+            case 'summary':
+              renderSummarySection();
+              break;
+            case 'experience':
+              renderExperienceSection();
+              break;
+            case 'education':
+              renderEducationSection();
+              break;
+            case 'projects':
+              renderProjectsSection();
+              break;
+            case 'skills':
+              renderSkillsSection();
+              break;
+            case 'awards':
+              renderAwardsSection();
+              break;
+            case 'custom':
+              renderCustomFieldsSection();
+              break;
+          }
+        });
+      }
+      
+      else if (template.layout === 'creative') {
+        // UPDATED: Creative Template - Now with purple and white gradient circle and WHITE border
+        renderCreativePersonalInfo();
+        
+        // Render sections for creative template with primary color headers
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -748,7 +856,7 @@ const MobilePDFGenerator = ({
         // Tech Template - Monospace-inspired modern look
         renderTechPersonalInfo();
         
-        // Render sections for tech template
+        // Render sections for tech template with primary color headers
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -1153,4 +1261,4 @@ const MobilePDFGenerator = ({
   );
 };
 
-export default MobilePDFGenerator
+export default MobilePDFGenerator;

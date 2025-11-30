@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { 
   Share2, 
   Calendar, 
@@ -45,6 +46,8 @@ const JobDrives: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
 
+  const { trackButtonClick, trackSearch, trackSocialShare, trackCTAClick } = useGoogleAnalytics();
+
   // Load drives from localStorage
   useEffect(() => {
     const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
@@ -67,18 +70,46 @@ const JobDrives: React.FC = () => {
   const handleShare = (drive: JobDrive) => {
     setSelectedDrive(drive);
     setShowShareModal(true);
+    trackButtonClick('share_drive', 'drive_card', 'job_drives');
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    trackSearch(searchTerm, filteredDrives.length, 'job_drives');
+    trackButtonClick('search_drives', 'search_form', 'job_drives');
   };
 
   const shareUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/job-drives${selectedDrive ? `?drive=${selectedDrive.id}` : ''}`
     : '';
 
+  const handleSocialShare = (platform: string) => {
+    if (selectedDrive) {
+      trackSocialShare(platform, 'job_drive', selectedDrive.id);
+    }
+  };
+
   return (
     <>
       <Helmet>
-        <title>Walk-in Drives & Job Fairs in India | CareerCraft.in</title>
+        <title>Walk-in Drives & Job Fairs in India 2025 | CareerCraft.in</title>
         <meta name="description" content="Find upcoming walk-in drives, job fairs, and immediate hiring opportunities across India. Direct company interviews for IT, engineering, and business roles." />
-        <meta name="keywords" content="walk-in drives India, job fairs India, immediate hiring, direct interview, IT jobs walk-in, engineering jobs drive, campus placement India" />
+        <meta name="keywords" content="walk-in drives India 2025, job fairs India, immediate hiring, direct interview, IT jobs walk-in, engineering jobs drive, campus placement India, fresher jobs India" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <link rel="canonical" href="https://careercraft.in/job-drives" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Walk-in Drives & Job Fairs in India 2025 | CareerCraft.in" />
+        <meta property="og:description" content="Find upcoming walk-in drives, job fairs, and immediate hiring opportunities across India. Direct company interviews for IT, engineering roles." />
+        <meta property="og:url" content="https://careercraft.in/job-drives" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Walk-in Drives & Job Fairs in India 2025 | CareerCraft.in" />
+        <meta name="twitter:description" content="Find upcoming walk-in drives, job fairs, and immediate hiring opportunities across India." />
+        <meta name="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
       </Helmet>
 
       {/* Hero Section */}
@@ -90,7 +121,7 @@ const JobDrives: React.FC = () => {
           </p>
           
           {/* Search Form */}
-          <div className="max-w-4xl mx-auto bg-white rounded-lg p-4 shadow-lg">
+          <form onSubmit={handleSearch} className="max-w-4xl mx-auto bg-white rounded-lg p-4 shadow-lg">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <input
@@ -111,12 +142,15 @@ const JobDrives: React.FC = () => {
                 />
               </div>
               <div>
-                <button className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                <button 
+                  type="submit"
+                  className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                >
                   Find Drives
                 </button>
               </div>
             </div>
-          </div>
+          </form>
 
           {/* Stats */}
           <div className="mt-6 flex justify-center items-center gap-6">
@@ -148,6 +182,10 @@ const JobDrives: React.FC = () => {
               </div>
               <Link 
                 to="/admin/job-drives" 
+                onClick={() => {
+                  trackCTAClick('admin_job_drives', 'admin_access', 'job_drives');
+                  trackButtonClick('admin_panel', 'admin_cta', 'job_drives');
+                }}
                 className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-yellow-700 transition-colors mt-2 md:mt-0"
               >
                 Add New Drive
@@ -184,6 +222,7 @@ const JobDrives: React.FC = () => {
                 <p className="text-gray-600 mb-4">Try adjusting your search terms or check back later for new Indian job drives</p>
                 <Link 
                   to="/admin/job-drives"
+                  onClick={() => trackCTAClick('add_first_drive', 'empty_state', 'job_drives')}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Add First Drive
@@ -210,16 +249,32 @@ const JobDrives: React.FC = () => {
               <p className="text-sm text-gray-500 mb-6">{selectedDrive.company} • {selectedDrive.location}</p>
               
               <div className="flex justify-center space-x-4 mb-6">
-                <FacebookShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
+                <FacebookShareButton 
+                  url={shareUrl} 
+                  title={`${selectedDrive.title} - CareerCraft.in`}
+                  onClick={() => handleSocialShare('facebook')}
+                >
                   <FacebookIcon size={40} round />
                 </FacebookShareButton>
-                <LinkedinShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
+                <LinkedinShareButton 
+                  url={shareUrl} 
+                  title={`${selectedDrive.title} - CareerCraft.in`}
+                  onClick={() => handleSocialShare('linkedin')}
+                >
                   <LinkedinIcon size={40} round />
                 </LinkedinShareButton>
-                <TwitterShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
+                <TwitterShareButton 
+                  url={shareUrl} 
+                  title={`${selectedDrive.title} - CareerCraft.in`}
+                  onClick={() => handleSocialShare('twitter')}
+                >
                   <TwitterIcon size={40} round />
                 </TwitterShareButton>
-                <WhatsappShareButton url={shareUrl} title={`${selectedDrive.title} - CareerCraft.in`}>
+                <WhatsappShareButton 
+                  url={shareUrl} 
+                  title={`${selectedDrive.title} - CareerCraft.in`}
+                  onClick={() => handleSocialShare('whatsapp')}
+                >
                   <WhatsappIcon size={40} round />
                 </WhatsappShareButton>
               </div>
@@ -234,6 +289,7 @@ const JobDrives: React.FC = () => {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(shareUrl);
+                    trackButtonClick('copy_drive_link', 'share_modal', 'job_drives');
                     alert('Link copied to clipboard!');
                   }}
                   className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
@@ -255,7 +311,14 @@ const DriveCard: React.FC<{ drive: JobDrive; onShare: (drive: JobDrive) => void;
   onShare, 
   featured = false 
 }) => {
+  const { trackButtonClick, trackExternalLink } = useGoogleAnalytics();
+  
   const isUpcoming = new Date(drive.date) >= new Date();
+
+  const handleDetailsClick = () => {
+    trackButtonClick('view_drive_details', 'drive_card', 'job_drives');
+    trackExternalLink('Drive Details', drive.applyLink, 'job_drives');
+  };
 
   return (
     <div className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow ${
@@ -338,6 +401,7 @@ const DriveCard: React.FC<{ drive: JobDrive; onShare: (drive: JobDrive) => void;
             href={drive.applyLink}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={handleDetailsClick}
             className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center"
           >
             <ExternalLink size={16} className="mr-1" />

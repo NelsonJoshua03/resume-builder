@@ -13,7 +13,11 @@
     "serve": "vite preview",
     "dev:server": "cd server && npm run dev",
     "dev:both": "concurrently \"npm run dev\" \"npm run dev:server\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "new-blog": "node add-blog-post.js",
+    "blog-list": "node add-blog-post.js list",
+    "blog-delete": "node add-blog-post.js delete",
+    "blog-help": "node add-blog-post.js help"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

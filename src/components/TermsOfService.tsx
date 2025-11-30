@@ -1,13 +1,20 @@
 import React from 'react';
 import SEO from './SEO';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 const TermsOfService: React.FC = () => {
+  const { trackButtonClick } = useGoogleAnalytics();
+
+  const handleEmailClick = () => {
+    trackButtonClick('terms_email_click', 'terms_contact', 'terms_page');
+  };
+
   return (
     <>
       <SEO
         title="Terms of Service - CareerCraft.in | India's Career Platform"
-        description="CareerCraft.in terms of service. Learn about our user agreement, content policies, and service usage terms for Indian users."
-        keywords="terms of service India, user agreement, career platform terms, service conditions India"
+        description="CareerCraft.in terms of service. Learn about our user agreement, content policies, and service usage terms for Indian users. Compliant with Indian IT Act and regulations."
+        keywords="terms of service India, user agreement, career platform terms, service conditions India, Indian IT Act compliance, resume builder terms"
         canonicalUrl="https://careercraft.in/terms"
       />
 
@@ -77,7 +84,11 @@ const TermsOfService: React.FC = () => {
               <p className="text-gray-600">
                 If you have any questions about these Terms of Service, please contact us at:
                 <br />
-                <a href="mailto:terms@careercraft.in" className="text-blue-600 hover:underline">
+                <a 
+                  href="mailto:terms@careercraft.in" 
+                  className="text-blue-600 hover:underline"
+                  onClick={handleEmailClick}
+                >
                   terms@careercraft.in
                 </a>
               </p>

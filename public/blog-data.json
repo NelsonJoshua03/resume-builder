@@ -9,18 +9,20 @@
       "date": "2024-01-15",
       "readTime": "5 min read",
       "author": "CareerCraft Team",
-      "authorBio": "Indian Career Experts with 10+ years HR experience"
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "ats-friendly-resume-guide.md"
     },
     {
       "id": 2,
       "slug": "resume-mistakes-2024",
       "title": "10 Resume Mistakes Indian Job Seekers Must Avoid in 2024",
       "excerpt": "Common pitfalls that could be costing you interviews at Indian companies and how to fix them.",
-      "category": "career-advice", 
+      "category": "career-advice",
       "date": "2024-01-10",
       "readTime": "7 min read",
       "author": "CareerCraft Team",
-      "authorBio": "Indian Career Experts with 10+ years HR experience"
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "resume-mistakes-2024.md"
     },
     {
       "id": 3,
@@ -28,10 +30,11 @@
       "title": "Best Resume Templates for Engineering Roles in India",
       "excerpt": "Industry-specific templates that highlight technical skills and project experience for Indian engineering job market.",
       "category": "industry-specific",
-      "date": "2024-01-05", 
+      "date": "2024-01-05",
       "readTime": "6 min read",
       "author": "CareerCraft Team",
-      "authorBio": "Indian Career Experts with 10+ years HR experience"
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "engineering-resume-templates.md"
     },
     {
       "id": 4,
@@ -40,9 +43,10 @@
       "excerpt": "Specialized resume format for UPSC, SSC, Banking and other government exams in India. What to include and what to avoid.",
       "category": "industry-specific",
       "date": "2024-01-03",
-      "readTime": "8 min read", 
+      "readTime": "8 min read",
       "author": "CareerCraft Team",
-      "authorBio": "Indian Career Experts with 10+ years HR experience"
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "government-job-resume.md"
     },
     {
       "id": 5,
@@ -52,8 +56,9 @@
       "category": "fresh-graduate",
       "date": "2024-01-01",
       "readTime": "6 min read",
-      "author": "CareerCraft Team", 
-      "authorBio": "Indian Career Experts with 10+ years HR experience"
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "fresher-resume-india.md"
     }
   ]
 }

@@ -1,9 +1,10 @@
-// src/components/BlogPost.tsx
+// src/components/BlogPost.tsx - UPDATED WITH GOOGLE ANALYTICS & SEO
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import ReactMarkdown from 'react-markdown';
+import BlogSocialSharing from './BlogSocialSharing';
+import SEO from './SEO';
 
 interface BlogPostData {
   id: number;
@@ -15,80 +16,101 @@ interface BlogPostData {
   readTime: string;
   author: string;
   authorBio: string;
+  contentFile: string;
 }
 
 const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
-  const { trackBlogView, trackButtonClick } = useGoogleAnalytics();
+  const { trackBlogView, trackButtonClick, trackPageView, trackCTAClick } = useGoogleAnalytics();
   const [post, setPost] = useState<BlogPostData | null>(null);
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [contentLoading, setContentLoading] = useState(true);
+  const [error, setError] = useState<string>('');
 
-  // Dynamic content based on slug
-  const getPostContent = (postSlug: string) => {
-    const contentMap: { [key: string]: string } = {
-      "ats-friendly-resume-guide": `
-## Understanding Applicant Tracking Systems in India
-
-Applicant Tracking Systems (ATS) are software used by Indian employers to manage job applications. They scan resumes for keywords and qualifications before they reach human recruiters at Indian companies.
-
-## Key Elements of an ATS-Friendly Resume for Indian Market
-
-- **Use standard section headings:** "Work Experience," "Education," "Skills" as used in Indian resumes
-- **Include relevant Indian industry keywords:** Mirror the language used in Indian job descriptions  
-- **Choose a clean, simple format:** Avoid tables, columns, and graphics that Indian ATS might not parse
-- **Use standard fonts:** Arial, Calibri, Georgia, Times New Roman preferred by Indian companies
-- **Save as .docx or PDF:** Ensure the ATS used by Indian companies can parse your resume
-- **Include Indian educational qualifications properly:** Use standard degree names and university formats
-
-## Pro Tips for ATS Optimization in Indian Context
-
-Always customize your resume for each Indian company application. Study the job description carefully and incorporate relevant keywords naturally throughout your resume. Include specific Indian technologies, tools, and methodologies used in your industry.
-      `,
-      "resume-mistakes-2024": `
-## Common Resume Pitfalls That Cost You Interviews in India
-
-Avoid these common mistakes to ensure your resume gets noticed by Indian recruiters and hiring managers.
-
-## Top 10 Resume Mistakes for Indian Job Market
-
-1. **Spelling and grammar errors in Indian English:** Always proofread multiple times
-2. **Using unprofessional email addresses:** Use a simple, professional format preferred by Indian companies
-3. **Including irrelevant personal information:** Focus on what matters for Indian jobs
-4. **Being too vague about Indian context:** Use specific achievements and metrics relevant to Indian market
-5. **Using outdated Indian resume formats:** Modern, clean designs work best for Indian companies
-6. **Including unnecessary personal details:** Avoid age, marital status, photos unless requested
-7. **Using clichés without Indian context:** Be authentic and specific to Indian industry
-8. **Inconsistent formatting for Indian standards:** Maintain consistent styling throughout
-9. **Too long for Indian recruiters:** 1-2 pages is ideal for most Indian professionals
-10. **Not tailoring for Indian companies:** Customize for each Indian company application
-      `,
-      // Add content for other posts...
-    };
-
-    return contentMap[postSlug] || "Content coming soon...";
+  // Helper function to get the correct URLs based on environment
+  const getBlogUrls = () => {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      return {
+        dataUrl: '/blog-data.json',
+        contentUrl: (filename: string) => `/blog-content/${filename}`
+      };
+    } else {
+      const baseUrl = 'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main';
+      return {
+        dataUrl: `${baseUrl}/public/blog-data.json?t=${Date.now()}`,
+        contentUrl: (filename: string) => `${baseUrl}/public/blog-content/${filename}?t=${Date.now()}`
+      };
+    }
   };
 
   useEffect(() => {
     const fetchPostData = async () => {
       try {
-        // Fetch post metadata
-        const response = await fetch(
-          'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main/public/blog-data.json?t=' + Date.now()
-        );
+        setLoading(true);
+        setError('');
         
-        if (response.ok) {
-          const data = await response.json();
-          const currentPost = data.posts.find((p: BlogPostData) => p.slug === slug);
+        const urls = getBlogUrls();
+        
+        // Fetch post metadata
+        const response = await fetch(urls.dataUrl);
+        
+        if (!response.ok) {
+          throw new Error('Failed to load blog post');
+        }
+        
+        const data = await response.json();
+        const currentPost = data.posts.find((p: BlogPostData) => p.slug === slug);
+        
+        if (currentPost) {
+          setPost(currentPost);
+          trackBlogView(slug || 'unknown', currentPost.title, currentPost.category);
+          trackPageView(currentPost.title, `/blog/${slug}`);
           
-          if (currentPost) {
-            setPost(currentPost);
-            setContent(getPostContent(slug || ''));
-            trackBlogView(slug || 'unknown', currentPost.title, currentPost.category);
+          // Track blog post loaded
+          if (typeof window.gtag !== 'undefined') {
+            window.gtag('event', 'blog_post_loaded', {
+              post_slug: slug,
+              post_title: currentPost.title,
+              category: currentPost.category,
+              event_category: 'Blog',
+              event_label: 'blog_post_view'
+            });
           }
+
+          // Fetch markdown content
+          setContentLoading(true);
+          try {
+            const contentResponse = await fetch(urls.contentUrl(currentPost.contentFile));
+            
+            if (contentResponse.ok) {
+              const markdownContent = await contentResponse.text();
+              setContent(markdownContent);
+            } else {
+              setContent('*Content is being updated. Please check back soon!*');
+            }
+          } catch (contentError) {
+            console.error('Error loading blog content:', contentError);
+            setContent('*Content is being updated. Please check back soon!*');
+          } finally {
+            setContentLoading(false);
+          }
+        } else {
+          setError('Blog post not found');
         }
       } catch (error) {
         console.error('Error loading blog post:', error);
+        setError('Failed to load blog post. Please try again later.');
+        
+        // Track error
+        if (typeof window.gtag !== 'undefined') {
+          window.gtag('event', 'exception', {
+            description: 'Blog post load error',
+            fatal: false
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -97,10 +119,15 @@ Avoid these common mistakes to ensure your resume gets noticed by Indian recruit
     if (slug) {
       fetchPostData();
     }
-  }, [slug, trackBlogView]);
+  }, [slug, trackBlogView, trackPageView]);
 
   const handleCTAClick = () => {
     trackButtonClick('build_resume_from_blog', 'blog_post_cta', 'blog');
+    trackCTAClick('blog_post_resume_builder', 'blog_post_footer', 'blog');
+  };
+
+  const handleBackToBlog = () => {
+    trackButtonClick('back_to_blog', 'blog_navigation', 'blog');
   };
 
   if (loading) {
@@ -113,12 +140,17 @@ Avoid these common mistakes to ensure your resume gets noticed by Indian recruit
     );
   }
 
-  if (!post) {
+  if (error || !post) {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Post Not Found</h1>
-          <Link to="/blog" className="text-blue-600 hover:text-blue-700">
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Link 
+            to="/blog" 
+            className="text-blue-600 hover:text-blue-700"
+            onClick={handleBackToBlog}
+          >
             ← Back to Blog
           </Link>
         </div>
@@ -134,20 +166,53 @@ Avoid these common mistakes to ensure your resume gets noticed by Indian recruit
     'fresh-graduate': 'Fresh Graduate Guide'
   };
 
+  const currentUrl = `${window.location.origin}/blog/${post.slug}`;
+  const publishedTime = new Date(post.date).toISOString();
+
   return (
     <>
-      <Helmet>
-        <title>{post.title} | CareerCraft.in</title>
-        <meta name="description" content={post.excerpt} />
-        <meta name="keywords" content={`${post.category} resume tips India, ATS optimization India, ${post.title.toLowerCase()} Indian job market`} />
-      </Helmet>
+      <SEO
+        title={post.title}
+        description={post.excerpt}
+        keywords={`${post.category} resume tips India, ATS optimization India, ${post.title.toLowerCase()} Indian job market`}
+        canonicalUrl={currentUrl}
+        type="article"
+        publishedTime={publishedTime}
+        author={post.author}
+        ogImage="https://careercraft.in/logos/careercraft-logo-square.png"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          "headline": post.title,
+          "description": post.excerpt,
+          "image": "https://careercraft.in/logos/careercraft-logo-square.png",
+          "datePublished": publishedTime,
+          "dateModified": publishedTime,
+          "author": {
+            "@type": "Person",
+            "name": post.author
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "CareerCraft India",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://careercraft.in/logos/careercraft-logo-square.png"
+            }
+          },
+          "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": currentUrl
+          }
+        }}
+      />
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
           <Link 
             to="/blog" 
             className="text-blue-600 hover:text-blue-700 mb-4 inline-block"
-            onClick={() => trackButtonClick('back_to_blog', 'blog_navigation', 'blog')}
+            onClick={handleBackToBlog}
           >
             ← Back to CareerCraft Blog
           </Link>
@@ -177,8 +242,25 @@ Avoid these common mistakes to ensure your resume gets noticed by Indian recruit
             
             {/* Blog Content */}
             <div className="prose prose-lg max-w-none text-gray-700">
-              <ReactMarkdown>{content}</ReactMarkdown>
+              {contentLoading ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              ) : (
+                <ReactMarkdown>{content}</ReactMarkdown>
+              )}
             </div>
+            
+            {/* Social Sharing */}
+            <BlogSocialSharing 
+              title={post.title}
+              url={currentUrl}
+              description={post.excerpt}
+            />
             
             {/* CTA Section */}
             <div className="mt-8 pt-6 border-t border-gray-200">

@@ -1,3 +1,4 @@
+// ImprovedPDFGenerator.tsx
 import { useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -127,8 +128,6 @@ const ImprovedPDFGenerator: React.FC<ImprovedPDFGeneratorProps> = ({
                   solidColor = template.colors.primary;
                 } else if (el.classList.contains('from-purple-600')) {
                   solidColor = template.colors.secondary;
-                } else if (el.classList.contains('from-slate-700') || el.classList.contains('from-slate-800')) {
-                  solidColor = '#1e293b';
                 }
                 
                 el.style.backgroundImage = 'none';
@@ -233,9 +232,7 @@ const ImprovedPDFGenerator: React.FC<ImprovedPDFGeneratorProps> = ({
         className={`bg-gradient-to-r ${
           template.id === 'modernIcons' 
             ? 'from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700' 
-            : template.id === 'creativePortfolio' 
-            ? 'from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' 
-            : 'from-slate-700 to-gray-800 hover:from-slate-800 hover:to-gray-900'
+            : 'from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
         } text-white px-6 py-3 rounded-lg flex items-center justify-center transition-all shadow-lg w-full disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         {isGenerating ? (

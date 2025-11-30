@@ -1,4 +1,4 @@
-
+// ResumePreview.tsx
 import { forwardRef } from 'react';
 import { ResumePreviewProps, SectionItem } from './types';
 
@@ -212,7 +212,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     custom: <CustomFieldsSection key="custom" />
   };
 
-  // ATS Optimized Template (Single Column, Clean Structure)
+  // Enhanced ATS Optimized Template with vertical timeline
   const renderATSTemplate = (enabledSections: SectionItem[]) => (
     <div className="bg-white p-8" style={{ color: customColors.text }}>
       {/* Simple Header */}
@@ -237,218 +237,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     </div>
   );
 
-  // Modern Template (Clean, Minimal Design)
-  const renderModernTemplate = (enabledSections: SectionItem[]) => (
-    <div className="bg-white shadow-2xl overflow-hidden" style={{ color: customColors.text }}>
-      {/* Clean Minimal Header */}
-      <div className="px-10 py-12 bg-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl font-bold mb-3 tracking-tight text-gray-900">{personalInfo.name}</h1>
-          <h2 className="text-2xl font-light text-gray-600 mb-6">{personalInfo.title}</h2>
-          
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <span>{personalInfo.email}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span>{personalInfo.phone}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="px-10 py-10 max-w-4xl mx-auto">
-        {/* Professional Summary */}
-        {enabledSections.find(s => s.id === 'summary')?.enabled && personalInfo.summary.length > 0 && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-300">PROFESSIONAL PROFILE</h3>
-            
-            <div className="space-y-3">
-              {personalInfo.summary.map((point, index) => (
-                <p key={index} className="text-gray-700 leading-relaxed text-base">
-                  {point}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Work Experience */}
-        {enabledSections.find(s => s.id === 'experience')?.enabled && experiences.length > 0 && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-300">PROFESSIONAL EXPERIENCE</h3>
-            
-            <div className="space-y-8">
-              {experiences.map((exp, index) => (
-                <div key={index} className="relative">
-                  <div className="bg-white rounded-lg">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
-                      <div>
-                        <h4 className="text-xl font-bold text-gray-900">{exp.title}</h4>
-                        <p className="text-lg text-gray-700 font-semibold mt-1">{exp.company}</p>
-                      </div>
-                      <span className="text-gray-600 text-sm font-medium whitespace-nowrap">
-                        {exp.period}
-                      </span>
-                    </div>
-                    
-                    <ul className="space-y-2.5">
-                      {exp.description.map((item, itemIndex) => (
-                        <li key={itemIndex} className="flex items-start text-gray-700">
-                          <span className="inline-block w-1.5 h-1.5 bg-gray-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                          <span className="leading-relaxed">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Education */}
-        {enabledSections.find(s => s.id === 'education')?.enabled && education.length > 0 && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-300">EDUCATION</h3>
-            
-            <div className="grid gap-6">
-              {education.map((edu, index) => (
-                <div key={index} className="bg-white rounded-lg">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900">{edu.degree}</h4>
-                      <p className="text-gray-700 font-semibold mt-1">{edu.institution}</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <span className="text-gray-600 text-sm font-medium">
-                        {edu.year}
-                      </span>
-                      {edu.gpa && (
-                        <span className="text-gray-600 text-sm font-medium">
-                          GPA: {edu.gpa}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {edu.description && (
-                    <p className="text-gray-600 mt-2">{edu.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Skills */}
-        {enabledSections.find(s => s.id === 'skills')?.enabled && skills.length > 0 && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-300">CORE COMPETENCIES</h3>
-            
-            <div className="flex flex-wrap gap-3">
-              {skills.map((skill, index) => (
-                <span 
-                  key={index} 
-                  className="px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300"
-                >
-                  {skill.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Projects */}
-        {enabledSections.find(s => s.id === 'projects')?.enabled && projects.length > 0 && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-300">KEY PROJECTS</h3>
-            
-            <div className="space-y-6">
-              {projects.map((project, index) => (
-                <div key={index} className="bg-white rounded-lg">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900">{project.name}</h4>
-                      {project.period && (
-                        <p className="text-sm text-gray-500 mt-1">{project.period}</p>
-                      )}
-                    </div>
-                    {project.link && (
-                      <a 
-                        href={project.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        View Project
-                      </a>
-                    )}
-                  </div>
-                  
-                  <ul className="space-y-2">
-                    {project.description.map((item, itemIndex) => (
-                      <li key={itemIndex} className="flex items-start text-gray-700">
-                        <span className="inline-block w-1.5 h-1.5 bg-gray-600 rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                        <span className="leading-relaxed">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Awards */}
-        {enabledSections.find(s => s.id === 'awards')?.enabled && awards.length > 0 && awards[0].title && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-300">AWARDS & RECOGNITION</h3>
-            
-            <div className="space-y-4">
-              {awards.map((award, index) => (
-                <div key={index} className="bg-white rounded-lg p-6 border border-gray-300">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1">
-                      <h4 className="text-lg font-bold text-gray-900">{award.title}</h4>
-                      <p className="text-gray-700 font-semibold mt-1">{award.issuer} • {award.year}</p>
-                      
-                      <p className="text-gray-700 mt-2 leading-relaxed">{award.description}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Custom Fields */}
-        {enabledSections.find(s => s.id === 'custom')?.enabled && customFields.length > 0 && (
-          <div className="mb-10">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-300">ADDITIONAL INFORMATION</h3>
-            
-            <div className="space-y-4">
-              {customFields.map((field, index) => (
-                <div key={index} className="bg-white rounded-lg p-6 border border-gray-300">
-                  <h4 className="text-lg font-bold text-gray-800 mb-2">{field.label}</h4>
-                  <p className="text-gray-700 leading-relaxed">{field.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Simple Footer */}
-      <div className="bg-gray-100 px-10 py-6">
-        <p className="text-center text-gray-600 text-sm">
-          Resume crafted with CareerCraft • {new Date().getFullYear()}
-        </p>
-      </div>
-    </div>
-  );
-
   // Professional Template (Classic Corporate Style)
   const renderProfessionalTemplate = (enabledSections: SectionItem[]) => (
     <div className="rounded-lg shadow-lg overflow-hidden bg-white" style={{ color: customColors.text }}>
@@ -458,11 +246,9 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
         <h2 className="text-xl text-gray-700 mb-3">{personalInfo.title}</h2>
         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
           <span className="flex items-center">
-            <i className="fas fa-envelope mr-2" style={{ color: customColors.primary }}></i> 
             {personalInfo.email}
           </span>
           <span className="flex items-center">
-            <i className="fas fa-phone mr-2" style={{ color: customColors.primary }}></i> 
             {personalInfo.phone}
           </span>
         </div>
@@ -505,8 +291,8 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
           <h1 className="text-2xl font-bold">{personalInfo.name}</h1>
           <h2 className="text-lg" style={applyCustomStyles('accent')}>{personalInfo.title}</h2>
           <div className="flex justify-center space-x-4 mt-2 text-sm">
-            <span><i className="fas fa-envelope mr-1"></i> {personalInfo.email}</span>
-            <span><i className="fas fa-phone mr-1"></i> {personalInfo.phone}</span>
+            <span>{personalInfo.email}</span>
+            <span>{personalInfo.phone}</span>
           </div>
         </div>
 
@@ -525,11 +311,9 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
         <h2 className="text-xl text-blue-100 mb-4">{personalInfo.title}</h2>
         <div className="flex flex-wrap gap-6 text-blue-100">
           <span className="flex items-center">
-            <i className="fas fa-envelope mr-2"></i> 
             {personalInfo.email}
           </span>
           <span className="flex items-center">
-            <i className="fas fa-phone mr-2"></i> 
             {personalInfo.phone}
           </span>
         </div>
@@ -550,8 +334,8 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
         <h1 className="text-3xl font-bold text-white mb-1">{personalInfo.name}</h1>
         <h2 className="text-lg text-gray-300 mb-4">{personalInfo.title}</h2>
         <div className="flex flex-wrap gap-4 text-gray-300 text-sm">
-          <span><i className="fas fa-envelope mr-1"></i> {personalInfo.email}</span>
-          <span><i className="fas fa-phone mr-1"></i> {personalInfo.phone}</span>
+          <span>{personalInfo.email}</span>
+          <span>{personalInfo.phone}</span>
         </div>
       </div>
 
@@ -576,7 +360,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
           <div className="space-y-4">
             <div>
               <h3 className="font-semibold mb-2 flex items-center">
-                <i className="fas fa-envelope mr-2"></i>
                 Contact
               </h3>
               <p className="text-sm opacity-90">{personalInfo.email}</p>
@@ -587,7 +370,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
             {skills.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-2 flex items-center">
-                  <i className="fas fa-tools mr-2"></i>
                   Skills
                 </h3>
                 <div className="flex flex-wrap gap-1">
@@ -607,7 +389,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
             {education.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-2 flex items-center">
-                  <i className="fas fa-graduation-cap mr-2"></i>
                   Education
                 </h3>
                 {education.map((edu, index) => (
@@ -710,8 +491,6 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     .sort((a, b) => a.order - b.order);
 
   switch(template.layout) {
-    case 'modern':
-      return renderModernTemplate(enabledSections);
     case 'ats':
       return renderATSTemplate(enabledSections);
     case 'professional':
@@ -725,7 +504,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     case 'twoColumn':
       return renderTwoColumnTemplate();
     default:
-      return renderModernTemplate(enabledSections); //
+      return renderATSTemplate(enabledSections); // Default to ATS
     }
   };
 

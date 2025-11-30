@@ -1,4 +1,3 @@
-// src/components/SEO.tsx
 import { Helmet } from 'react-helmet-async';
 
 interface SEOProps {
@@ -10,6 +9,7 @@ interface SEOProps {
   type?: 'website' | 'article';
   publishedTime?: string;
   author?: string;
+  structuredData?: any;
 }
 
 export default function SEO({ 
@@ -17,13 +17,48 @@ export default function SEO({
   description, 
   keywords, 
   canonicalUrl, 
-  ogImage = "https://careercraft.in/og-image.png",
+  ogImage = "https://careercraft.in/logos/careercraft-logo-square.png",
   type = 'website',
   publishedTime,
-  author
+  author = "CareerCraft India",
+  structuredData
 }: SEOProps) {
   const fullTitle = title.includes('CareerCraft.in') ? title : `${title} | CareerCraft.in - India's Career Platform`;
   
+  const defaultStructuredData = {
+    "@context": "https://schema.org",
+    "@type": type === 'article' ? "Article" : "WebApplication",
+    "name": fullTitle,
+    "description": description,
+    "url": canonicalUrl,
+    ...(type === 'article' && {
+      "headline": title,
+      "datePublished": publishedTime,
+      "author": {
+        "@type": "Person",
+        "name": author
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "CareerCraft India",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://careercraft.in/logos/careercraft-logo-square.png"
+        }
+      }
+    }),
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web Browser",
+    "permissions": "browser",
+    "areaServed": "IN",
+    "countryOfOrigin": "India",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "INR"
+    }
+  };
+
   return (
     <Helmet>
       {/* Primary Meta Tags */}
@@ -46,46 +81,25 @@ export default function SEO({
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={ogImage} />
-      <meta name="twitter:site" content="@careercraftIN" />
       
-      {/* Article-specific meta tags */}
+      {/* Additional SEO Tags */}
+      <meta name="robots" content="index, follow, max-image-preview:large" />
+      <meta name="author" content={author} />
+      <meta name="language" content="EN" />
+      <meta name="geo.region" content="IN" />
+      <meta name="geo.placename" content="India" />
+      
+      {/* Article specific meta tags */}
       {type === 'article' && publishedTime && (
-        <meta property="article:published_time" content={publishedTime} />
-      )}
-      {type === 'article' && author && (
-        <meta property="article:author" content={author} />
+        <>
+          <meta property="article:published_time" content={publishedTime} />
+          <meta property="article:author" content={author} />
+        </>
       )}
       
       {/* Structured Data */}
       <script type="application/ld+json">
-        {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": type === 'article' ? 'Article' : 'WebPage',
-          "headline": fullTitle,
-          "description": description,
-          "url": canonicalUrl,
-          "image": ogImage,
-          "publisher": {
-            "@type": "Organization",
-            "name": "CareerCraft India",
-            "url": "https://careercraft.in",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://careercraft.in/logo.png"
-            },
-            "address": {
-              "@type": "PostalAddress",
-              "addressCountry": "IN"
-            }
-          },
-          ...(type === 'article' && {
-            "datePublished": publishedTime,
-            "author": {
-              "@type": "Organization",
-              "name": author || "CareerCraft India"
-            }
-          })
-        })}
+        {JSON.stringify(structuredData || defaultStructuredData)}
       </script>
     </Helmet>
   );

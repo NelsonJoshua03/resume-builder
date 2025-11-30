@@ -1,4 +1,4 @@
-// src/components/JobApplications.tsx
+// src/components/JobApplications.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -31,7 +31,8 @@ const JobApplications: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const jobsPerPage = 10;
 
-  const { trackJobApplication, trackJobView, trackSearch, trackButtonClick } = useGoogleAnalytics();
+  // FIXED: Use trackJobSearch instead of trackSearch
+  const { trackJobApplication, trackJobView, trackJobSearch, trackButtonClick } = useGoogleAnalytics();
 
   // Popular Indian cities for quick filters
   const popularCities = [
@@ -57,7 +58,8 @@ const JobApplications: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1); // Reset to first page when searching
-    trackSearch(searchTerm, filteredJobs.length, 'job_search');
+    // FIXED: Use trackJobSearch instead of trackSearch
+    trackJobSearch(searchTerm, filteredJobs.length, locationFilter || 'all');
     trackButtonClick('job_search', 'search_form', 'job_applications');
   };
 
@@ -66,6 +68,8 @@ const JobApplications: React.FC = () => {
     setLocationFilter(city);
     setCurrentPage(1);
     trackButtonClick(`filter_city_${city}`, 'city_filters', 'job_applications');
+    // Also track as a location-based search
+    trackJobSearch('', filteredJobs.length, city);
   };
 
   // Clear all filters
@@ -124,9 +128,55 @@ const JobApplications: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Job Opportunities in India | CareerCraft.in</title>
-        <meta name="description" content="Browse manually curated job opportunities from top Indian companies. Find IT, engineering, marketing jobs across Bangalore, Mumbai, Delhi, Hyderabad and more." />
-        <meta name="keywords" content="Indian job portal, jobs in India, IT jobs Bangalore, engineering jobs Pune, fresher jobs India, remote jobs India" />
+        <title>Job Opportunities in India 2025 | Latest Job Openings | CareerCraft.in</title>
+        <meta name="description" content="Browse manually curated job opportunities from top Indian companies. Find IT, engineering, marketing, fresher jobs across Bangalore, Mumbai, Delhi, Hyderabad and more." />
+        <meta name="keywords" content="Indian job portal 2025, jobs in India, IT jobs Bangalore, engineering jobs Pune, fresher jobs India, remote jobs India, latest job openings, career opportunities India" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <link rel="canonical" href="https://careercraft.in/job-applications" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Job Opportunities in India 2025 | Latest Job Openings | CareerCraft.in" />
+        <meta property="og:description" content="Browse manually curated job opportunities from top Indian companies. Find IT, engineering, marketing jobs across major Indian cities." />
+        <meta property="og:url" content="https://careercraft.in/job-applications" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Job Opportunities in India 2025 | Latest Job Openings | CareerCraft.in" />
+        <meta name="twitter:description" content="Browse manually curated job opportunities from top Indian companies. Find your dream job today." />
+        <meta name="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "Job Opportunities in India",
+            "description": "Curated job postings from top Indian companies and startups",
+            "url": "https://careercraft.in/job-applications",
+            "numberOfItems": jobs.length,
+            "itemListElement": jobs.slice(0, 10).map((job, index) => ({
+              "@type": "ListItem",
+              "position": index + 1,
+              "item": {
+                "@type": "JobPosting",
+                "title": job.title,
+                "description": job.description,
+                "datePosted": job.postedDate,
+                "hiringOrganization": {
+                  "@type": "Organization",
+                  "name": job.company
+                },
+                "jobLocation": {
+                  "@type": "Place",
+                  "address": job.location
+                },
+                "employmentType": job.type
+              }
+            }))
+          })}
+        </script>
       </Helmet>
 
       {/* Hero Section */}
@@ -408,7 +458,8 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
   };
 
   const handleApplyClick = () => {
-    trackJobApplication(job.id, job.title, job.company, job.sector);
+    // FIXED: Remove the 4th argument (job.sector)
+    trackJobApplication(job.id, job.title, job.company);
     trackButtonClick('apply_job', 'job_card', 'job_applications');
   };
 
