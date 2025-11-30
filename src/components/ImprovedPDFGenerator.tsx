@@ -109,7 +109,7 @@ const ImprovedPDFGenerator: React.FC<ImprovedPDFGeneratorProps> = ({
               }
             });
             
-            // Fix all gradient backgrounds
+            // Fix all elements for PDF rendering
             const allElements = resumeElement.querySelectorAll('*');
             allElements.forEach((el: any) => {
               const computedStyle = window.getComputedStyle(el);
@@ -118,25 +118,41 @@ const ImprovedPDFGenerator: React.FC<ImprovedPDFGeneratorProps> = ({
               el.style.opacity = '1';
               el.style.visibility = 'visible';
               
-              // Handle gradient backgrounds - replace with solid colors
+              // Handle gradient backgrounds - replace with solid colors for better PDF rendering
               if (computedStyle.backgroundImage && computedStyle.backgroundImage.includes('gradient')) {
-                // Extract first color from gradient or use template colors
                 let solidColor = '#ffffff';
                 
-                // Check for specific template gradient classes
-                if (el.classList.contains('from-blue-600') || el.classList.contains('bg-gradient-to-r')) {
-                  solidColor = template.colors.primary;
-                } else if (el.classList.contains('from-purple-600')) {
-                  solidColor = template.colors.secondary;
+                // Handle ModernIconsTemplate blue-purple gradient
+                if (computedStyle.backgroundImage.includes('from-blue-400') || computedStyle.backgroundImage.includes('from-blue-')) {
+                  solidColor = '#60a5fa'; // blue-400
+                }
+                // Handle CreativePortfolioTemplate purple-pink gradient
+                else if (computedStyle.backgroundImage.includes('from-purple-600') || computedStyle.backgroundImage.includes('to-pink-600')) {
+                  solidColor = '#9333ea'; // purple-600
                 }
                 
                 el.style.backgroundImage = 'none';
                 el.style.backgroundColor = solidColor;
               }
               
-              // Ensure solid background colors are preserved
+              // Remove any elliptical backgrounds (border-radius with colored backgrounds)
+              if (computedStyle.backgroundColor && 
+                  computedStyle.borderRadius && 
+                  computedStyle.borderRadius !== '0px' &&
+                  !computedStyle.backgroundColor.includes('rgba(0, 0, 0, 0)')) {
+                // Remove background color from period time elements and similar
+                if (el.textContent && (el.textContent.includes('202') || el.classList.contains('text-xs'))) {
+                  el.style.backgroundColor = 'transparent';
+                  el.style.borderRadius = '0';
+                }
+              }
+              
+              // Ensure solid background colors are preserved (except for period times)
               if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-                el.style.backgroundColor = computedStyle.backgroundColor;
+                // Skip setting background for period time elements
+                if (!el.textContent || !el.textContent.match(/\d{4}.*\d{4}/)) {
+                  el.style.backgroundColor = computedStyle.backgroundColor;
+                }
               }
               
               // Ensure text colors are preserved
@@ -155,6 +171,11 @@ const ImprovedPDFGenerator: React.FC<ImprovedPDFGeneratorProps> = ({
               el.style.transition = 'none';
               el.style.animation = 'none';
               el.style.transform = 'none';
+              
+              // Ensure proper font rendering
+              el.style.fontFamily = computedStyle.fontFamily;
+              el.style.fontSize = computedStyle.fontSize;
+              el.style.fontWeight = computedStyle.fontWeight;
             });
             
             // Ensure main element has proper dimensions

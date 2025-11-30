@@ -55,7 +55,7 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
                       <h4 className="text-xl font-semibold text-gray-800">{exp.title}</h4>
                       <p className="text-blue-600 font-medium">{exp.company}</p>
                     </div>
-                    <span className="text-sm text-gray-600 bg-blue-100 px-3 py-1 rounded-full mt-2 sm:mt-0">
+                    <span className="text-sm text-gray-600 mt-2 sm:mt-0">
                       {exp.period}
                     </span>
                   </div>
@@ -82,8 +82,8 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
                   <h4 className="font-semibold text-gray-800 text-lg">{edu.degree}</h4>
                   <p className="text-gray-600">{edu.institution}</p>
                   <div className="flex justify-between text-sm text-gray-500 mt-3">
-                    <span className="bg-gray-100 px-3 py-1 rounded-full">{edu.year}</span>
-                    {edu.gpa && <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full">GPA: {edu.gpa}</span>}
+                    <span>{edu.year}</span>
+                    {edu.gpa && <span>GPA: {edu.gpa}</span>}
                   </div>
                 </div>
               ))}
@@ -119,7 +119,7 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
                     <h4 className="font-semibold text-gray-800 text-lg">{project.name}</h4>
                     <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-                      <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                      <span className="text-sm text-gray-600">
                         {project.period}
                       </span>
                       {project.link && (
@@ -143,7 +143,7 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
                   {project.technologies && project.technologies.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-4">
                       {project.technologies.map((tech: string, idx: number) => (
-                        <span key={idx} className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">
+                        <span key={idx} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
                           {tech}
                         </span>
                       ))}
@@ -160,9 +160,9 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
           <Section title="Awards & Achievements" icon="🏆">
             <div className="space-y-4">
               {awards.map((award, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border border-yellow-200">
-                  <div className="flex-shrink-0 w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <span className="text-yellow-600">🏆</span>
+                <div key={index} className="flex items-start space-x-4 p-4 bg-white rounded-xl border border-gray-200">
+                  <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                    <span className="text-gray-600">🏆</span>
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-800">{award.title}</h4>
@@ -210,8 +210,8 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
   return (
     <div className="w-full bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
       <div className="w-full bg-white">
-        {/* Header with Gradient and Profile Picture */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
+        {/* Header with Brighter Gradient and Profile Picture */}
+        <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-8 text-white">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-6">
               {/* Profile Picture */}
@@ -263,13 +263,6 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
               {renderSection(section.id)}
             </div>
           ))}
-        </div>
-
-        {/* Footer */}
-        <div className="bg-gray-100 p-6 text-center">
-          <p className="text-gray-600 text-sm">
-            Made with ❤️ using CareerCraft • {new Date().getFullYear()}
-          </p>
         </div>
       </div>
     </div>

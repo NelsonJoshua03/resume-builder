@@ -71,7 +71,7 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
                   <p className="text-purple-600 text-xs">{edu.institution}</p>
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>{edu.year}</span>
-                    {edu.gpa && <span>🎯 GPA: {edu.gpa}</span>}
+                    {edu.gpa && <span>GPA: {edu.gpa}</span>}
                   </div>
                 </div>
               ))}
@@ -85,7 +85,7 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
             <div className="space-y-2">
               {skills.map((skill, index) => (
                 <div key={index} className="flex items-center text-gray-700">
-                  <span className="text-purple-500 mr-2 text-xs">•</span>
+                  <span className="text-gray-500 mr-2 text-xs">•</span>
                   <span className="text-xs">
                     <strong>{skill.name}</strong>
                     {skill.proficiency && ` - ${skill.proficiency}`}
@@ -99,7 +99,7 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
       case 'projects':
         return projects && projects.length > 0 ? (
           <Card title="Creative Projects" icon="🎨">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-3">
               {projects.map((project, index) => (
                 <ProjectCard
                   key={index}
@@ -119,9 +119,9 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
           <Card title="Trophies" icon="🏆">
             <div className="space-y-2">
               {awards.filter(award => award && award.title).map((award, index) => (
-                <div key={index} className="bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+                <div key={index} className="bg-white p-2 rounded-lg border border-gray-200">
                   <h4 className="font-semibold text-gray-800 text-xs">{award.title}</h4>
-                  <p className="text-yellow-700 text-xs">{award.issuer} • {award.year}</p>
+                  <p className="text-gray-600 text-xs">{award.issuer} • {award.year}</p>
                   {award.description && (
                     <p className="text-gray-700 text-xs mt-1">{award.description}</p>
                   )}
@@ -166,13 +166,13 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
   return (
     <div className="w-full bg-white" style={{ width: '210mm', minHeight: '297mm' }}>
       <div className="w-full">
-        {/* Hero Section with Profile Picture */}
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden mb-6">
-          <div className="relative h-40 bg-gradient-to-r from-purple-600 to-pink-600">
+        {/* Hero Section with Profile Picture - Reduced Size */}
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden mb-4">
+          <div className="relative h-32 bg-gradient-to-r from-purple-600 to-pink-600">
             {/* Profile Picture in Header */}
-            <div className="absolute -bottom-10 left-6">
+            <div className="absolute -bottom-8 left-6">
               {personalInfo.profilePicture ? (
-                <div className="w-20 h-20 bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white">
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-white">
                   <img 
                     src={personalInfo.profilePicture} 
                     alt={personalInfo.name}
@@ -180,30 +180,30 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
                   />
                 </div>
               ) : (
-                <div className="w-20 h-20 bg-white rounded-2xl shadow-2xl flex items-center justify-center border-4 border-white">
-                  <span className="text-2xl">👨‍💻</span>
+                <div className="w-16 h-16 bg-white rounded-2xl shadow-2xl flex items-center justify-center border-4 border-white">
+                  <span className="text-xl">👨‍💻</span>
                 </div>
               )}
             </div>
           </div>
-          <div className="pt-14 pb-6 px-6">
+          <div className="pt-10 pb-4 px-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
               <div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-1">{personalInfo.name}</h1>
-                <h2 className="text-lg text-purple-600 font-semibold">{personalInfo.title}</h2>
-                <div className="flex flex-wrap gap-3 mt-3">
-                  <div className="flex items-center text-gray-600 text-sm">
+                <h1 className="text-2xl font-bold text-gray-800 mb-1">{personalInfo.name}</h1>
+                <h2 className="text-md text-purple-600 font-semibold">{personalInfo.title}</h2>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  <div className="flex items-center text-gray-600 text-xs">
                     <MailIcon />
                     <span className="ml-2">{personalInfo.email}</span>
                   </div>
-                  <div className="flex items-center text-gray-600 text-sm">
+                  <div className="flex items-center text-gray-600 text-xs">
                     <PhoneIcon />
                     <span className="ml-2">{personalInfo.phone}</span>
                   </div>
                 </div>
               </div>
-              <div className="mt-3 md:mt-0">
-                <div className="bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full font-semibold text-sm">
+              <div className="mt-2 md:mt-0">
+                <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-semibold text-xs">
                   Available for Opportunities
                 </div>
               </div>
@@ -211,35 +211,20 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
-            {enabledSections.filter(section => 
-              ['summary', 'experience', 'projects', 'custom'].includes(section.id)
-            ).map(section => (
-              <div key={section.id}>
-                {renderSection(section.id)}
-              </div>
-            ))}
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {enabledSections.filter(section => 
-              ['skills', 'education', 'awards'].includes(section.id)
-            ).map(section => (
-              <div key={section.id}>
-                {renderSection(section.id)}
-              </div>
-            ))}
-          </div>
+        {/* Single Column Layout */}
+        <div className="space-y-4 px-6">
+          {enabledSections.map(section => (
+            <div key={section.id}>
+              {renderSection(section.id)}
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
-// Reusable Components (Keep the existing ones from your CreativePortfolioTemplate)
+// Reusable Components
 const Card: React.FC<{ title: string; icon: string; children: React.ReactNode }> = ({ 
   title, 
   icon, 
@@ -269,7 +254,7 @@ const TimelineItem: React.FC<{
       <div className="bg-gray-50 p-3 rounded-xl">
         <div className="flex justify-between items-start mb-2">
           <h4 className="font-semibold text-gray-800 text-xs">{title}</h4>
-          <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">
+          <span className="text-xs text-gray-600 whitespace-nowrap ml-2">
             {period}
           </span>
         </div>
@@ -277,7 +262,7 @@ const TimelineItem: React.FC<{
         <ul className="space-y-1 text-xs text-gray-700">
           {items && items.map((item, idx) => (
             <li key={idx} className="flex items-start">
-              <span className="text-green-500 mr-2 text-xs">•</span>
+              <span className="text-gray-500 mr-2 text-xs">•</span>
               <span className="text-xs">{item}</span>
             </li>
           ))}
@@ -294,11 +279,11 @@ const ProjectCard: React.FC<{
   technologies?: string[];
   link?: string;
 }> = ({ name, period, description, technologies, link }) => (
-  <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-3 hover:shadow-md transition-all">
+  <div className="bg-white border border-gray-200 rounded-xl p-3 hover:shadow-md transition-all">
     <div className="flex justify-between items-start mb-2">
       <h4 className="font-semibold text-gray-800 text-xs">{name}</h4>
       {link && (
-        <a href={link} className="text-purple-500 hover:text-purple-600">
+        <a href={link} className="text-gray-500 hover:text-gray-600">
           <ExternalLinkIcon />
         </a>
       )}
@@ -307,7 +292,7 @@ const ProjectCard: React.FC<{
     <ul className="space-y-1 text-xs text-gray-700">
       {description && description.slice(0, 3).map((item, idx) => (
         <li key={idx} className="flex items-start">
-          <span className="text-purple-500 mr-1 text-xs">▸</span>
+          <span className="text-gray-500 mr-1 text-xs">▸</span>
           <span className="text-xs">{item}</span>
         </li>
       ))}
@@ -315,7 +300,7 @@ const ProjectCard: React.FC<{
     {technologies && technologies.length > 0 && (
       <div className="flex flex-wrap gap-1 mt-2">
         {technologies.slice(0, 4).map((tech: string, idx: number) => (
-          <span key={idx} className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-xs">
+          <span key={idx} className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-xs">
             {tech}
           </span>
         ))}
@@ -324,22 +309,22 @@ const ProjectCard: React.FC<{
   </div>
 );
 
-// Icons (Keep the existing ones)
+// Icons
 const MailIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
   </svg>
 );
 
 const PhoneIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
     <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
   </svg>
 );
 
 const ExternalLinkIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
     <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
     <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
   </svg>

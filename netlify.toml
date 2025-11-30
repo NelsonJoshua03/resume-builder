@@ -10,6 +10,9 @@
 [build.environment]
   NODE_VERSION = "18"
 
+[context.production.environment]
+  NODE_VERSION = "18"
+
 # Redirects for SEO - UPDATED FOR CAREERCRAFT.IN
 [[redirects]]
   from = "https://resumecvforge.netlify.app/*"
