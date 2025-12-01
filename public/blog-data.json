@@ -2,6 +2,18 @@
   "posts": [
     {
       "id": 1,
+      "slug": "reddit-confession-ats-resume-changed-my-life",
+      "title": "I Applied to 327 Jobs in 3 Months - Got 0 Calls. Then THIS Happened...",
+      "excerpt": "A Reddit confession that went viral: How a desperate engineer's 3-line resume change landed him ₹22 LPA at Amazon India. The secret? ATS optimization.",
+      "category": "career-advice",
+      "date": "2024-01-20",
+      "readTime": "9 min read",
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "reddit-confession-ats-resume-changed-my-life.md"
+    },
+    {
+      "id": 2,
       "slug": "ats-friendly-resume-guide",
       "title": "How to Create an ATS-Friendly Resume for Indian Job Market",
       "excerpt": "Learn the secrets to making your resume pass through Applicant Tracking Systems used by Indian companies and reach human recruiters.",
@@ -13,7 +25,7 @@
       "contentFile": "ats-friendly-resume-guide.md"
     },
     {
-      "id": 2,
+      "id": 3,
       "slug": "resume-mistakes-2024",
       "title": "10 Resume Mistakes Indian Job Seekers Must Avoid in 2024",
       "excerpt": "Common pitfalls that could be costing you interviews at Indian companies and how to fix them.",
@@ -25,7 +37,7 @@
       "contentFile": "resume-mistakes-2024.md"
     },
     {
-      "id": 3,
+      "id": 4,
       "slug": "engineering-resume-templates",
       "title": "Best Resume Templates for Engineering Roles in India",
       "excerpt": "Industry-specific templates that highlight technical skills and project experience for Indian engineering job market.",
@@ -37,7 +49,7 @@
       "contentFile": "engineering-resume-templates.md"
     },
     {
-      "id": 4,
+      "id": 5,
       "slug": "government-job-resume",
       "title": "Government Job Resume Format for Indian Exams - Complete Guide",
       "excerpt": "Specialized resume format for UPSC, SSC, Banking and other government exams in India. What to include and what to avoid.",
@@ -49,7 +61,7 @@
       "contentFile": "government-job-resume.md"
     },
     {
-      "id": 5,
+      "id": 6,
       "slug": "fresher-resume-india",
       "title": "Fresher Resume Guide for Indian Students - No Experience Needed",
       "excerpt": "How to create a compelling resume as a fresher with no work experience. Highlight projects, academics and skills effectively.",
