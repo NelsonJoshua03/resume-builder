@@ -1,5 +1,5 @@
-// EditResumePage.tsx - UPDATED WITH TRACKING
-import React, { useEffect } from 'react';
+// EditResumePage.tsx - OPTIMIZED WITH COMPLETE MOBILE NAVIGATION
+import React, { useEffect, useState } from 'react';
 import { useResume } from './ResumeContext';
 import PersonalInfo from './PersonalInfo';
 import Experience from './Experience';
@@ -50,44 +50,50 @@ const EditResumePage = () => {
     trackPageView 
   } = useGoogleAnalytics();
 
+  const [activeSection, setActiveSection] = useState<string>('personal');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showAllSections, setShowAllSections] = useState(false);
+
   // Track page view on mount
   useEffect(() => {
     trackPageView('Edit Resume', '/edit');
-    
-    // Track daily visits in localStorage
-    const pageViews = parseInt(localStorage.getItem('page_views_edit') || '0');
-    localStorage.setItem('page_views_edit', (pageViews + 1).toString());
-    
-    const today = new Date().toISOString().split('T')[0];
-    const dailyKey = `daily_edit_${today}`;
-    const dailyVisits = parseInt(localStorage.getItem(dailyKey) || '0');
-    localStorage.setItem(dailyKey, (dailyVisits + 1).toString());
-    
-    console.log(`📊 Edit Resume Page View Tracked - Total: ${pageViews + 1}`);
   }, [trackPageView]);
 
   const handleSaveChanges = () => {
     trackButtonClick('save_changes', 'quick_actions', 'edit_page');
     trackResumeGeneration('manual_save', 'edit', 'saved');
     
-    // Track save action
-    const saves = parseInt(localStorage.getItem('resume_saves') || '0');
-    localStorage.setItem('resume_saves', (saves + 1).toString());
-    
     alert('Changes saved successfully!');
   };
 
-  const handleSectionEdit = (sectionName: string) => {
+  const handleSectionEdit = (sectionName: string, sectionId: string) => {
+    setActiveSection(sectionId);
     trackButtonClick(`edit_${sectionName.toLowerCase()}`, 'form_section', 'edit_page');
+    if (window.innerWidth < 768) {
+      setIsMobileMenuOpen(false);
+    }
   };
 
   const handleFileUploadTracked = (fileData: any) => {
     handleFileUpload(fileData);
     trackButtonClick('file_upload', 'file_upload', 'edit_page');
-    
-    // Track file uploads
-    const uploads = parseInt(localStorage.getItem('file_uploads') || '0');
-    localStorage.setItem('file_uploads', (uploads + 1).toString());
+  };
+
+  const sectionList = [
+    { id: 'personal', name: 'Personal', icon: '👤', color: 'text-blue-500' },
+    { id: 'experience', name: 'Experience', icon: '💼', color: 'text-green-500' },
+    { id: 'education', name: 'Education', icon: '🎓', color: 'text-orange-500' },
+    { id: 'projects', name: 'Projects', icon: '📁', color: 'text-teal-500' },
+    { id: 'skills', name: 'Skills', icon: '⚡', color: 'text-red-500' },
+    { id: 'awards', name: 'Awards', icon: '🏆', color: 'text-yellow-500' },
+    { id: 'custom', name: 'Additional', icon: '➕', color: 'text-indigo-500' },
+    { id: 'order', name: 'Reorder', icon: '↕️', color: 'text-purple-500' },
+    { id: 'import', name: 'Import', icon: '📥', color: 'text-pink-500' },
+  ];
+
+  const getSectionTitle = (sectionId: string) => {
+    const section = sectionList.find(s => s.id === sectionId);
+    return section ? section.name : 'Section';
   };
 
   return (
@@ -99,332 +105,606 @@ const EditResumePage = () => {
         canonicalUrl="https://careercraft.in/edit"
       />
       
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
-          {/* Header */}
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">Edit Your Resume</h1>
-              <p className="text-gray-600">Fill in your information below</p>
-              <div className="mt-2 text-sm text-gray-500">
-                <span className="inline-flex items-center">
-                  <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Google Analytics Tracking Active
-                </span>
+      <div className="min-h-screen bg-gray-50 py-2 md:py-6">
+        <div className="container mx-auto px-2 md:px-4 max-w-6xl">
+          {/* Mobile Header */}
+          <div className="md:hidden mb-3">
+            <div className="flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
+              <div>
+                <h1 className="text-lg font-bold text-gray-800">Edit Resume</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-sm font-medium ${sectionList.find(s => s.id === activeSection)?.color}`}>
+                    {getSectionTitle(activeSection)}
+                  </span>
+                  <span className="text-xs text-gray-500">• {calculateCompletion(resumeData)}% Complete</span>
+                </div>
               </div>
-            </div>
-            <Link
-              to="/builder"
-              onClick={() => {
-                trackCTAClick('back_to_templates', 'header', 'edit_page');
-                trackUserFlow('edit', 'builder', 'navigation');
-                
-                // Track navigation from edit to builder
-                const navCount = parseInt(localStorage.getItem('edit_to_builder') || '0');
-                localStorage.setItem('edit_to_builder', (navCount + 1).toString());
-              }}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Templates
-            </Link>
-          </div>
-
-          {/* Progress Indicator */}
-          <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-800">Resume Completion</h3>
-              <span className="text-sm font-medium text-blue-600">
-                {calculateCompletion(resumeData)}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${calculateCompletion(resumeData)}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Complete all sections for the best resume results
-            </p>
-            <div className="mt-3 flex justify-between text-xs text-gray-600">
-              <span>🚀 Tracking: {localStorage.getItem('page_views_edit') || '0'} views</span>
-              <span>💾 {localStorage.getItem('resume_saves') || '0'} saves</span>
-            </div>
-          </div>
-
-          {/* Edit Form */}
-          <div className="space-y-6">
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('personal_info')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                Personal Information
-              </h2>
-              <PersonalInfo 
-                data={resumeData.personalInfo} 
-                onChange={updatePersonalInfo}
-              />
-            </div>
-            
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('section_order')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                Section Order
-              </h2>
-              <SectionOrderCustomizer 
-                sections={sectionOrder}
-                onReorder={handleSectionReorder}
-              />
-            </div>
-
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('experience')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                Work Experience
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  {resumeData.experiences.length} {resumeData.experiences.length === 1 ? 'entry' : 'entries'}
-                </span>
-              </h2>
-              <Experience 
-                experiences={resumeData.experiences}
-                onUpdate={updateExperience}
-                onAdd={addExperience}
-                onRemove={removeExperience}
-              />
-            </div>
-
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('education')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                Education
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  {resumeData.education.length} {resumeData.education.length === 1 ? 'entry' : 'entries'}
-                </span>
-              </h2>
-              <Education 
-                education={resumeData.education}
-                onUpdate={updateEducation}
-                onAdd={addEducation}
-                onRemove={removeEducation}
-              />
-            </div>
-
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('projects')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
-                Projects
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  {resumeData.projects.length} {resumeData.projects.length === 1 ? 'project' : 'projects'}
-                </span>
-              </h2>
-              <Projects
-                projects={resumeData.projects}
-                onUpdate={updateProject}
-                onAdd={addProject}
-                onRemove={removeProject}
-              />
-            </div>
-
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('awards')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                Awards & Achievements
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  {resumeData.awards.length} {resumeData.awards.length === 1 ? 'award' : 'awards'}
-                </span>
-              </h2>
-              <Awards
-                awards={resumeData.awards}
-                onUpdate={updateAward}
-                onAdd={addAward}
-                onRemove={removeAward}
-              />
-            </div>
-
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('skills')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                Skills
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  {resumeData.skills.length} {resumeData.skills.length === 1 ? 'skill' : 'skills'}
-                </span>
-              </h2>
-              <Skills 
-                skills={resumeData.skills}
-                onAdd={addSkill}
-                onRemove={removeSkill}
-                onUpdateProficiency={updateSkillProficiency}
-              />
-            </div>
-
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('custom_fields')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                Additional Information
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  {resumeData.customFields.length} {resumeData.customFields.length === 1 ? 'field' : 'fields'}
-                </span>
-              </h2>
-              <CustomFields
-                customFields={resumeData.customFields}
-                onUpdate={updateCustomField}
-                onAdd={addCustomField}
-                onRemove={removeCustomField}
-                onChangeType={changeCustomFieldType}
-              />
-            </div>
-
-            <div 
-              className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-              onClick={() => handleSectionEdit('file_upload')}
-            >
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 bg-pink-500 rounded-full"></span>
-                Import Resume
-              </h2>
-              <FileUpload 
-                onUpload={handleFileUploadTracked}
-              />
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
-              <h3 className="font-semibold text-blue-800 mb-3 text-lg">Quick Actions</h3>
-              <p className="text-blue-700 text-sm mb-4">
-                Your resume is {calculateCompletion(resumeData)}% complete. Finish filling out all sections for the best results.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  to="/builder"
-                  onClick={() => {
-                    trackCTAClick('view_ats_templates', 'quick_actions', 'edit_page');
-                    trackUserFlow('edit', 'builder', 'navigation');
-                  }}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAllSections(!showAllSections)}
+                  className="bg-purple-600 text-white p-2 rounded-lg"
+                  title="Jump to Section"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                  View ATS Templates
-                </Link>
-                <Link
-                  to="/premium"
-                  onClick={() => {
-                    trackCTAClick('view_premium_templates', 'quick_actions', 'edit_page');
-                    trackUserFlow('edit', 'premium', 'navigation');
-                  }}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                  ⚡
+                </button>
+                <button
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="bg-blue-600 text-white p-2 rounded-lg"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                  </svg>
-                  View Premium Templates
-                </Link>
-                <button 
-                  onClick={handleSaveChanges}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Save Changes
+                  {isMobileMenuOpen ? '✕' : '☰'}
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Tips Section */}
-            <div className="bg-yellow-50 p-6 rounded-xl border border-yellow-200">
-              <h3 className="font-semibold text-yellow-800 mb-3 text-lg flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          {/* Mobile Navigation Menu */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden mb-3 bg-white rounded-lg shadow-lg p-3">
+              <div className="grid grid-cols-3 gap-2">
+                {sectionList.map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => handleSectionEdit(section.id, section.id)}
+                    className={`p-2 rounded-lg flex flex-col items-center justify-center ${
+                      activeSection === section.id
+                        ? 'bg-blue-50 border border-blue-200'
+                        : 'bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className={`text-lg mb-1 ${section.color}`}>{section.icon}</span>
+                    <span className="text-xs font-medium">{section.name}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Link
+                  to="/builder"
+                  onClick={() => trackCTAClick('mobile_view_templates', 'mobile_menu', 'edit_page')}
+                  className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs text-center"
+                >
+                  View Templates
+                </Link>
+                <button 
+                  onClick={handleSaveChanges}
+                  className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop Header */}
+          <div className="hidden md:flex justify-between items-center mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Edit Your Resume</h1>
+              <p className="text-gray-600">Fill in your information below</p>
+            </div>
+            <div className="flex gap-3">
+              <Link
+                to="/builder"
+                onClick={() => {
+                  trackCTAClick('back_to_templates', 'header', 'edit_page');
+                  trackUserFlow('edit', 'builder', 'navigation');
+                }}
+                className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                Resume Tips
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-yellow-700">
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>Use action verbs to describe your achievements</span>
+                Back to Templates
+              </Link>
+              <button 
+                onClick={handleSaveChanges}
+                className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Save Changes
+              </button>
+            </div>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="bg-white rounded-lg md:rounded-xl shadow-sm p-3 mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-1">
+              <div>
+                <h3 className="font-semibold text-gray-800 text-sm">Resume Completion</h3>
+                <p className="text-gray-500 text-xs mt-0.5">Complete all sections for the best results</p>
+              </div>
+              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1 sm:mt-0">
+                {calculateCompletion(resumeData)}% Complete
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-1.5">
+              <div 
+                className="bg-green-600 h-1.5 rounded-full transition-all duration-300" 
+                style={{ width: `${calculateCompletion(resumeData)}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Desktop Sidebar Navigation */}
+            <div className="hidden lg:block w-64 flex-shrink-0">
+              <div className="bg-white rounded-xl shadow-sm p-4 sticky top-6">
+                <h3 className="font-semibold text-gray-800 mb-3">Jump to Section</h3>
+                <div className="space-y-1">
+                  {sectionList.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => handleSectionEdit(section.id, section.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-3 transition-colors ${
+                        activeSection === section.id
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className={`text-base ${section.color}`}>{section.icon}</span>
+                      <span className="font-medium">{section.name}</span>
+                    </button>
+                  ))}
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>Quantify your accomplishments with numbers</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>Keep your resume to 1-2 pages maximum</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>Tailor your resume for each job application</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>Include relevant keywords from the job description</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500 mt-0.5">✓</span>
-                  <span>Proofread for spelling and grammar errors</span>
+                
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h3 className="font-semibold text-gray-800 mb-2">Quick Actions</h3>
+                  <div className="space-y-2">
+                    <Link
+                      to="/builder"
+                      className="w-full bg-blue-600 text-white px-3 py-2.5 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                    >
+                      View Templates
+                    </Link>
+                    <button 
+                      onClick={handleSaveChanges}
+                      className="w-full bg-green-600 text-white px-3 py-2.5 rounded-lg hover:bg-green-700 transition-colors text-sm"
+                    >
+                      Save & Continue
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Analytics Info */}
-            <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
-              <h3 className="font-semibold text-blue-800 mb-3 text-lg flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Analytics Tracking Active
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div className="bg-white p-3 rounded-lg border">
-                  <div className="text-gray-500">Page Views</div>
-                  <div className="font-bold text-blue-600">{localStorage.getItem('page_views_edit') || '0'}</div>
+            {/* Form Content */}
+            <div className="flex-1">
+              {/* Mobile: Show Jump to Section when toggled */}
+              {(showAllSections || window.innerWidth >= 768) && (
+                <div className="mb-4 md:hidden">
+                  <div className="bg-white rounded-lg shadow-sm p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-semibold text-gray-800">Jump to Section</h3>
+                      <button
+                        onClick={() => setShowAllSections(false)}
+                        className="text-gray-500 text-sm"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {sectionList.map((section) => (
+                        <button
+                          key={section.id}
+                          onClick={() => handleSectionEdit(section.id, section.id)}
+                          className={`p-2 rounded-lg flex flex-col items-center justify-center ${
+                            activeSection === section.id
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'bg-gray-50 hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className={`text-base mb-1 ${section.color}`}>{section.icon}</span>
+                          <span className="text-xs font-medium">{section.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-white p-3 rounded-lg border">
-                  <div className="text-gray-500">Resume Saves</div>
-                  <div className="font-bold text-green-600">{localStorage.getItem('resume_saves') || '0'}</div>
-                </div>
-                <div className="bg-white p-3 rounded-lg border">
-                  <div className="text-gray-500">File Uploads</div>
-                  <div className="font-bold text-purple-600">{localStorage.getItem('file_uploads') || '0'}</div>
-                </div>
-                <div className="bg-white p-3 rounded-lg border">
-                  <div className="text-gray-500">Completion</div>
-                  <div className="font-bold text-orange-600">{calculateCompletion(resumeData)}%</div>
+              )}
+
+              {/* Mobile: Show only active section */}
+              <div className="lg:hidden">
+                {activeSection === 'personal' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-blue-500">👤</span>
+                      Personal Information
+                    </h2>
+                    <PersonalInfo 
+                      data={resumeData.personalInfo} 
+                      onChange={updatePersonalInfo}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'experience' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span className="text-green-500">💼</span>
+                        Work Experience
+                      </h2>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {resumeData.experiences.length}
+                      </span>
+                    </div>
+                    <Experience 
+                      experiences={resumeData.experiences}
+                      onUpdate={updateExperience}
+                      onAdd={addExperience}
+                      onRemove={removeExperience}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'education' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span className="text-orange-500">🎓</span>
+                        Education
+                      </h2>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {resumeData.education.length}
+                      </span>
+                    </div>
+                    <Education 
+                      education={resumeData.education}
+                      onUpdate={updateEducation}
+                      onAdd={addEducation}
+                      onRemove={removeEducation}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'projects' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span className="text-teal-500">📁</span>
+                        Projects
+                      </h2>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {resumeData.projects.length}
+                      </span>
+                    </div>
+                    <Projects
+                      projects={resumeData.projects}
+                      onUpdate={updateProject}
+                      onAdd={addProject}
+                      onRemove={removeProject}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'skills' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span className="text-red-500">⚡</span>
+                        Skills
+                      </h2>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {resumeData.skills.length}
+                      </span>
+                    </div>
+                    <Skills 
+                      skills={resumeData.skills}
+                      onAdd={addSkill}
+                      onRemove={removeSkill}
+                      onUpdateProficiency={updateSkillProficiency}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'awards' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span className="text-yellow-500">🏆</span>
+                        Awards & Achievements
+                      </h2>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {resumeData.awards.length}
+                      </span>
+                    </div>
+                    <Awards
+                      awards={resumeData.awards}
+                      onUpdate={updateAward}
+                      onAdd={addAward}
+                      onRemove={removeAward}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'custom' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span className="text-indigo-500">➕</span>
+                        Additional Information
+                      </h2>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {resumeData.customFields.length}
+                      </span>
+                    </div>
+                    <CustomFields
+                      customFields={resumeData.customFields}
+                      onUpdate={updateCustomField}
+                      onAdd={addCustomField}
+                      onRemove={removeCustomField}
+                      onChangeType={changeCustomFieldType}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'order' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <span className="text-purple-500">↕️</span>
+                        Section Order & Reordering
+                      </h2>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                        {sectionOrder.length}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">Drag and drop sections to reorder your resume layout</p>
+                    <SectionOrderCustomizer 
+                      sections={sectionOrder}
+                      onReorder={handleSectionReorder}
+                    />
+                  </div>
+                )}
+
+                {activeSection === 'import' && (
+                  <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
+                    <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-pink-500">📥</span>
+                      Import Resume
+                    </h2>
+                    <FileUpload 
+                      onUpload={handleFileUploadTracked}
+                    />
+                  </div>
+                )}
+
+                {/* Quick Actions for Mobile */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-lg border border-blue-200 mb-4">
+                  <h3 className="font-semibold text-blue-800 mb-2 text-sm">Need Help?</h3>
+                  <p className="text-xs text-blue-700 mb-2">Complete your information and view templates</p>
+                  <button
+                    onClick={() => setShowAllSections(true)}
+                    className="w-full bg-purple-600 text-white px-3 py-2 rounded-lg text-xs text-center mb-2"
+                  >
+                    ⚡ Jump to Another Section
+                  </button>
+                  <div className="flex gap-2">
+                    <Link
+                      to="/builder"
+                      className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-xs text-center"
+                    >
+                      View Templates
+                    </Link>
+                    <button 
+                      onClick={handleSaveChanges}
+                      className="flex-1 bg-green-600 text-white px-3 py-2 rounded-lg text-xs"
+                    >
+                      Save & Continue
+                    </button>
+                  </div>
                 </div>
               </div>
-              <p className="text-blue-700 text-xs mt-3">
-                This data is stored locally and helps improve your experience. Full analytics are available in Google Analytics.
-              </p>
+
+              {/* Desktop: Show all sections */}
+              <div className="hidden lg:block space-y-6">
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-3">
+                    <span className="text-blue-500">👤</span>
+                    Personal Information
+                  </h2>
+                  <PersonalInfo 
+                    data={resumeData.personalInfo} 
+                    onChange={updatePersonalInfo}
+                  />
+                </div>
+                
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                      <span className="text-green-500">💼</span>
+                      Work Experience
+                    </h2>
+                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                      {resumeData.experiences.length} entries
+                    </span>
+                  </div>
+                  <Experience 
+                    experiences={resumeData.experiences}
+                    onUpdate={updateExperience}
+                    onAdd={addExperience}
+                    onRemove={removeExperience}
+                  />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                      <span className="text-orange-500">🎓</span>
+                      Education
+                    </h2>
+                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                      {resumeData.education.length} entries
+                    </span>
+                  </div>
+                  <Education 
+                    education={resumeData.education}
+                    onUpdate={updateEducation}
+                    onAdd={addEducation}
+                    onRemove={removeEducation}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                        <span className="text-teal-500">📁</span>
+                        Projects
+                      </h2>
+                      <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {resumeData.projects.length}
+                      </span>
+                    </div>
+                    <Projects
+                      projects={resumeData.projects}
+                      onUpdate={updateProject}
+                      onAdd={addProject}
+                      onRemove={removeProject}
+                    />
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                        <span className="text-red-500">⚡</span>
+                        Skills
+                      </h2>
+                      <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {resumeData.skills.length}
+                      </span>
+                    </div>
+                    <Skills 
+                      skills={resumeData.skills}
+                      onAdd={addSkill}
+                      onRemove={removeSkill}
+                      onUpdateProficiency={updateSkillProficiency}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                        <span className="text-yellow-500">🏆</span>
+                        Awards & Achievements
+                      </h2>
+                      <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {resumeData.awards.length}
+                      </span>
+                    </div>
+                    <Awards
+                      awards={resumeData.awards}
+                      onUpdate={updateAward}
+                      onAdd={addAward}
+                      onRemove={removeAward}
+                    />
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                        <span className="text-indigo-500">➕</span>
+                        Additional Information
+                      </h2>
+                      <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {resumeData.customFields.length}
+                      </span>
+                    </div>
+                    <CustomFields
+                      customFields={resumeData.customFields}
+                      onUpdate={updateCustomField}
+                      onAdd={addCustomField}
+                      onRemove={removeCustomField}
+                      onChangeType={changeCustomFieldType}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                      <span className="text-purple-500">↕️</span>
+                      Section Order & Reordering
+                    </h2>
+                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                      {sectionOrder.length} sections
+                    </span>
+                  </div>
+                  <p className="text-gray-600 mb-4">Drag and drop sections to customize the order of your resume layout</p>
+                  <SectionOrderCustomizer 
+                    sections={sectionOrder}
+                    onReorder={handleSectionReorder}
+                  />
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-3">
+                    <span className="text-pink-500">📥</span>
+                    Import Resume
+                  </h2>
+                  <FileUpload 
+                    onUpload={handleFileUploadTracked}
+                  />
+                </div>
+              </div>
+
+              {/* Tips & Actions - Bottom Section */}
+              <div className="mt-4 md:mt-6">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+                  <h3 className="font-semibold text-blue-800 mb-2 text-sm md:text-base">💡 Pro Tips</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs md:text-sm">
+                    <div className="flex items-start gap-1">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      <span>Use action verbs to describe achievements</span>
+                    </div>
+                    <div className="flex items-start gap-1">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      <span>Quantify results with numbers</span>
+                    </div>
+                    <div className="flex items-start gap-1">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      <span>Tailor keywords to job description</span>
+                    </div>
+                    <div className="flex items-start gap-1">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      <span>Keep resume to 1-2 pages maximum</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Final Actions */}
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                  <Link
+                    to="/builder"
+                    onClick={() => {
+                      trackCTAClick('view_ats_templates', 'quick_actions', 'edit_page');
+                      trackUserFlow('edit', 'builder', 'navigation');
+                    }}
+                    className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm md:text-base text-center font-semibold"
+                  >
+                    View ATS Templates
+                  </Link>
+                  <Link
+                    to="/premium"
+                    onClick={() => {
+                      trackCTAClick('view_premium_templates', 'quick_actions', 'edit_page');
+                      trackUserFlow('edit', 'premium', 'navigation');
+                    }}
+                    className="flex-1 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm md:text-base text-center font-semibold"
+                  >
+                    View Premium Templates
+                  </Link>
+                  <button 
+                    onClick={handleSaveChanges}
+                    className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm md:text-base text-center font-semibold"
+                  >
+                    Save & Continue
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -447,7 +727,7 @@ const calculateCompletion = (resumeData: any): number => {
 
   // Experience
   if (resumeData.experiences.length > 0) {
-    completedFields += 2; // At least one experience entry
+    completedFields += 2;
     resumeData.experiences.forEach((exp: any) => {
       const expFields = ['company', 'position', 'startDate'];
       totalFields += expFields.length;
@@ -461,7 +741,7 @@ const calculateCompletion = (resumeData: any): number => {
 
   // Education
   if (resumeData.education.length > 0) {
-    completedFields += 2; // At least one education entry
+    completedFields += 2;
     resumeData.education.forEach((edu: any) => {
       const eduFields = ['institution', 'degree', 'graduationYear'];
       totalFields += eduFields.length;

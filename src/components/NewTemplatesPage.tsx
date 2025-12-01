@@ -1,4 +1,4 @@
-// NewTemplatesPage.tsx - UPDATED WITH TRACKING
+// NewTemplatesPage.tsx - UPDATED WITHOUT ANALYTICS DISPLAY
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useResume } from './ResumeContext';
@@ -206,17 +206,6 @@ const NewTemplatesPage = () => {
   // Track page view on mount
   useEffect(() => {
     trackPageView('Premium Templates', '/premium');
-    
-    // Track daily visits in localStorage
-    const pageViews = parseInt(localStorage.getItem('page_views_premium') || '0');
-    localStorage.setItem('page_views_premium', (pageViews + 1).toString());
-    
-    const today = new Date().toISOString().split('T')[0];
-    const dailyKey = `daily_premium_${today}`;
-    const dailyVisits = parseInt(localStorage.getItem(dailyKey) || '0');
-    localStorage.setItem(dailyKey, (dailyVisits + 1).toString());
-    
-    console.log(`📊 Premium Templates Page View Tracked - Total: ${pageViews + 1}`);
   }, [trackPageView]);
 
   // Template configurations
@@ -322,11 +311,6 @@ const NewTemplatesPage = () => {
     trackTemplateChange(templateId);
     trackPremiumTemplateView(templateId, 'template_grid');
     trackUserFlow('template_grid', 'template_preview', 'template_selection');
-    
-    // Track template selection
-    const templateKey = `premium_template_${templateId}`;
-    const templateSelections = parseInt(localStorage.getItem(templateKey) || '0');
-    localStorage.setItem(templateKey, (templateSelections + 1).toString());
   };
 
   const handleViewModeChange = (mode: 'grid' | 'preview') => {
@@ -343,26 +327,22 @@ const NewTemplatesPage = () => {
         canonicalUrl="https://careercraft.in/premium"
       />
 
-      <div className="min-h-screen bg-gray-50 py-1">
-        <div className="mx-auto px-1 max-w-[100rem]">
-          <header className="text-center mb-3">
-            <h1 className="text-xl font-bold text-gray-800 mb-1">Premium Resume Templates</h1>
-            <p className="text-sm text-gray-600">Modern designs with beautiful icons, profile pictures, and layouts</p>
+      <div className="min-h-screen bg-gray-50 py-4 md:py-8">
+        <div className="mx-auto px-4 max-w-7xl">
+          <header className="text-center mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Premium Resume Templates</h1>
+            <p className="text-gray-600 text-sm md:text-base">Modern designs with beautiful icons, profile pictures, and layouts</p>
             
-            <div className="mt-2 flex gap-2 justify-center">
+            <div className="mt-4 flex flex-wrap justify-center gap-2 md:gap-3">
               <Link
                 to="/edit"
                 onClick={() => {
                   trackCTAClick('edit_resume', 'header', 'premium_templates');
                   trackUserFlow('premium', 'edit', 'navigation');
-                  
-                  // Track navigation from premium to edit
-                  const navCount = parseInt(localStorage.getItem('premium_to_edit') || '0');
-                  localStorage.setItem('premium_to_edit', (navCount + 1).toString());
                 }}
-                className="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 transition-colors font-semibold inline-flex items-center gap-1 text-xs"
+                className="bg-purple-600 text-white px-4 md:px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors font-semibold inline-flex items-center gap-2 text-sm md:text-base"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit Resume
@@ -371,34 +351,24 @@ const NewTemplatesPage = () => {
               {viewMode === 'preview' && (
                 <button
                   onClick={() => handleViewModeChange('grid')}
-                  className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors font-semibold inline-flex items-center gap-1 text-xs"
+                  className="bg-blue-600 text-white px-4 md:px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center gap-2 text-sm md:text-base"
                 >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                   </svg>
                   View All Templates
                 </button>
               )}
             </div>
-            
-            {/* Analytics Info */}
-            <div className="mt-2 text-xs text-gray-500">
-              <span className="inline-flex items-center">
-                <svg className="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                {localStorage.getItem('page_views_premium') || '0'} premium views
-              </span>
-            </div>
           </header>
 
           {/* MOBILE LAYOUT: Vertical stack */}
-          <div className="block lg:hidden space-y-2">
+          <div className="block lg:hidden space-y-6">
             {/* Template Grid View for Mobile */}
             {viewMode === 'grid' && (
-              <div className="bg-white rounded-md shadow-sm p-2">
-                <h3 className="font-semibold text-gray-800 mb-3 text-center">Choose Your Template</h3>
-                <div className="flex flex-col items-center gap-4">
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="font-semibold text-gray-800 mb-4 text-center text-lg">Choose Your Template</h3>
+                <div className="flex flex-col items-center gap-6">
                   {Object.values(TEMPLATES).map((template) => (
                     <TemplatePreviewCard
                       key={template.id}
@@ -414,12 +384,12 @@ const NewTemplatesPage = () => {
 
             {/* Preview Container */}
             {viewMode === 'preview' && (
-              <div className="bg-white rounded-md shadow-sm p-2">
+              <div className="bg-white rounded-lg shadow-sm p-4">
                 {/* Mobile Preview Toggle */}
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex justify-between items-center mb-3">
                   <button
                     onClick={toggleMobilePreview}
-                    className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
+                    className={`px-3 py-2 rounded-md text-sm font-semibold transition-all ${
                       isMobilePreview
                         ? 'bg-green-600 text-white shadow-sm'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -430,8 +400,8 @@ const NewTemplatesPage = () => {
                 </div>
 
                 {/* Template Preview */}
-                <div className="border border-gray-300 rounded bg-gray-50 overflow-auto" style={{ 
-                  height: isMobilePreview ? 'auto' : '80vh'
+                <div className="border border-gray-300 rounded-lg bg-gray-50 overflow-auto" style={{ 
+                  height: isMobilePreview ? 'auto' : '70vh'
                 }}>
                   <div 
                     className="bg-white mx-auto"
@@ -455,7 +425,7 @@ const NewTemplatesPage = () => {
                 </div>
 
                 {/* PDF Download Section */}
-                <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <NewTemplatesPDFGenerator 
                     resumeRef={currentRef as React.RefObject<HTMLDivElement>}
                     personalInfo={resumeData.personalInfo}
@@ -466,7 +436,7 @@ const NewTemplatesPage = () => {
                 </div>
 
                 {/* Social Sharing */}
-                <div className="mt-2">
+                <div className="mt-3">
                   <SocialSharing 
                     resumeTitle={resumeData.personalInfo.title}
                   />
@@ -475,29 +445,29 @@ const NewTemplatesPage = () => {
             )}
 
             {/* Controls Section */}
-            <div className="space-y-2">
-              <div className="bg-white rounded-md shadow-sm p-2">
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow-sm p-4">
                 <SectionOrderCustomizer 
                   sections={sectionOrder}
                   onReorder={handleSectionReorder}
                 />
               </div>
 
-              <div className="bg-white rounded-md shadow-sm p-2">
+              <div className="bg-white rounded-lg shadow-sm p-4">
                 <FileUpload 
                   onUpload={handleFileUpload}
                 />
               </div>
 
-              <div className="bg-purple-50 p-2 rounded-md border border-purple-200">
-                <h3 className="font-semibold text-purple-800 mb-1 text-xs">Need to edit your information?</h3>
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <h3 className="font-semibold text-purple-800 mb-2">Need to edit your information?</h3>
                 <Link
                   to="/edit"
                   onClick={() => {
                     trackCTAClick('edit_resume_mobile', 'quick_actions', 'premium_templates');
                     trackUserFlow('premium', 'edit', 'navigation');
                   }}
-                  className="bg-purple-600 text-white px-2 py-1 rounded-md hover:bg-purple-700 transition-colors w-full text-center block text-xs"
+                  className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors w-full text-center block font-semibold"
                 >
                   Edit Resume Details
                 </Link>
@@ -524,7 +494,7 @@ const NewTemplatesPage = () => {
                 </div>
                 
                 <div className="mt-8 text-center">
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-gray-600 text-base">
                     Click on any template to preview it in full size and download as PDF
                   </p>
                 </div>
@@ -536,10 +506,13 @@ const NewTemplatesPage = () => {
               <div className="flex flex-col xl:flex-row gap-6">
                 {/* Main Content - Template Preview */}
                 <div className="xl:w-2/3">
-                  <div className="bg-white rounded-xl shadow-lg p-4">
+                  <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
                     {/* Template Preview Header */}
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-bold text-gray-800">{currentTemplate.name} Template</h2>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                      <div>
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-800">{currentTemplate.name} Template</h2>
+                        <p className="text-gray-600 text-sm md:text-base mt-1">Premium design with modern layout</p>
+                      </div>
                       <button
                         onClick={() => handleViewModeChange('grid')}
                         className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
@@ -565,8 +538,8 @@ const NewTemplatesPage = () => {
                     </div>
 
                     {/* PDF Download Section */}
-                    <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                      <h3 className="text-lg font-bold text-gray-800 mb-3">Download Your Resume</h3>
+                    <div className="mt-6 p-4 md:p-6 bg-blue-50 rounded-xl border border-blue-200">
+                      <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-3">Download Your Resume</h3>
                       <NewTemplatesPDFGenerator 
                         resumeRef={currentRef as React.RefObject<HTMLDivElement>}
                         personalInfo={resumeData.personalInfo}
@@ -584,40 +557,17 @@ const NewTemplatesPage = () => {
                     </div>
 
                     {/* Template Features */}
-                    <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-gray-200">
-                      <h3 className="text-lg font-bold text-gray-800 mb-3">
+                    <div className="mt-6 p-4 md:p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-gray-200">
+                      <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-3">
                         {templateFeatures.title}
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm md:text-base text-gray-700">
                         {templateFeatures.features.map((feature, index) => (
                           <div key={index} className="flex items-center">
-                            <span className="text-green-500 mr-2">✓</span>
+                            <span className="text-green-500 mr-2 text-lg">✓</span>
                             {feature}
                           </div>
                         ))}
-                      </div>
-                    </div>
-                    
-                    {/* Analytics Info */}
-                    <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <h3 className="font-semibold text-gray-800 mb-3 text-sm">📊 Premium Template Analytics</h3>
-                      <div className="grid grid-cols-3 gap-3 text-xs">
-                        <div className="bg-white p-2 rounded border">
-                          <div className="text-gray-500">Selected Template</div>
-                          <div className="font-bold">{currentTemplate.name}</div>
-                        </div>
-                        <div className="bg-white p-2 rounded border">
-                          <div className="text-gray-500">Template Views</div>
-                          <div className="font-bold text-purple-600">
-                            {localStorage.getItem(`premium_template_${selectedTemplate}`) || '0'}
-                          </div>
-                        </div>
-                        <div className="bg-white p-2 rounded border">
-                          <div className="text-gray-500">Total Premium Views</div>
-                          <div className="font-bold text-blue-600">
-                            {localStorage.getItem('page_views_premium') || '0'}
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -625,13 +575,13 @@ const NewTemplatesPage = () => {
 
                 {/* Right Sidebar - Controls */}
                 <div className="xl:w-1/3">
-                  <div className="bg-white rounded-xl shadow-lg p-4 sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+                  <div className="bg-white rounded-xl shadow-lg p-4 md:p-6 sticky top-6 max-h-[calc(100vh-2rem)] overflow-y-auto">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Template Controls</h2>
                     
                     {/* Quick Template Switcher */}
                     <div className="mb-6">
                       <h3 className="font-semibold text-gray-800 mb-3">Quick Switch</h3>
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3">
                         {Object.values(TEMPLATES).map((template) => (
                           <button
                             key={template.id}
@@ -639,7 +589,7 @@ const NewTemplatesPage = () => {
                               setSelectedTemplate(template.id as keyof typeof TEMPLATES);
                               trackButtonClick(`quick_switch_${template.id}`, 'template_switcher', 'premium_templates');
                             }}
-                            className={`px-4 py-3 rounded-lg font-semibold transition-all text-sm text-left ${
+                            className={`px-4 py-3 rounded-lg font-semibold transition-all text-left ${
                               selectedTemplate === template.id
                                 ? template.id === 'modernIcons'
                                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
@@ -653,7 +603,7 @@ const NewTemplatesPage = () => {
                       </div>
                     </div>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       <SectionOrderCustomizer 
                         sections={sectionOrder}
                         onReorder={handleSectionReorder}
@@ -672,7 +622,7 @@ const NewTemplatesPage = () => {
                             trackCTAClick('edit_resume_desktop', 'quick_actions', 'premium_templates');
                             trackUserFlow('premium', 'edit', 'navigation');
                           }}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors w-full text-center block"
+                          className="bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors w-full text-center block font-semibold"
                         >
                           Edit Resume Details
                         </Link>
@@ -680,8 +630,8 @@ const NewTemplatesPage = () => {
 
                       <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
                         <h3 className="font-semibold text-gray-800 mb-3">Explore More Templates</h3>
-                        <div className="flex gap-3">
-                          <button className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <button className="flex-1 bg-purple-600 text-white px-4 py-3 rounded-lg text-center font-semibold">
                             Premium Templates
                           </button>
                           <Link
@@ -690,7 +640,7 @@ const NewTemplatesPage = () => {
                               trackCTAClick('view_ats_templates', 'template_exploration', 'premium_templates');
                               trackUserFlow('premium', 'builder', 'navigation');
                             }}
-                            className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-center text-sm"
+                            className="flex-1 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-center font-semibold"
                           >
                             ATS Templates
                           </Link>
@@ -698,31 +648,25 @@ const NewTemplatesPage = () => {
                       </div>
 
                       <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <h3 className="font-semibold text-blue-800 mb-2 text-sm">Quick Tips</h3>
-                        <ul className="text-xs text-blue-700 space-y-1">
-                          <li>• Upload a professional profile picture</li>
-                          <li>• Arrange sections in your preferred order</li>
-                          <li>• Use high-quality images for best results</li>
-                          <li>• Premium templates work best with complete information</li>
+                        <h3 className="font-semibold text-blue-800 mb-2">Quick Tips</h3>
+                        <ul className="text-sm text-blue-700 space-y-2">
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-500 mt-0.5">✓</span>
+                            Upload a professional profile picture
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-500 mt-0.5">✓</span>
+                            Arrange sections in your preferred order
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-500 mt-0.5">✓</span>
+                            Use high-quality images for best results
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-green-500 mt-0.5">✓</span>
+                            Premium templates work best with complete information
+                          </li>
                         </ul>
-                      </div>
-                      
-                      {/* Analytics Tracking Info */}
-                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                        <h3 className="font-semibold text-green-800 mb-2 text-sm">Analytics Tracking Active</h3>
-                        <div className="text-xs text-green-700 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Total Premium Views:</span>
-                            <span className="font-bold">{localStorage.getItem('page_views_premium') || '0'}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>{currentTemplate.name} Views:</span>
-                            <span className="font-bold">{localStorage.getItem(`premium_template_${selectedTemplate}`) || '0'}</span>
-                          </div>
-                          <div className="mt-2 text-xs text-green-600">
-                            Google Analytics Property: G-JW2bS0D8YB
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -732,19 +676,19 @@ const NewTemplatesPage = () => {
           </div>
 
           {/* Quick Edit Section */}
-          <div className="mt-4 text-center">
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-lg border border-purple-200 inline-block">
-              <h3 className="text-base font-bold text-gray-800 mb-1">Ready to customize your resume?</h3>
-              <p className="text-gray-600 text-xs mb-2">Add your personal information, experience, education, and more</p>
+          <div className="mt-6 md:mt-8 text-center">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 md:p-6 rounded-xl border border-purple-200 inline-block max-w-2xl">
+              <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2">Ready to customize your resume?</h3>
+              <p className="text-gray-600 text-sm md:text-base mb-4">Add your personal information, experience, education, and more</p>
               <Link
                 to="/edit"
                 onClick={() => {
                   trackCTAClick('edit_resume_footer', 'footer', 'premium_templates');
                   trackUserFlow('premium', 'edit', 'navigation');
                 }}
-                className="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 transition-colors font-semibold inline-flex items-center gap-1 text-xs"
+                className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold inline-flex items-center gap-2"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit Resume Information
@@ -752,23 +696,6 @@ const NewTemplatesPage = () => {
             </div>
           </div>
           
-          {/* Analytics Footer */}
-          <div className="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300">
-            <div className="flex flex-col md:flex-row justify-between items-center text-xs text-gray-600">
-              <div className="flex items-center gap-2 mb-2 md:mb-0">
-                <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                </svg>
-                Premium Template Analytics Tracking Active
-              </div>
-              <div className="flex gap-4">
-                <span>Views: {localStorage.getItem('page_views_premium') || '0'}</span>
-                <span>Template: {currentTemplate.name}</span>
-                <span>Selected: {localStorage.getItem(`premium_template_${selectedTemplate}`) || '0'}</span>
-              </div>
-            </div>
-          </div>
-
           {/* QR Code Generator */}
           <QRCodeGenerator />
         </div>
