@@ -1,7 +1,8 @@
-// src/components/JobDrives.tsx
+// src/components/JobDrives.tsx - UPDATED WITH ENHANCED ANALYTICS
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { 
   Share2, 
@@ -9,7 +10,8 @@ import {
   MapPin, 
   Clock, 
   Building,
-  ExternalLink
+  ExternalLink,
+  Users
 } from 'lucide-react';
 import {
   FacebookShareButton,
@@ -37,6 +39,8 @@ interface JobDrive {
   contact: string;
   featured?: boolean;
   addedTimestamp?: number;
+  expectedCandidates?: number;
+  registrationLink?: string;
 }
 
 const JobDrives: React.FC = () => {
@@ -45,14 +49,42 @@ const JobDrives: React.FC = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
-  const { trackButtonClick, trackSearch, trackSocialShare, trackCTAClick } = useGoogleAnalytics();
+  const { 
+    trackDailyPageView,
+    trackJobDriveView,
+    trackJobDriveRegistration 
+  } = useEnhancedAnalytics();
+  
+  const { 
+    trackButtonClick, 
+    trackSocialShare, 
+    trackCTAClick,
+    trackExternalLink 
+  } = useGoogleAnalytics();
 
-  // Load drives from localStorage
+  // Track daily page view on mount
   useEffect(() => {
+    trackDailyPageView('Job Drives', '/job-drives');
+    
+    // Load drives from localStorage
     const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
     setDrives(savedDrives);
-  }, []);
+  }, [trackDailyPageView]);
+
+  // Categories for filtering
+  const categories = [
+    'all',
+    'IT/Software',
+    'Engineering',
+    'Banking/Finance',
+    'Marketing',
+    'Healthcare',
+    'Government',
+    'Campus Placement',
+    'Mass Recruitment'
+  ];
 
   const filteredDrives = drives.filter(drive => {
     const matchesSearch = searchTerm === '' || 
@@ -60,12 +92,21 @@ const JobDrives: React.FC = () => {
       drive.company.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLocation = locationFilter === '' || 
       drive.location.toLowerCase().includes(locationFilter.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || 
+      drive.title.toLowerCase().includes(categoryFilter.toLowerCase()) ||
+      drive.company.toLowerCase().includes(categoryFilter.toLowerCase());
     
-    return matchesSearch && matchesLocation;
+    return matchesSearch && matchesLocation && matchesCategory;
   });
 
   const featuredDrives = drives.filter(drive => drive.featured);
   const upcomingDrives = drives.filter(drive => new Date(drive.date) >= new Date());
+  const recentDrives = drives.filter(drive => {
+    const driveDate = new Date(drive.date);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return driveDate >= weekAgo && driveDate <= new Date();
+  });
 
   const handleShare = (drive: JobDrive) => {
     setSelectedDrive(drive);
@@ -75,8 +116,13 @@ const JobDrives: React.FC = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    trackSearch(searchTerm, filteredDrives.length, 'job_drives');
+    // Use trackButtonClick instead of trackJobSearch
     trackButtonClick('search_drives', 'search_form', 'job_drives');
+  };
+
+  const handleRegisterClick = (drive: JobDrive) => {
+    trackJobDriveRegistration(drive.id, drive.title, drive.company);
+    trackButtonClick('register_drive', 'drive_card', 'job_drives');
   };
 
   const shareUrl = typeof window !== 'undefined' 
@@ -122,7 +168,7 @@ const JobDrives: React.FC = () => {
           
           {/* Search Form */}
           <form onSubmit={handleSearch} className="max-w-4xl mx-auto bg-white rounded-lg p-4 shadow-lg">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <input
                   type="text"
@@ -142,6 +188,19 @@ const JobDrives: React.FC = () => {
                 />
               </div>
               <div>
+                <select
+                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>
+                      {cat === 'all' ? 'All Categories' : cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <button 
                   type="submit"
                   className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
@@ -153,18 +212,22 @@ const JobDrives: React.FC = () => {
           </form>
 
           {/* Stats */}
-          <div className="mt-6 flex justify-center items-center gap-6">
-            <div className="text-center">
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+            <div className="bg-green-700/80 px-4 py-3 rounded-lg text-center">
               <div className="text-2xl font-bold">{drives.length}</div>
-              <div className="text-green-100">Total Drives</div>
+              <div className="text-green-100 text-sm">Total Drives</div>
             </div>
-            <div className="text-center">
+            <div className="bg-green-700/80 px-4 py-3 rounded-lg text-center">
               <div className="text-2xl font-bold">{upcomingDrives.length}</div>
-              <div className="text-green-100">Upcoming</div>
+              <div className="text-green-100 text-sm">Upcoming</div>
             </div>
-            <div className="text-center">
+            <div className="bg-green-700/80 px-4 py-3 rounded-lg text-center">
               <div className="text-2xl font-bold">{featuredDrives.length}</div>
-              <div className="text-green-100">Featured</div>
+              <div className="text-green-100 text-sm">Featured</div>
+            </div>
+            <div className="bg-green-700/80 px-4 py-3 rounded-lg text-center">
+              <div className="text-2xl font-bold">{recentDrives.length}</div>
+              <div className="text-green-100 text-sm">This Week</div>
             </div>
           </div>
         </div>
@@ -177,29 +240,67 @@ const JobDrives: React.FC = () => {
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div>
-                <h3 className="font-bold text-yellow-800">Admin Access</h3>
-                <p className="text-yellow-700 text-sm">Add new walk-in drives and job fairs for Indian companies</p>
+                <h3 className="font-bold text-yellow-800">📊 Analytics Tracking Active</h3>
+                <p className="text-yellow-700 text-sm">Drive views, registrations, and shares are being tracked in real-time</p>
               </div>
-              <Link 
-                to="/admin/job-drives" 
-                onClick={() => {
-                  trackCTAClick('admin_job_drives', 'admin_access', 'job_drives');
-                  trackButtonClick('admin_panel', 'admin_cta', 'job_drives');
-                }}
-                className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-yellow-700 transition-colors mt-2 md:mt-0"
-              >
-                Add New Drive
-              </Link>
+              <div className="flex gap-3 mt-2 md:mt-0">
+                <Link 
+                  to="/admin/job-drives" 
+                  onClick={() => {
+                    trackCTAClick('admin_job_drives', 'admin_access', 'job_drives');
+                    trackButtonClick('admin_panel', 'admin_cta', 'job_drives');
+                  }}
+                  className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-yellow-700 transition-colors"
+                >
+                  Add New Drive
+                </Link>
+                <Link 
+                  to="/admin/daily-analytics" 
+                  onClick={() => trackButtonClick('view_drive_analytics', 'analytics_cta', 'job_drives')}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                >
+                  View Analytics
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* Featured Drives */}
           {featuredDrives.length > 0 && (
             <div className="mb-12">
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">Featured Drives</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-bold text-gray-800">⭐ Featured Drives</h2>
+                <span className="text-green-600 font-semibold">{featuredDrives.length} featured</span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {featuredDrives.map(drive => (
-                  <DriveCard key={drive.id} drive={drive} onShare={handleShare} featured />
+                  <DriveCard 
+                    key={drive.id} 
+                    drive={drive} 
+                    onShare={handleShare}
+                    onRegister={handleRegisterClick}
+                    featured 
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming Drives */}
+          {upcomingDrives.length > 0 && (
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-bold text-gray-800">📅 Upcoming Drives</h2>
+                <span className="text-blue-600 font-semibold">{upcomingDrives.length} upcoming</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {upcomingDrives.slice(0, 6).map(drive => (
+                  <DriveCard 
+                    key={drive.id} 
+                    drive={drive} 
+                    onShare={handleShare}
+                    onRegister={handleRegisterClick}
+                  />
                 ))}
               </div>
             </div>
@@ -209,10 +310,11 @@ const JobDrives: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-3xl font-bold text-gray-800">
-                All Walk-in Drives in India ({filteredDrives.length})
+                All Walk-in Drives in India
+                <span className="text-gray-600 text-lg ml-2">({filteredDrives.length})</span>
               </h2>
               <div className="text-sm text-gray-600">
-                Sorted by date
+                Sorted by date • Tracking active
               </div>
             </div>
 
@@ -231,10 +333,42 @@ const JobDrives: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDrives.map(drive => (
-                  <DriveCard key={drive.id} drive={drive} onShare={handleShare} />
+                  <DriveCard 
+                    key={drive.id} 
+                    drive={drive} 
+                    onShare={handleShare}
+                    onRegister={handleRegisterClick}
+                  />
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Analytics Info */}
+          <div className="mt-8 bg-green-50 p-6 rounded-lg border border-green-200">
+            <h3 className="font-bold text-green-800 mb-3 text-lg">📊 Drive Analytics</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-white p-4 rounded border">
+                <div className="font-semibold text-gray-700 mb-1">Drive Views Today</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {localStorage.getItem(`daily_page_views_job-drives`) || '0'}
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded border">
+                <div className="font-semibold text-gray-700 mb-1">Total Registrations</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {localStorage.getItem('job_drive_registrations') || '0'}
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded border">
+                <div className="font-semibold text-gray-700 mb-1">Conversion Rate</div>
+                <div className="text-2xl font-bold text-purple-600">
+                  {parseInt(localStorage.getItem(`daily_page_views_job-drives`) || '1') > 0 
+                    ? ((parseInt(localStorage.getItem('job_drive_registrations') || '0') / parseInt(localStorage.getItem(`daily_page_views_job-drives`) || '1')) * 100).toFixed(1) 
+                    : '0'}%
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -306,19 +440,38 @@ const JobDrives: React.FC = () => {
 };
 
 // Drive Card Component
-const DriveCard: React.FC<{ drive: JobDrive; onShare: (drive: JobDrive) => void; featured?: boolean }> = ({ 
+const DriveCard: React.FC<{ 
+  drive: JobDrive; 
+  onShare: (drive: JobDrive) => void; 
+  onRegister: (drive: JobDrive) => void;
+  featured?: boolean 
+}> = ({ 
   drive, 
   onShare, 
+  onRegister,
   featured = false 
 }) => {
+  const { trackJobDriveView } = useEnhancedAnalytics();
   const { trackButtonClick, trackExternalLink } = useGoogleAnalytics();
   
   const isUpcoming = new Date(drive.date) >= new Date();
+  const isToday = new Date(drive.date).toDateString() === new Date().toDateString();
 
   const handleDetailsClick = () => {
     trackButtonClick('view_drive_details', 'drive_card', 'job_drives');
     trackExternalLink('Drive Details', drive.applyLink, 'job_drives');
   };
+
+  const handleRegister = () => {
+    onRegister(drive);
+    window.open(drive.registrationLink || drive.applyLink, '_blank');
+  };
+
+  // Track drive view on mount
+  useEffect(() => {
+    trackJobDriveView(drive.id, drive.title, 'drive_listing');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow ${
@@ -341,7 +494,13 @@ const DriveCard: React.FC<{ drive: JobDrive; onShare: (drive: JobDrive) => void;
         )}
         {isUpcoming && (
           <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-sm font-semibold">
-            Upcoming
+            {isToday ? 'Today' : 'Upcoming'}
+          </div>
+        )}
+        {drive.expectedCandidates && (
+          <div className="absolute bottom-2 right-2 bg-purple-600 text-white px-2 py-1 rounded text-sm font-semibold flex items-center">
+            <Users size={12} className="mr-1" />
+            {drive.expectedCandidates}+ expected
           </div>
         )}
       </div>
@@ -361,7 +520,12 @@ const DriveCard: React.FC<{ drive: JobDrive; onShare: (drive: JobDrive) => void;
           </div>
           <div className="flex items-center text-sm text-gray-600">
             <Calendar size={14} className="mr-2" />
-            {new Date(drive.date).toLocaleDateString()}
+            {new Date(drive.date).toLocaleDateString('en-IN', { 
+              weekday: 'short', 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })}
           </div>
           <div className="flex items-center text-sm text-gray-600">
             <Clock size={14} className="mr-2" />
@@ -388,26 +552,38 @@ const DriveCard: React.FC<{ drive: JobDrive; onShare: (drive: JobDrive) => void;
           </div>
         </div>
 
+        {/* Documents Required */}
+        {drive.documents && drive.documents.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-semibold text-gray-800 mb-1">Documents:</h4>
+            <p className="text-xs text-gray-600">{drive.documents.slice(0, 3).join(', ')}</p>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-2">
           <button
             onClick={() => onShare(drive)}
-            className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center"
+            className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center text-sm"
           >
-            <Share2 size={16} className="mr-1" />
+            <Share2 size={14} className="mr-1" />
             Share
           </button>
-          <a
-            href={drive.applyLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleDetailsClick}
-            className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center"
+          <button
+            onClick={handleRegister}
+            className="flex-1 bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center text-sm"
           >
-            <ExternalLink size={16} className="mr-1" />
-            Details
-          </a>
+            <ExternalLink size={14} className="mr-1" />
+            Register Now
+          </button>
         </div>
+        
+        {/* Contact Info */}
+        {drive.contact && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <p className="text-xs text-gray-600">Contact: {drive.contact}</p>
+          </div>
+        )}
       </div>
     </div>
   );

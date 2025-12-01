@@ -68,6 +68,8 @@ const MobilePDFGenerator = ({
       let yPosition = margin;
       
       const primaryColor = template.colors?.primary || '#374151';
+      // NEW: Get circle initials color from template or use primary color as fallback
+      const circleInitialsColor = template.circleInitialsColor || primaryColor;
       
       // Helper to convert hex to RGB
       const hexToRgb = (hex: string) => {
@@ -603,15 +605,19 @@ const MobilePDFGenerator = ({
   pdf.setFillColor(gradientPurple.r, gradientPurple.g, gradientPurple.b);
   pdf.circle(circleX, circleY, circleRadius - 2, 'F');
   
-  // UPDATED: White border for the circle
+  // White border for the circle
   pdf.setDrawColor(255, 255, 255); // WHITE border
   pdf.setLineWidth(0.8); // Slightly thicker border for better visibility
   pdf.circle(circleX, circleY, circleRadius - 2, 'S');
   
-  // Initials with creative font - positioned in center of circle
+  // UPDATED: Initials with PURPLE color (same as personal info section)
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(255, 255, 255); // White text for better contrast on purple
+  
+  // Get the circle initials color (purple for creative template)
+  const circleInitialsRgb = hexToRgb(circleInitialsColor);
+  pdf.setTextColor(circleInitialsRgb.r, circleInitialsRgb.g, circleInitialsRgb.b); // PURPLE color for initials
+  
   const initials = personalInfo.name.split(' ').map(n => n[0]).join('');
   const initialsWidth = pdf.getTextWidth(initials);
   pdf.text(initials, circleX - initialsWidth / 2, circleY + 2);
@@ -629,7 +635,7 @@ const MobilePDFGenerator = ({
   
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'italic');
-  pdf.setTextColor(rgb.r, rgb.g, rgb.b);
+  pdf.setTextColor(rgb.r, rgb.g, rgb.b); // Purple color for title
   const titleWidth = pdf.getTextWidth(personalInfo.title);
   pdf.text(personalInfo.title, (pageWidth - titleWidth) / 2, yPosition);
   yPosition += 6;
@@ -822,6 +828,7 @@ const MobilePDFGenerator = ({
       
       else if (template.layout === 'creative') {
         // UPDATED: Creative Template - Now with purple and white gradient circle and WHITE border
+        // Circle initials are now purple to match personal info section
         renderCreativePersonalInfo();
         
         // Render sections for creative template with primary color headers
@@ -1181,6 +1188,9 @@ const MobilePDFGenerator = ({
           <span className="bg-white px-2 py-1 rounded text-gray-700 flex items-center">
             🎨 {template.name} style
           </span>
+          <span className="bg-white px-2 py-1 rounded text-gray-700 flex items-center">
+            🟣 Purple initials
+          </span>
         </div>
       </div>
 
@@ -1248,7 +1258,7 @@ const MobilePDFGenerator = ({
         <div className="bg-white p-2 rounded border border-gray-200">
           <div className="font-semibold text-gray-700 mb-1">🎨 Layout</div>
           <div>{template.layout === 'twoColumn' ? 'Dual-column sidebar' :
-                template.layout === 'creative' ? 'Centered with circle' :
+                template.layout === 'creative' ? 'Centered with purple initials' :
                 template.layout === 'executive' ? 'Full-width header' :
                 'Single column clean'}</div>
         </div>

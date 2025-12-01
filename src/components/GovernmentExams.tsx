@@ -1,7 +1,8 @@
-// src/components/GovernmentExams.tsx
+// src/components/GovernmentExams.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 interface GovExam {
@@ -14,10 +15,10 @@ interface GovExam {
   applicationStartDate: string;
   applicationEndDate: string;
   examDate: string;
-  examLevel: string; // National, State, Bank, Railway, SSC, UPSC, Defense, etc.
+  examLevel: string;
   ageLimit: string;
   applicationFee: string;
-  examMode: string; // Online, Offline, CBT
+  examMode: string;
   officialWebsite: string;
   notificationLink: string;
   applyLink: string;
@@ -37,7 +38,17 @@ const GovernmentExams: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const examsPerPage = 12;
 
-  const { trackButtonClick, trackSearch } = useGoogleAnalytics();
+  const { trackDailyPageView, trackGovExamApplication } = useEnhancedAnalytics();
+  const { trackButtonClick } = useGoogleAnalytics();
+
+  // Track daily page view on mount
+  useEffect(() => {
+    trackDailyPageView('Government Exams', '/government-exams');
+    
+    // Load exams from localStorage
+    const savedExams = JSON.parse(localStorage.getItem('governmentExams') || '[]');
+    setExams(savedExams);
+  }, [trackDailyPageView]);
 
   // Exam levels/categories
   const examLevels = [
@@ -69,12 +80,6 @@ const GovernmentExams: React.FC = () => {
     'GATE',
     'Others'
   ];
-
-  // Load exams from localStorage
-  useEffect(() => {
-    const savedExams = JSON.parse(localStorage.getItem('governmentExams') || '[]');
-    setExams(savedExams);
-  }, []);
 
   // Filter exams
   const filteredExams = exams.filter(exam => {
@@ -116,7 +121,6 @@ const GovernmentExams: React.FC = () => {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
-    trackSearch(searchTerm, filteredExams.length, 'gov_exams');
     trackButtonClick('search_gov_exams', 'search_form', 'government_exams');
   };
 
@@ -270,7 +274,7 @@ const GovernmentExams: React.FC = () => {
                         {org === 'all' ? 'All Organizations' : org}
                       </option>
                     ))}
-                  </select>
+                </select>
                 </div>
 
                 {/* Stats */}
@@ -305,20 +309,20 @@ const GovernmentExams: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Admin Access */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-green-800 mb-2">
-                  ➕ Add New Exam
+              {/* Analytics Dashboard Access */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mt-6">
+                <h3 className="font-bold text-purple-800 mb-2">
+                  📊 View Analytics
                 </h3>
-                <p className="text-green-700 text-sm mb-3">
-                  Post new government exam notifications
+                <p className="text-purple-700 text-sm mb-3">
+                  Track exam applications and user behavior
                 </p>
                 <Link 
-                  to="/admin/government-exams" 
-                  onClick={() => trackButtonClick('admin_gov_exams', 'sidebar_cta', 'government_exams')}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors block text-center"
+                  to="/admin/daily-analytics" 
+                  onClick={() => trackButtonClick('view_analytics', 'sidebar_cta', 'government_exams')}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors block text-center"
                 >
-                  Admin Panel
+                  View Analytics
                 </Link>
               </div>
             </div>
@@ -430,6 +434,7 @@ const GovernmentExams: React.FC = () => {
 
 // Exam Card Component
 const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featured = false }) => {
+  const { trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
   
   const isApplicationOpen = () => {
@@ -448,6 +453,11 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featu
 
   const daysLeft = getDaysRemaining();
   const applicationOpen = isApplicationOpen();
+
+  const handleApplyClick = () => {
+    trackGovExamApplication(exam.id, exam.examName, exam.organization);
+    trackButtonClick('apply_gov_exam', 'exam_card', 'government_exams');
+  };
 
   return (
     <div className={`bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${
@@ -547,7 +557,7 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featu
           href={exam.applyLink} 
           target="_blank" 
           rel="noopener noreferrer"
-          onClick={() => trackButtonClick('apply_gov_exam', 'exam_card', 'government_exams')}
+          onClick={handleApplyClick}
           className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors text-center"
         >
           Apply Online

@@ -1,9 +1,10 @@
+// src/hooks/useGoogleAnalytics.ts
 import { useCallback } from 'react';
 
 export const useGoogleAnalytics = () => {
   const trackEvent = useCallback((eventName: string, parameters: Record<string, any> = {}) => {
-    if (typeof window !== 'undefined' && typeof (window as any).gtag !== 'undefined') {
-      (window as any).gtag('event', eventName, {
+    if (typeof window !== 'undefined' && typeof window.gtag !== 'undefined') {
+      window.gtag('event', eventName, {
         ...parameters,
         send_to: 'G-JW2bS0D8YB' // Consistent property ID
       });
@@ -11,8 +12,8 @@ export const useGoogleAnalytics = () => {
   }, []);
 
   const trackPageView = useCallback((pageTitle: string, pagePath: string) => {
-    if (typeof window !== 'undefined' && typeof (window as any).gtag !== 'undefined') {
-      (window as any).gtag('event', 'page_view', {
+    if (typeof window !== 'undefined' && typeof window.gtag !== 'undefined') {
+      window.gtag('event', 'page_view', {
         page_title: pageTitle,
         page_location: window.location.href,
         page_path: pagePath,
@@ -206,6 +207,17 @@ export const useGoogleAnalytics = () => {
     });
   }, [trackEvent]);
 
+  // ============ SEARCH TRACKING (for compatibility) ============
+  const trackSearch = useCallback((searchTerm: string, resultsCount: number, location: string = '') => {
+    trackEvent('search_performed', {
+      search_term: searchTerm,
+      results_count: resultsCount,
+      location: location,
+      event_category: 'Search',
+      event_label: searchTerm
+    });
+  }, [trackEvent]);
+
   return {
     // Core tracking
     trackEvent,
@@ -245,6 +257,9 @@ export const useGoogleAnalytics = () => {
     trackError,
     
     // User Flow
-    trackUserFlow
+    trackUserFlow,
+    
+    // Compatibility
+    trackSearch
   };
 };

@@ -1,5 +1,5 @@
 // src/components/HomePage.tsx - UPDATED WITH FIXED TRACKING
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileText, 
@@ -21,8 +21,32 @@ const HomePage = () => {
     trackButtonClick, 
     trackCTAClick, 
     trackUserFlow, 
-    trackExternalLink 
+    trackExternalLink,
+    trackPageView 
   } = useGoogleAnalytics();
+
+  // Track page view on mount
+  useEffect(() => {
+    trackPageView('Home Page', '/');
+    
+    // Track daily visits in localStorage
+    const today = new Date().toISOString().split('T')[0];
+    const pageViews = parseInt(localStorage.getItem('page_views_home') || '0');
+    localStorage.setItem('page_views_home', (pageViews + 1).toString());
+    
+    const dailyKey = `daily_${today}`;
+    const dailyVisits = parseInt(localStorage.getItem(dailyKey) || '0');
+    localStorage.setItem(dailyKey, (dailyVisits + 1).toString());
+    
+    // Track unique user
+    if (!localStorage.getItem('user_id')) {
+      const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('user_id', userId);
+      
+      const totalUsers = parseInt(localStorage.getItem('total_users') || '0');
+      localStorage.setItem('total_users', (totalUsers + 1).toString());
+    }
+  }, [trackPageView]);
 
   const handleCTAClick = (buttonName: string, section: string) => {
     trackCTAClick(buttonName, section, 'homepage');
@@ -73,6 +97,10 @@ const HomePage = () => {
                   onClick={() => {
                     handleCTAClick('build_resume', 'hero_section');
                     handleNavigation('homepage', 'builder', 'hero_cta');
+                    
+                    // Track conversion from home to builder
+                    const conversions = parseInt(localStorage.getItem('home_to_builder') || '0');
+                    localStorage.setItem('home_to_builder', (conversions + 1).toString());
                   }}
                   className="bg-white text-blue-600 px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto"
                 >
@@ -399,6 +427,10 @@ const HomePage = () => {
                 onClick={() => {
                   handleCTAClick('final_build_resume', 'final_cta');
                   handleNavigation('homepage', 'builder', 'final_cta');
+                  
+                  // Track final conversion
+                  const finalConversions = parseInt(localStorage.getItem('final_home_to_builder') || '0');
+                  localStorage.setItem('final_home_to_builder', (finalConversions + 1).toString());
                 }}
                 className="bg-white text-blue-600 px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto"
               >

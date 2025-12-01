@@ -1,4 +1,4 @@
-// src/App.tsx
+// src/App.tsx - COMPLETE WITH ALL ANALYTICS DASHBOARDS
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -31,6 +31,12 @@ import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import NewTemplatesPage from './components/NewTemplatesPage';
 import EditResumePage from './components/EditResumePage';
 
+// Import ALL analytics dashboards
+import AnalyticsDashboard from './components/AnalyticsDashboard';
+import LocalAnalyticsDashboard from './components/LocalAnalyticsDashboard';
+import AdminDashboard from './components/AdminDashboard';
+import DailyAnalyticsDashboard from './components/DailyAnalyticsDashboard'; // NEW
+
 // Import PDF styles globally
 import './components/PDFStyles.css';
 
@@ -54,9 +60,17 @@ function App() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
-              <Route path="/admin/job-posting" element={<AdminJobPosting />} />
               <Route path="/premium" element={<NewTemplatesPage />} />
-              <Route path="/edit" element={<EditResumePage/>}/>
+              <Route path="/edit" element={<EditResumePage/>} />
+
+              {/* Analytics & Admin Dashboards */}
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
+              <Route path="/admin/daily-analytics" element={<DailyAnalyticsDashboard />} /> {/* NEW */}
+              <Route path="/local-analytics" element={<LocalAnalyticsDashboard />} />
+              <Route path="/admin/job-posting" element={<AdminJobPosting />} />
+              <Route path="/admin/job-drives" element={<AdminJobDrives />} />
+              <Route path="/admin/government-exams" element={<AdminGovernmentExams />} />
 
               {/* Job Discipline Pages - Engineering */}
               <Route path="/job-disciplines/engineering" element={<JobDisciplines />} />
@@ -69,14 +83,14 @@ function App() {
               <Route path="/job-disciplines/software-development" element={<SoftwareDevelopment />} />
               <Route path="/job-disciplines/data-science" element={<DataScience />} />
               <Route path="/job-disciplines/cybersecurity" element={<Cybersecurity />} />
+
+              {/* Career Resources */}
               <Route path="/fresh-graduate-guide" element={<FreshGraduateGuide />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/cookies" element={<CookiePolicy />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/job-drives" element={<JobDrives />} />
-              <Route path="/admin/job-drives" element={<AdminJobDrives />} />
               <Route path="/government-exams" element={<GovernmentExams />} />
-              <Route path="/admin/government-exams" element={<AdminGovernmentExams />} />
 
               {/* Redirect any unknown routes to home */}
               <Route path="*" element={<HomePage />} />

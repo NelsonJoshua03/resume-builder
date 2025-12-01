@@ -1,7 +1,8 @@
-// src/components/JobApplications.tsx - FIXED VERSION
+// src/components/JobApplications.tsx - UPDATED WITH ENHANCED ANALYTICS
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 interface Job {
@@ -19,7 +20,7 @@ interface Job {
   featured?: boolean;
   isReal?: boolean;
   addedTimestamp?: number;
-  page?: number; // For multi-page organization
+  page?: number;
 }
 
 const JobApplications: React.FC = () => {
@@ -31,20 +32,24 @@ const JobApplications: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const jobsPerPage = 10;
 
-  // FIXED: Use trackJobSearch instead of trackSearch
-  const { trackJobApplication, trackJobView, trackJobSearch, trackButtonClick } = useGoogleAnalytics();
+  // Use BOTH enhanced analytics and Google Analytics
+  const { 
+    trackDailyPageView,
+    trackJobApplication,
+    trackJobView,
+    trackJobSearch
+  } = useEnhancedAnalytics();
+  
+  const { trackButtonClick } = useGoogleAnalytics();
 
-  // Popular Indian cities for quick filters
-  const popularCities = [
-    'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 
-    'Pune', 'Kolkata', 'Ahmedabad', 'Remote', 'Gurgaon', 'Noida'
-  ];
-
-  // Load manual jobs from localStorage
+  // Track daily page view on mount
   useEffect(() => {
+    trackDailyPageView('Job Applications', '/job-applications');
+    
+    // Load manual jobs from localStorage
     const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
     
-    // Add page numbers if not present (for backward compatibility)
+    // Add page numbers if not present
     const jobsWithPages = savedJobs.map((job: Job, index: number) => ({
       ...job,
       page: job.page || Math.floor(index / jobsPerPage) + 1,
@@ -52,13 +57,18 @@ const JobApplications: React.FC = () => {
     }));
 
     setJobs(jobsWithPages);
-  }, []);
+  }, [trackDailyPageView]);
+
+  // Popular Indian cities for quick filters
+  const popularCities = [
+    'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 
+    'Pune', 'Kolkata', 'Ahmedabad', 'Remote', 'Gurgaon', 'Noida'
+  ];
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1); // Reset to first page when searching
-    // FIXED: Use trackJobSearch instead of trackSearch
+    setCurrentPage(1);
     trackJobSearch(searchTerm, filteredJobs.length, locationFilter || 'all');
     trackButtonClick('job_search', 'search_form', 'job_applications');
   };
@@ -68,7 +78,6 @@ const JobApplications: React.FC = () => {
     setLocationFilter(city);
     setCurrentPage(1);
     trackButtonClick(`filter_city_${city}`, 'city_filters', 'job_applications');
-    // Also track as a location-based search
     trackJobSearch('', filteredJobs.length, city);
   };
 
@@ -324,18 +333,18 @@ const JobApplications: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Admin Quick Access */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-green-800 mb-2">Add More Jobs</h3>
-                <p className="text-green-700 text-sm mb-3">
-                  Post additional job opportunities for Indian market.
+              {/* Analytics Dashboard Access */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mt-6">
+                <h3 className="font-bold text-purple-800 mb-2">📊 View Analytics</h3>
+                <p className="text-purple-700 text-sm mb-3">
+                  Track job applications and user behavior
                 </p>
                 <Link 
-                  to="/admin/job-posting" 
-                  onClick={() => trackButtonClick('admin_job_posting', 'sidebar_cta', 'job_applications')}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors block text-center"
+                  to="/admin/daily-analytics" 
+                  onClick={() => trackButtonClick('view_analytics', 'sidebar_cta', 'job_applications')}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors block text-center"
                 >
-                  Post New Job
+                  View Analytics
                 </Link>
               </div>
             </div>
@@ -449,7 +458,8 @@ const JobApplications: React.FC = () => {
 
 // Job Card Component
 const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = false }) => {
-  const { trackJobApplication, trackJobView, trackButtonClick } = useGoogleAnalytics();
+  const { trackJobApplication, trackJobView } = useEnhancedAnalytics();
+  const { trackButtonClick } = useGoogleAnalytics();
   
   const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000;
   
@@ -458,7 +468,6 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
   };
 
   const handleApplyClick = () => {
-    // FIXED: Remove the 4th argument (job.sector)
     trackJobApplication(job.id, job.title, job.company);
     trackButtonClick('apply_job', 'job_card', 'job_applications');
   };
@@ -471,7 +480,7 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
   useEffect(() => {
     handleViewJob();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once
+  }, []);
 
   return (
     <div className={`job-card bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${

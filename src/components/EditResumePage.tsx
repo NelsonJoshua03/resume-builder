@@ -1,5 +1,5 @@
-// EditResumePage.tsx
-import React from 'react';
+// EditResumePage.tsx - UPDATED WITH TRACKING
+import React, { useEffect } from 'react';
 import { useResume } from './ResumeContext';
 import PersonalInfo from './PersonalInfo';
 import Experience from './Experience';
@@ -17,6 +17,9 @@ import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 const EditResumePage = () => {
   const {
     resumeData,
+    sectionOrder,
+    handleSectionReorder,
+    handleFileUpload,
     updatePersonalInfo,
     updateExperience,
     addExperience,
@@ -36,23 +39,41 @@ const EditResumePage = () => {
     updateCustomField,
     changeCustomFieldType,
     addCustomField,
-    removeCustomField,
-    handleFileUpload,
-    sectionOrder,
-    handleSectionReorder
+    removeCustomField
   } = useResume();
 
   const { 
     trackButtonClick, 
     trackCTAClick, 
     trackUserFlow,
-    trackResumeGeneration 
+    trackResumeGeneration,
+    trackPageView 
   } = useGoogleAnalytics();
+
+  // Track page view on mount
+  useEffect(() => {
+    trackPageView('Edit Resume', '/edit');
+    
+    // Track daily visits in localStorage
+    const pageViews = parseInt(localStorage.getItem('page_views_edit') || '0');
+    localStorage.setItem('page_views_edit', (pageViews + 1).toString());
+    
+    const today = new Date().toISOString().split('T')[0];
+    const dailyKey = `daily_edit_${today}`;
+    const dailyVisits = parseInt(localStorage.getItem(dailyKey) || '0');
+    localStorage.setItem(dailyKey, (dailyVisits + 1).toString());
+    
+    console.log(`📊 Edit Resume Page View Tracked - Total: ${pageViews + 1}`);
+  }, [trackPageView]);
 
   const handleSaveChanges = () => {
     trackButtonClick('save_changes', 'quick_actions', 'edit_page');
     trackResumeGeneration('manual_save', 'edit', 'saved');
-    // Add your save logic here
+    
+    // Track save action
+    const saves = parseInt(localStorage.getItem('resume_saves') || '0');
+    localStorage.setItem('resume_saves', (saves + 1).toString());
+    
     alert('Changes saved successfully!');
   };
 
@@ -63,6 +84,10 @@ const EditResumePage = () => {
   const handleFileUploadTracked = (fileData: any) => {
     handleFileUpload(fileData);
     trackButtonClick('file_upload', 'file_upload', 'edit_page');
+    
+    // Track file uploads
+    const uploads = parseInt(localStorage.getItem('file_uploads') || '0');
+    localStorage.setItem('file_uploads', (uploads + 1).toString());
   };
 
   return (
@@ -81,12 +106,24 @@ const EditResumePage = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-800">Edit Your Resume</h1>
               <p className="text-gray-600">Fill in your information below</p>
+              <div className="mt-2 text-sm text-gray-500">
+                <span className="inline-flex items-center">
+                  <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Google Analytics Tracking Active
+                </span>
+              </div>
             </div>
             <Link
-              to="/"
+              to="/builder"
               onClick={() => {
                 trackCTAClick('back_to_templates', 'header', 'edit_page');
                 trackUserFlow('edit', 'builder', 'navigation');
+                
+                // Track navigation from edit to builder
+                const navCount = parseInt(localStorage.getItem('edit_to_builder') || '0');
+                localStorage.setItem('edit_to_builder', (navCount + 1).toString());
               }}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
@@ -114,6 +151,10 @@ const EditResumePage = () => {
             <p className="text-xs text-gray-500 mt-2">
               Complete all sections for the best resume results
             </p>
+            <div className="mt-3 flex justify-between text-xs text-gray-600">
+              <span>🚀 Tracking: {localStorage.getItem('page_views_edit') || '0'} views</span>
+              <span>💾 {localStorage.getItem('resume_saves') || '0'} saves</span>
+            </div>
           </div>
 
           {/* Edit Form */}
@@ -282,7 +323,7 @@ const EditResumePage = () => {
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
-                  to="/"
+                  to="/builder"
                   onClick={() => {
                     trackCTAClick('view_ats_templates', 'quick_actions', 'edit_page');
                     trackUserFlow('edit', 'builder', 'navigation');
@@ -353,6 +394,37 @@ const EditResumePage = () => {
                   <span>Proofread for spelling and grammar errors</span>
                 </div>
               </div>
+            </div>
+
+            {/* Analytics Info */}
+            <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+              <h3 className="font-semibold text-blue-800 mb-3 text-lg flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Analytics Tracking Active
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-gray-500">Page Views</div>
+                  <div className="font-bold text-blue-600">{localStorage.getItem('page_views_edit') || '0'}</div>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-gray-500">Resume Saves</div>
+                  <div className="font-bold text-green-600">{localStorage.getItem('resume_saves') || '0'}</div>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-gray-500">File Uploads</div>
+                  <div className="font-bold text-purple-600">{localStorage.getItem('file_uploads') || '0'}</div>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <div className="text-gray-500">Completion</div>
+                  <div className="font-bold text-orange-600">{calculateCompletion(resumeData)}%</div>
+                </div>
+              </div>
+              <p className="text-blue-700 text-xs mt-3">
+                This data is stored locally and helps improve your experience. Full analytics are available in Google Analytics.
+              </p>
             </div>
           </div>
         </div>

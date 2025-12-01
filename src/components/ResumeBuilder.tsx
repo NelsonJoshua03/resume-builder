@@ -1,5 +1,5 @@
 // ResumeBuilder.tsx - ATS Templates Page with Grid Preview
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useResume } from './ResumeContext';
 import TemplateSelector from './TemplateSelector';
@@ -303,14 +303,44 @@ const ResumeBuilder = () => {
     trackButtonClick, 
     trackTemplateChange,
     trackCTAClick,
-    trackUserFlow 
+    trackUserFlow,
+    trackPageView 
   } = useGoogleAnalytics();
+
+  // Track page view on mount
+  useEffect(() => {
+    trackPageView('Resume Builder', '/builder');
+    
+    // Track daily visits in localStorage
+    const pageViews = parseInt(localStorage.getItem('page_views_builder') || '0');
+    localStorage.setItem('page_views_builder', (pageViews + 1).toString());
+    
+    const today = new Date().toISOString().split('T')[0];
+    const dailyKey = `daily_builder_${today}`;
+    const dailyVisits = parseInt(localStorage.getItem(dailyKey) || '0');
+    localStorage.setItem(dailyKey, (dailyVisits + 1).toString());
+    
+    // Track conversion from home if coming from home
+    const referrer = document.referrer;
+    if (referrer.includes('careercraft.in') && !referrer.includes('/builder')) {
+      const conversions = parseInt(localStorage.getItem('home_to_builder') || '0');
+      localStorage.setItem('home_to_builder', (conversions + 1).toString());
+      console.log(`📊 Conversion tracked: Home → Builder (Total: ${conversions + 1})`);
+    }
+    
+    console.log(`📊 Resume Builder Page View Tracked - Total: ${pageViews + 1}`);
+  }, [trackPageView]);
 
   const selectTemplate = (template: string) => {
     updateSelectedTemplate(template);
     console.log('Template selected:', template);
     trackTemplateChange(template);
     trackButtonClick('template_select', 'template_selector', 'resume_builder');
+    
+    // Track template selection
+    const templateKey = `template_${template}`;
+    const templateSelections = parseInt(localStorage.getItem(templateKey) || '0');
+    localStorage.setItem(templateKey, (templateSelections + 1).toString());
     
     // Switch to preview mode when template is selected
     if (viewMode === 'grid') {
@@ -359,6 +389,10 @@ const ResumeBuilder = () => {
                 onClick={() => {
                   trackCTAClick('edit_resume', 'header', 'resume_builder');
                   trackUserFlow('builder', 'edit', 'navigation');
+                  
+                  // Track navigation from builder to edit
+                  const navCount = parseInt(localStorage.getItem('builder_to_edit') || '0');
+                  localStorage.setItem('builder_to_edit', (navCount + 1).toString());
                 }}
                 className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors font-semibold inline-flex items-center gap-1 text-xs"
               >
@@ -380,6 +414,16 @@ const ResumeBuilder = () => {
                   View All Templates
                 </button>
               )}
+            </div>
+            
+            {/* Analytics Info */}
+            <div className="mt-2 text-xs text-gray-500">
+              <span className="inline-flex items-center">
+                <svg className="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                {localStorage.getItem('page_views_builder') || '0'} builder views • {localStorage.getItem('resumeDownloads') || '0'} downloads
+              </span>
             </div>
           </header>
 
@@ -636,6 +680,29 @@ const ResumeBuilder = () => {
                       </Link>
                     </div>
                   </div>
+                  
+                  {/* Analytics Info */}
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h3 className="font-semibold text-gray-800 mb-2 text-sm">Analytics Tracking</h3>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-white p-2 rounded border">
+                        <div className="text-gray-500">Template</div>
+                        <div className="font-bold">{currentTemplate.name}</div>
+                      </div>
+                      <div className="bg-white p-2 rounded border">
+                        <div className="text-gray-500">Downloads</div>
+                        <div className="font-bold text-green-600">{localStorage.getItem('resumeDownloads') || '0'}</div>
+                      </div>
+                      <div className="bg-white p-2 rounded border col-span-2">
+                        <div className="text-gray-500">Conversion Rate</div>
+                        <div className="font-bold text-blue-600">
+                          {parseInt(localStorage.getItem('page_views_builder') || '0') > 0 
+                            ? ((parseInt(localStorage.getItem('resumeDownloads') || '0') / parseInt(localStorage.getItem('page_views_builder') || '1')) * 100).toFixed(1) 
+                            : '0'}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
@@ -680,6 +747,23 @@ const ResumeBuilder = () => {
                 </div>
                 <h3 className="font-semibold text-gray-800 text-xs">Professional</h3>
                 <p className="text-gray-600 text-xs">Clean designs that impress recruiters</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Analytics Footer */}
+          <div className="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300">
+            <div className="flex flex-col md:flex-row justify-between items-center text-xs text-gray-600">
+              <div className="flex items-center gap-2 mb-2 md:mb-0">
+                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.2 6.5 10.266a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clipRule="evenodd" />
+                </svg>
+                Google Analytics Active - Tracking Resume Builder Activity
+              </div>
+              <div className="flex gap-4">
+                <span>Views: {localStorage.getItem('page_views_builder') || '0'}</span>
+                <span>Downloads: {localStorage.getItem('resumeDownloads') || '0'}</span>
+                <span>Template: {currentTemplate.name}</span>
               </div>
             </div>
           </div>

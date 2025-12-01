@@ -1,5 +1,5 @@
-// NewTemplatesPage.tsx
-import React, { useState, useRef } from 'react';
+// NewTemplatesPage.tsx - UPDATED WITH TRACKING
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useResume } from './ResumeContext';
 import ModernIconsTemplate from './ModernIconsTemplate';
@@ -199,8 +199,25 @@ const NewTemplatesPage = () => {
     trackCTAClick, 
     trackTemplateChange,
     trackUserFlow,
-    trackPremiumTemplateView 
+    trackPremiumTemplateView,
+    trackPageView 
   } = useGoogleAnalytics();
+
+  // Track page view on mount
+  useEffect(() => {
+    trackPageView('Premium Templates', '/premium');
+    
+    // Track daily visits in localStorage
+    const pageViews = parseInt(localStorage.getItem('page_views_premium') || '0');
+    localStorage.setItem('page_views_premium', (pageViews + 1).toString());
+    
+    const today = new Date().toISOString().split('T')[0];
+    const dailyKey = `daily_premium_${today}`;
+    const dailyVisits = parseInt(localStorage.getItem(dailyKey) || '0');
+    localStorage.setItem(dailyKey, (dailyVisits + 1).toString());
+    
+    console.log(`📊 Premium Templates Page View Tracked - Total: ${pageViews + 1}`);
+  }, [trackPageView]);
 
   // Template configurations
   const TEMPLATES = {
@@ -305,6 +322,11 @@ const NewTemplatesPage = () => {
     trackTemplateChange(templateId);
     trackPremiumTemplateView(templateId, 'template_grid');
     trackUserFlow('template_grid', 'template_preview', 'template_selection');
+    
+    // Track template selection
+    const templateKey = `premium_template_${templateId}`;
+    const templateSelections = parseInt(localStorage.getItem(templateKey) || '0');
+    localStorage.setItem(templateKey, (templateSelections + 1).toString());
   };
 
   const handleViewModeChange = (mode: 'grid' | 'preview') => {
@@ -333,6 +355,10 @@ const NewTemplatesPage = () => {
                 onClick={() => {
                   trackCTAClick('edit_resume', 'header', 'premium_templates');
                   trackUserFlow('premium', 'edit', 'navigation');
+                  
+                  // Track navigation from premium to edit
+                  const navCount = parseInt(localStorage.getItem('premium_to_edit') || '0');
+                  localStorage.setItem('premium_to_edit', (navCount + 1).toString());
                 }}
                 className="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 transition-colors font-semibold inline-flex items-center gap-1 text-xs"
               >
@@ -353,6 +379,16 @@ const NewTemplatesPage = () => {
                   View All Templates
                 </button>
               )}
+            </div>
+            
+            {/* Analytics Info */}
+            <div className="mt-2 text-xs text-gray-500">
+              <span className="inline-flex items-center">
+                <svg className="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                {localStorage.getItem('page_views_premium') || '0'} premium views
+              </span>
             </div>
           </header>
 
@@ -561,6 +597,29 @@ const NewTemplatesPage = () => {
                         ))}
                       </div>
                     </div>
+                    
+                    {/* Analytics Info */}
+                    <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <h3 className="font-semibold text-gray-800 mb-3 text-sm">📊 Premium Template Analytics</h3>
+                      <div className="grid grid-cols-3 gap-3 text-xs">
+                        <div className="bg-white p-2 rounded border">
+                          <div className="text-gray-500">Selected Template</div>
+                          <div className="font-bold">{currentTemplate.name}</div>
+                        </div>
+                        <div className="bg-white p-2 rounded border">
+                          <div className="text-gray-500">Template Views</div>
+                          <div className="font-bold text-purple-600">
+                            {localStorage.getItem(`premium_template_${selectedTemplate}`) || '0'}
+                          </div>
+                        </div>
+                        <div className="bg-white p-2 rounded border">
+                          <div className="text-gray-500">Total Premium Views</div>
+                          <div className="font-bold text-blue-600">
+                            {localStorage.getItem('page_views_premium') || '0'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -626,7 +685,7 @@ const NewTemplatesPage = () => {
                             Premium Templates
                           </button>
                           <Link
-                            to="/"
+                            to="/builder"
                             onClick={() => {
                               trackCTAClick('view_ats_templates', 'template_exploration', 'premium_templates');
                               trackUserFlow('premium', 'builder', 'navigation');
@@ -646,6 +705,24 @@ const NewTemplatesPage = () => {
                           <li>• Use high-quality images for best results</li>
                           <li>• Premium templates work best with complete information</li>
                         </ul>
+                      </div>
+                      
+                      {/* Analytics Tracking Info */}
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <h3 className="font-semibold text-green-800 mb-2 text-sm">Analytics Tracking Active</h3>
+                        <div className="text-xs text-green-700 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Total Premium Views:</span>
+                            <span className="font-bold">{localStorage.getItem('page_views_premium') || '0'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>{currentTemplate.name} Views:</span>
+                            <span className="font-bold">{localStorage.getItem(`premium_template_${selectedTemplate}`) || '0'}</span>
+                          </div>
+                          <div className="mt-2 text-xs text-green-600">
+                            Google Analytics Property: G-JW2bS0D8YB
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -672,6 +749,23 @@ const NewTemplatesPage = () => {
                 </svg>
                 Edit Resume Information
               </Link>
+            </div>
+          </div>
+          
+          {/* Analytics Footer */}
+          <div className="mt-4 p-3 bg-gray-100 rounded-lg border border-gray-300">
+            <div className="flex flex-col md:flex-row justify-between items-center text-xs text-gray-600">
+              <div className="flex items-center gap-2 mb-2 md:mb-0">
+                <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                </svg>
+                Premium Template Analytics Tracking Active
+              </div>
+              <div className="flex gap-4">
+                <span>Views: {localStorage.getItem('page_views_premium') || '0'}</span>
+                <span>Template: {currentTemplate.name}</span>
+                <span>Selected: {localStorage.getItem(`premium_template_${selectedTemplate}`) || '0'}</span>
+              </div>
             </div>
           </div>
 
