@@ -1,6 +1,6 @@
 import { EducationProps } from './types';
 
-const Education = ({ education, onUpdate, onAdd, onRemove, template }: EducationProps) => {
+const Education = ({ education, onUpdate, onAdd, onRemove, template, onFieldInteraction }: EducationProps) => {
   const formStyle = template?.formStyle || {
     sectionBg: 'bg-white shadow-md rounded-lg',
     headerColor: 'text-gray-800',
@@ -41,7 +41,12 @@ const Education = ({ education, onUpdate, onAdd, onRemove, template }: Education
                 type="text"
                 placeholder="Degree Name"
                 value={edu.degree}
-                onChange={(e) => onUpdate(edu.id, 'degree', e.target.value)}
+                onChange={(e) => {
+                  onUpdate(edu.id, 'degree', e.target.value);
+                  onFieldInteraction?.(`degree_${edu.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`degree_${edu.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`degree_${edu.id}`, 'blur')}
                 className={`w-full text-lg font-semibold p-2 border-b ${formStyle.borderColor} focus:outline-none focus:border-blue-500 bg-transparent`}
               />
               {index > 0 && (
@@ -64,7 +69,12 @@ const Education = ({ education, onUpdate, onAdd, onRemove, template }: Education
                   type="text"
                   placeholder="Institution Name"
                   value={edu.institution}
-                  onChange={(e) => onUpdate(edu.id, 'institution', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(edu.id, 'institution', e.target.value);
+                    onFieldInteraction?.(`institution_${edu.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`institution_${edu.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`institution_${edu.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -76,7 +86,12 @@ const Education = ({ education, onUpdate, onAdd, onRemove, template }: Education
                   type="text"
                   placeholder="e.g., 2018 - 2022"
                   value={edu.year}
-                  onChange={(e) => onUpdate(edu.id, 'year', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(edu.id, 'year', e.target.value);
+                    onFieldInteraction?.(`year_${edu.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`year_${edu.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`year_${edu.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -90,7 +105,12 @@ const Education = ({ education, onUpdate, onAdd, onRemove, template }: Education
                 type="text"
                 placeholder="e.g., 3.8/4.0 or 92%"
                 value={edu.gpa || ''}
-                onChange={(e) => onUpdate(edu.id, 'gpa', e.target.value)}
+                onChange={(e) => {
+                  onUpdate(edu.id, 'gpa', e.target.value);
+                  onFieldInteraction?.(`gpa_${edu.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`gpa_${edu.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`gpa_${edu.id}`, 'blur')}
                 className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
               />
             </div>

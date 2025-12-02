@@ -679,3 +679,58 @@ export interface ResumeAnalysis {
   improvements: string[];
   warnings: string[];
 }
+
+export interface PersonalInfoProps extends FormComponentProps {
+  data: PersonalInfoData;
+  onChange: (field: keyof PersonalInfoData, value: string | string[]) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+}
+
+export interface ExperienceProps extends FormComponentProps {
+  experiences: Experience[];
+  onUpdate: (id: number, field: string, value: any) => void;
+  onAdd: () => number;
+  onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+}
+
+export interface EducationProps extends FormComponentProps {
+  education: Education[];
+  onUpdate: (id: number, field: string, value: string) => void;
+  onAdd: () => number;
+  onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+}
+
+export interface ProjectsProps extends FormComponentProps {
+  projects: Project[];
+  onUpdate: (id: number, field: string, value: any) => void;
+  onAdd: () => number;
+  onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+}
+
+export interface AwardsProps extends FormComponentProps {
+  awards: Award[];
+  onUpdate: (id: number, field: string, value: string) => void;
+  onAdd: () => number;
+  onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+}
+
+export interface SkillsProps extends FormComponentProps {
+  skills: Skill[];
+  onAdd: (skill: Skill) => void;
+  onRemove: (index: number) => void;
+  onUpdateProficiency: (index: number, proficiency: Skill['proficiency']) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+}
+
+export interface CustomFieldsProps extends FormComponentProps {
+  customFields: CustomField[];
+  onUpdate: (id: number, field: string, value: string) => void;
+  onAdd: () => number;
+  onRemove: (id: number) => void;
+  onChangeType: (id: number, type: CustomFieldType) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+}

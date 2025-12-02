@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CustomFieldsProps, CustomFieldType } from './types';
 
-const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, template }: CustomFieldsProps) => {
+const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, template, onFieldInteraction }: CustomFieldsProps) => {
   const [newFieldLabel, setNewFieldLabel] = useState('');
 
   const formStyle = template?.formStyle || {
@@ -14,10 +14,10 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, t
   const handleAddField = () => {
     if (newFieldLabel.trim()) {
       onAdd();
-      // Update the label of the newly added field
       if (customFields.length > 0) {
         const newFieldId = customFields[customFields.length - 1].id + 1;
         onUpdate(newFieldId, 'label', newFieldLabel.trim());
+        onFieldInteraction?.(`label_${newFieldId}`, 'change');
       }
       setNewFieldLabel('');
     }
@@ -32,6 +32,7 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, t
   const handleTypeChange = (id: number, value: string) => {
     if (value === 'text' || value === 'textarea' || value === 'date' || value === 'url') {
       onChangeType(id, value as CustomFieldType);
+      onFieldInteraction?.(`type_${id}`, 'change');
     }
   };
 
@@ -68,7 +69,12 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, t
                 type="text"
                 placeholder="Section Title (e.g., Languages, Certifications)"
                 value={field.label}
-                onChange={(e) => onUpdate(field.id, 'label', e.target.value)}
+                onChange={(e) => {
+                  onUpdate(field.id, 'label', e.target.value);
+                  onFieldInteraction?.(`label_${field.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`label_${field.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`label_${field.id}`, 'blur')}
                 className={`w-full text-lg font-semibold p-2 border-b ${formStyle.borderColor} focus:outline-none focus:border-blue-500 bg-transparent`}
               />
               {index > 0 && (
@@ -91,6 +97,8 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, t
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                   value={field.type}
                   onChange={(e) => handleTypeChange(field.id, e.target.value)}
+                  onFocus={() => onFieldInteraction?.(`type_${field.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`type_${field.id}`, 'blur')}
                 >
                   <option value="text">Text</option>
                   <option value="textarea">Paragraph</option>
@@ -110,7 +118,12 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, t
                   placeholder="Enter section content..."
                   rows={3}
                   value={field.value}
-                  onChange={(e) => onUpdate(field.id, 'value', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(field.id, 'value', e.target.value);
+                    onFieldInteraction?.(`value_${field.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`value_${field.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`value_${field.id}`, 'blur')}
                 />
               </div>
             ) : (
@@ -123,7 +136,12 @@ const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, t
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500" 
                   placeholder="Enter section content..."
                   value={field.value}
-                  onChange={(e) => onUpdate(field.id, 'value', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(field.id, 'value', e.target.value);
+                    onFieldInteraction?.(`value_${field.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`value_${field.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`value_${field.id}`, 'blur')}
                 />
               </div>
             )}

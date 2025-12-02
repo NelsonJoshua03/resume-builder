@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ProjectsProps } from './types';
 
-const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsProps) => {
+const Projects = ({ projects, onUpdate, onAdd, onRemove, template, onFieldInteraction }: ProjectsProps) => {
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
 
   const formStyle = template?.formStyle || {
@@ -34,6 +34,7 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsPro
     if (project) {
       const updatedBullets = [...project.description, ''];
       onUpdate(projectId, 'description', updatedBullets);
+      onFieldInteraction?.(`description_add_${projectId}`, 'change');
     }
   };
 
@@ -43,6 +44,7 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsPro
       const updatedBullets = [...project.description];
       updatedBullets[index] = value;
       onUpdate(projectId, 'description', updatedBullets);
+      onFieldInteraction?.(`description_${projectId}_${index}`, 'change');
     }
   };
 
@@ -77,7 +79,12 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsPro
                 type="text"
                 placeholder="Project Name"
                 value={project.name}
-                onChange={(e) => onUpdate(project.id, 'name', e.target.value)}
+                onChange={(e) => {
+                  onUpdate(project.id, 'name', e.target.value);
+                  onFieldInteraction?.(`name_${project.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`name_${project.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`name_${project.id}`, 'blur')}
                 className={`w-full text-lg font-semibold p-2 border-b ${formStyle.borderColor} focus:outline-none focus:border-blue-500 bg-transparent`}
               />
               <div className="flex space-x-2 ml-4">
@@ -109,7 +116,12 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsPro
                   type="text"
                   placeholder="e.g., Jan 2023 - Mar 2023"
                   value={project.period}
-                  onChange={(e) => onUpdate(project.id, 'period', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(project.id, 'period', e.target.value);
+                    onFieldInteraction?.(`period_${project.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`period_${project.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`period_${project.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -121,7 +133,12 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsPro
                   type="url"
                   placeholder="https://example.com"
                   value={project.link || ''}
-                  onChange={(e) => onUpdate(project.id, 'link', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(project.id, 'link', e.target.value);
+                    onFieldInteraction?.(`link_${project.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`link_${project.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`link_${project.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -135,7 +152,12 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsPro
                 type="text"
                 placeholder="React, Node.js, MongoDB"
                 value={project.technologies?.join(', ') || ''}
-                onChange={(e) => onUpdate(project.id, 'technologies', e.target.value.split(',').map(t => t.trim()))}
+                onChange={(e) => {
+                  onUpdate(project.id, 'technologies', e.target.value.split(',').map(t => t.trim()));
+                  onFieldInteraction?.(`technologies_${project.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`technologies_${project.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`technologies_${project.id}`, 'blur')}
                 className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
               />
             </div>
@@ -151,6 +173,8 @@ const Projects = ({ projects, onUpdate, onAdd, onRemove, template }: ProjectsPro
                     placeholder="Describe your project achievements and responsibilities..."
                     value={item}
                     onChange={(e) => updateBulletPoint(project.id, itemIndex, e.target.value)}
+                    onFocus={() => onFieldInteraction?.(`description_${project.id}_${itemIndex}`, 'focus')}
+                    onBlur={() => onFieldInteraction?.(`description_${project.id}_${itemIndex}`, 'blur')}
                     rows={2}
                     className="flex-1 p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 resize-vertical"
                   />

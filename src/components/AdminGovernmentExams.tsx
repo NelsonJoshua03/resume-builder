@@ -1,7 +1,8 @@
-// src/components/AdminGovernmentExams.tsx
+// src/components/AdminGovernmentExams.tsx - UPDATED WITH AUTO-CLEANUP
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
+import { AlertCircle, Clock, RefreshCw, Trash2 } from 'lucide-react';
 
 interface GovExam {
   id: string;
@@ -33,8 +34,14 @@ const AdminGovernmentExams: React.FC = () => {
   const [bulkInput, setBulkInput] = useState<string>('');
   const [showBulkForm, setShowBulkForm] = useState<boolean>(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [lastCleanup, setLastCleanup] = useState<string>('');
+  const [cleanupStats, setCleanupStats] = useState<{
+    before: number;
+    after: number;
+    removed: number;
+  } | null>(null);
   
-  const { trackButtonClick } = useGoogleAnalytics();
+  const { trackButtonClick, trackEvent } = useGoogleAnalytics();
 
   // Single exam form state
   const [singleExam, setSingleExam] = useState<GovExam>({
@@ -62,11 +69,80 @@ const AdminGovernmentExams: React.FC = () => {
     addedTimestamp: Date.now()
   });
 
-  // Load exams from localStorage
-  useEffect(() => {
+  // Cleanup old exams (older than 3 months) and load exams
+  const loadAndCleanExams = (auto: boolean = false) => {
     const savedExams = JSON.parse(localStorage.getItem('governmentExams') || '[]');
-    setExams(savedExams);
+    
+    // Filter out exams older than 90 days (3 months)
+    const now = Date.now();
+    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+    
+    const beforeCount = savedExams.length;
+    const recentExams = savedExams.filter((exam: GovExam) => {
+      const examTimestamp = exam.addedTimestamp || Date.now();
+      return examTimestamp >= ninetyDaysAgo;
+    });
+    const afterCount = recentExams.length;
+    const removedCount = beforeCount - afterCount;
+    
+    // Sort by addedTimestamp (newest first)
+    const sortedExams = recentExams.sort((a: GovExam, b: GovExam) => {
+      const timeA = a.addedTimestamp || Date.now();
+      const timeB = b.addedTimestamp || Date.now();
+      return timeB - timeA; // Descending order (newest first)
+    });
+    
+    // Update localStorage with only recent exams
+    if (recentExams.length !== savedExams.length) {
+      localStorage.setItem('governmentExams', JSON.stringify(recentExams));
+    }
+    
+    setExams(sortedExams);
+    
+    // Save cleanup time
+    const cleanupTime = new Date().toLocaleString('en-IN');
+    localStorage.setItem('last_exam_cleanup', cleanupTime);
+    setLastCleanup(cleanupTime);
+    
+    // Set cleanup stats
+    setCleanupStats({
+      before: beforeCount,
+      after: afterCount,
+      removed: removedCount
+    });
+    
+    // Track cleanup event
+    if (removedCount > 0) {
+      trackEvent('exam_cleanup', {
+        auto_cleanup: auto,
+        exams_before: beforeCount,
+        exams_after: afterCount,
+        exams_removed: removedCount
+      });
+      
+      if (!auto) {
+        alert(`Cleaned up ${removedCount} exams older than 90 days.`);
+      }
+    }
+  };
+
+  // Load exams on component mount
+  useEffect(() => {
+    loadAndCleanExams(true);
+    
+    // Load last cleanup time
+    const savedCleanup = localStorage.getItem('last_exam_cleanup');
+    if (savedCleanup) {
+      setLastCleanup(savedCleanup);
+    }
   }, []);
+
+  // Manual cleanup trigger
+  const handleCleanup = () => {
+    if (window.confirm('Are you sure you want to remove all exams older than 90 days? This action cannot be undone.')) {
+      loadAndCleanExams(false);
+    }
+  };
 
   // Save exams to localStorage
   const saveExams = (updatedExams: GovExam[]) => {
@@ -81,13 +157,14 @@ const AdminGovernmentExams: React.FC = () => {
     const newExam: GovExam = {
       ...singleExam,
       id: `exam-${Date.now()}`,
-      addedTimestamp: Date.now()
+      addedTimestamp: Date.now(),
+      isNew: true
     };
 
-    const updatedExams = [newExam, ...exams];
+    const updatedExams = [newExam, ...exams]; // Add to beginning for latest first
     saveExams(updatedExams);
     
-    setMessage({ type: 'success', text: 'Government exam added successfully!' });
+    setMessage({ type: 'success', text: 'Latest government exam added successfully!' });
     trackButtonClick('add_single_gov_exam', 'single_form', 'admin_gov_exams');
     
     // Reset form
@@ -138,10 +215,10 @@ const AdminGovernmentExams: React.FC = () => {
         isNew: exam.isNew !== undefined ? exam.isNew : true
       }));
 
-      const updatedExams = [...newExams, ...exams];
+      const updatedExams = [...newExams, ...exams]; // Add to beginning for latest first
       saveExams(updatedExams);
       
-      setMessage({ type: 'success', text: `Successfully added ${newExams.length} government exams!` });
+      setMessage({ type: 'success', text: `Successfully added ${newExams.length} latest government exams!` });
       trackButtonClick('add_bulk_gov_exams', 'bulk_form', 'admin_gov_exams');
       setBulkInput('');
       setShowBulkForm(false);
@@ -172,6 +249,15 @@ const AdminGovernmentExams: React.FC = () => {
     trackButtonClick('toggle_featured', 'exam_list', 'admin_gov_exams');
   };
 
+  // Clear all exams
+  const clearAllExams = () => {
+    if (window.confirm('Are you sure you want to delete all government exams? This action cannot be undone.')) {
+      setExams([]);
+      localStorage.setItem('governmentExams', '[]');
+      trackButtonClick('clear_all_exams', 'exam_management', 'admin_gov_exams');
+    }
+  };
+
   // Sample bulk data template
   const sampleBulkData = `[
   {
@@ -190,7 +276,8 @@ const AdminGovernmentExams: React.FC = () => {
     "officialWebsite": "https://upsc.gov.in",
     "notificationLink": "https://upsc.gov.in/notifications",
     "applyLink": "https://upsconline.nic.in",
-    "featured": true
+    "featured": true,
+    "isNew": true
   },
   {
     "examName": "SSC CGL 2025",
@@ -208,14 +295,16 @@ const AdminGovernmentExams: React.FC = () => {
     "officialWebsite": "https://ssc.nic.in",
     "notificationLink": "https://ssc.nic.in/notifications",
     "applyLink": "https://ssc.nic.in/apply",
-    "featured": true
+    "featured": true,
+    "isNew": true
   }
 ]`;
 
   return (
     <>
       <Helmet>
-        <title>Admin - Government Exams Management | CareerCraft.in</title>
+        <title>Admin - Latest Government Exams Management | CareerCraft.in</title>
+        <meta name="description" content="Manage latest government job exam notifications for CareerCraft.in. Auto-cleaned every 90 days." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
@@ -223,12 +312,51 @@ const AdminGovernmentExams: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           <header className="mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              Government Exams Admin Panel
+              Latest Government Exams Admin Panel
             </h1>
             <p className="text-gray-600">
-              Add and manage government job exam notifications
+              Add and manage latest government job exam notifications. Auto-cleaned every 90 days.
             </p>
           </header>
+
+          {/* Auto-Cleanup Info */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+              <div>
+                <h3 className="font-semibold text-green-800 mb-1">🔄 Auto-Cleanup System Active</h3>
+                <p className="text-green-700 text-sm">
+                  Exams older than 90 days are automatically removed to keep listings fresh.
+                </p>
+                <p className="text-green-700 text-sm">
+                  Latest Exams: {exams.length} • Last Cleanup: {lastCleanup || 'Never'}
+                </p>
+              </div>
+              <div className="flex gap-2 mt-2 md:mt-0">
+                <button
+                  onClick={handleCleanup}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors flex items-center"
+                >
+                  <Trash2 size={16} className="mr-2" />
+                  Clean Old Exams
+                </button>
+                <button
+                  onClick={() => loadAndCleanExams(false)}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors flex items-center"
+                >
+                  <RefreshCw size={16} className="mr-2" />
+                  Refresh
+                </button>
+              </div>
+            </div>
+            {cleanupStats && cleanupStats.removed > 0 && (
+              <div className="mt-2 bg-red-50 border border-red-200 rounded p-2">
+                <p className="text-red-700 text-sm">
+                  <AlertCircle size={14} className="inline mr-1" />
+                  Auto-cleaned: {cleanupStats.removed} old exams removed
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Message Display */}
           {message && (
@@ -250,7 +378,7 @@ const AdminGovernmentExams: React.FC = () => {
               }}
               className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
                 !showBulkForm
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -263,7 +391,7 @@ const AdminGovernmentExams: React.FC = () => {
               }}
               className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
                 showBulkForm
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -274,7 +402,12 @@ const AdminGovernmentExams: React.FC = () => {
           {/* Single Exam Form */}
           {!showBulkForm && (
             <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Single Exam</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Add Latest Exam</h2>
+                <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                  Shows as LATEST
+                </span>
+              </div>
               <form onSubmit={handleSingleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -536,10 +669,13 @@ const AdminGovernmentExams: React.FC = () => {
                 <div className="mt-6">
                   <button
                     type="submit"
-                    className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
                   >
-                    Add Government Exam
+                    Add Latest Government Exam
                   </button>
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    Exam will appear as "Latest" and auto-clean after 90 days
+                  </p>
                 </div>
               </form>
             </div>
@@ -548,7 +684,12 @@ const AdminGovernmentExams: React.FC = () => {
           {/* Bulk Upload Form */}
           {showBulkForm && (
             <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Bulk Upload (JSON)</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">Bulk Upload (JSON)</h2>
+                <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                  All exams marked as LATEST
+                </span>
+              </div>
               <p className="text-gray-600 mb-4">
                 Paste your JSON array of government exams below. Each exam should have all required fields.
               </p>
@@ -580,9 +721,9 @@ const AdminGovernmentExams: React.FC = () => {
                 <div className="flex gap-4">
                   <button
                     type="submit"
-                    className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
                   >
-                    Upload Exams
+                    Upload Latest Exams
                   </button>
                   <button
                     type="button"
@@ -601,6 +742,7 @@ const AdminGovernmentExams: React.FC = () => {
                   <li>• applicationStartDate, applicationEndDate, examDate</li>
                   <li>• examLevel, ageLimit, applicationFee, examMode</li>
                   <li>• officialWebsite, notificationLink, applyLink</li>
+                  <li>• Add "isNew": true for latest exams</li>
                 </ul>
               </div>
             </div>
@@ -608,58 +750,85 @@ const AdminGovernmentExams: React.FC = () => {
 
           {/* Existing Exams List */}
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">
-              Existing Exams ({exams.length})
-            </h2>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Latest Existing Exams ({exams.length})
+                </h2>
+                <p className="text-sm text-gray-600">Auto-cleaned every 90 days • Sorted by newest first</p>
+              </div>
+              {exams.length > 0 && (
+                <button
+                  onClick={clearAllExams}
+                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                >
+                  Clear All Exams
+                </button>
+              )}
+            </div>
             
             {exams.length === 0 ? (
               <p className="text-gray-600 text-center py-8">
-                No government exams added yet. Add your first exam using the form above.
+                No latest government exams added yet. Add your first exam using the form above.
               </p>
             ) : (
               <div className="space-y-4">
-                {exams.map((exam) => (
-                  <div key={exam.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-start gap-2 mb-2">
-                          <h3 className="text-lg font-bold text-gray-800">{exam.examName}</h3>
-                          {exam.featured && (
-                            <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                              Featured
-                            </span>
-                          )}
+                {exams.map((exam) => {
+                  const isOld = exam.addedTimestamp && (Date.now() - exam.addedTimestamp) > 60 * 24 * 60 * 60 * 1000; // 60+ days
+                  
+                  return (
+                    <div key={exam.id} className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${isOld ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-start gap-2 mb-2">
+                            <h3 className="text-lg font-bold text-gray-800">{exam.examName}</h3>
+                            {exam.isNew && (
+                              <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                                NEW
+                              </span>
+                            )}
+                            {isOld && (
+                              <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">
+                                OLD (Will auto-clean)
+                              </span>
+                            )}
+                            {exam.featured && (
+                              <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                                Featured
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            <strong>Organization:</strong> {exam.organization} | 
+                            <strong> Category:</strong> {exam.examLevel} | 
+                            <strong> Vacancies:</strong> {exam.vacancies}
+                          </p>
+                          <p className="text-sm text-gray-600 mb-2">
+                            <strong>Apply:</strong> {new Date(exam.applicationStartDate).toLocaleDateString()} - {new Date(exam.applicationEndDate).toLocaleDateString()} | 
+                            <strong> Exam:</strong> {new Date(exam.examDate).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Added: {new Date(exam.addedTimestamp || 0).toLocaleString('en-IN')}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          <strong>Organization:</strong> {exam.organization} | 
-                          <strong> Category:</strong> {exam.examLevel} | 
-                          <strong> Vacancies:</strong> {exam.vacancies}
-                        </p>
-                        <p className="text-sm text-gray-600 mb-2">
-                          <strong>Apply:</strong> {new Date(exam.applicationStartDate).toLocaleDateString()} - {new Date(exam.applicationEndDate).toLocaleDateString()} | 
-                          <strong> Exam:</strong> {new Date(exam.examDate).toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Added: {new Date(exam.addedTimestamp || 0).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 ml-4">
-                        <button
-                          onClick={() => toggleFeatured(exam.id)}
-                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                        >
-                          {exam.featured ? 'Unfeature' : 'Feature'}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(exam.id)}
-                          className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                        >
-                          Delete
-                        </button>
+                        <div className="flex gap-2 ml-4">
+                          <button
+                            onClick={() => toggleFeatured(exam.id)}
+                            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                          >
+                            {exam.featured ? 'Unfeature' : 'Feature'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(exam.id)}
+                            className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

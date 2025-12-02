@@ -1,9 +1,9 @@
-// src/components/AdminJobPosting.tsx - UPDATED WITH SEO & ANALYTICS
+// src/components/AdminJobPosting.tsx - UPDATED WITH AUTO-CLEANUP & LATEST JOBS
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
-import { Zap, Copy, Download, Upload } from 'lucide-react';
+import { Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -20,6 +20,7 @@ interface Job {
   featured?: boolean;
   addedTimestamp?: number;
   page?: number;
+  isNew?: boolean;
 }
 
 const AdminJobPosting: React.FC = () => {
@@ -33,7 +34,8 @@ const AdminJobPosting: React.FC = () => {
     description: '',
     requirements: [],
     applyLink: '',
-    featured: false
+    featured: false,
+    isNew: true
   });
 
   const [requirementsInput, setRequirementsInput] = useState<string>('');
@@ -53,6 +55,13 @@ const AdminJobPosting: React.FC = () => {
     locations: [''],
     count: 3
   });
+
+  const [lastCleanup, setLastCleanup] = useState<string>('');
+  const [cleanupStats, setCleanupStats] = useState<{
+    before: number;
+    after: number;
+    removed: number;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { trackButtonClick, trackCTAClick, trackUserFlow, trackEvent } = useGoogleAnalytics();
@@ -111,19 +120,92 @@ const AdminJobPosting: React.FC = () => {
     }
   };
 
-  // Load existing manual jobs on component mount
+  // Load existing manual jobs on component mount and auto-cleanup
   useEffect(() => {
     const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
-    setManualJobs(savedJobs);
+    
+    // Auto-cleanup old jobs (older than 90 days)
+    const cleanupResult = cleanupOldJobs(savedJobs, true);
+    setManualJobs(cleanupResult.cleanedJobs);
+    setCleanupStats({
+      before: cleanupResult.before,
+      after: cleanupResult.after,
+      removed: cleanupResult.removed
+    });
+    setLastCleanup(new Date().toLocaleString('en-IN'));
+    
     trackEvent('admin_page_view', { page: 'job_posting_admin' });
+    
+    // Load last cleanup time
+    const savedCleanup = localStorage.getItem('last_job_cleanup');
+    if (savedCleanup) {
+      setLastCleanup(savedCleanup);
+    }
   }, [trackEvent]);
+
+  // Cleanup old jobs function
+  const cleanupOldJobs = (jobsArray: Job[] = manualJobs, auto: boolean = false) => {
+    const now = Date.now();
+    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+    
+    const beforeCount = jobsArray.length;
+    const cleanedJobs = jobsArray.filter(job => {
+      const jobTimestamp = job.addedTimestamp || new Date(job.postedDate).getTime();
+      return jobTimestamp >= ninetyDaysAgo;
+    });
+    const afterCount = cleanedJobs.length;
+    const removedCount = beforeCount - afterCount;
+    
+    // Update localStorage
+    localStorage.setItem('manualJobs', JSON.stringify(cleanedJobs));
+    
+    // Save cleanup time
+    const cleanupTime = new Date().toLocaleString('en-IN');
+    localStorage.setItem('last_job_cleanup', cleanupTime);
+    setLastCleanup(cleanupTime);
+    
+    // Track cleanup event
+    if (removedCount > 0) {
+      trackEvent('job_cleanup', {
+        auto_cleanup: auto,
+        jobs_before: beforeCount,
+        jobs_after: afterCount,
+        jobs_removed: removedCount
+      });
+      
+      if (!auto) {
+        alert(`Cleaned up ${removedCount} jobs older than 90 days.`);
+      }
+    }
+    
+    return {
+      cleanedJobs,
+      before: beforeCount,
+      after: afterCount,
+      removed: removedCount
+    };
+  };
+
+  // Manual cleanup trigger
+  const handleCleanup = () => {
+    if (window.confirm('Are you sure you want to remove all jobs older than 90 days? This action cannot be undone.')) {
+      const result = cleanupOldJobs();
+      setManualJobs(result.cleanedJobs);
+      setCleanupStats({
+        before: result.before,
+        after: result.after,
+        removed: result.removed
+      });
+    }
+  };
 
   // Apply quick template
   const applyTemplate = (templateKey: keyof typeof quickTemplates) => {
     const template = quickTemplates[templateKey];
     setJob({
       ...template,
-      featured: false
+      featured: false,
+      isNew: true
     });
     setRequirementsInput(template.requirements.join('\n'));
     setActiveTab('single');
@@ -142,10 +224,11 @@ const AdminJobPosting: React.FC = () => {
       requirements: requirementsInput.split('\n')
         .filter(req => req.trim() !== '')
         .map(req => req.trim()),
-      page: Math.floor(manualJobs.length / 10) + 1
+      page: Math.floor(manualJobs.length / 10) + 1,
+      isNew: true
     };
 
-    const updatedJobs = [...manualJobs, newJob];
+    const updatedJobs = [newJob, ...manualJobs]; // Add to beginning for latest first
     setManualJobs(updatedJobs);
     localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
     
@@ -171,7 +254,8 @@ const AdminJobPosting: React.FC = () => {
       description: '',
       requirements: [],
       applyLink: '',
-      featured: false
+      featured: false,
+      isNew: true
     });
     setRequirementsInput('');
 
@@ -216,7 +300,8 @@ const AdminJobPosting: React.FC = () => {
             featured: jobData.featured || false,
             postedDate: new Date().toISOString().split('T')[0],
             addedTimestamp: Date.now(),
-            page: Math.floor((manualJobs.length + index) / 10) + 1
+            page: Math.floor((manualJobs.length + index) / 10) + 1,
+            isNew: true
           };
 
           successCount++;
@@ -229,7 +314,7 @@ const AdminJobPosting: React.FC = () => {
       }).filter((job): job is Job => job !== null);
 
       if (newJobs.length > 0) {
-        const updatedJobs = [...manualJobs, ...newJobs];
+        const updatedJobs = [...newJobs, ...manualJobs]; // Add to beginning for latest first
         setManualJobs(updatedJobs);
         localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
         trackUserFlow('admin_job_posting', 'bulk_jobs_uploaded', 'job_creation');
@@ -287,6 +372,7 @@ const AdminJobPosting: React.FC = () => {
   // Generate batch jobs
   const generateBatchJobs = () => {
     const jobs = [];
+    const now = Date.now();
     for (let i = 0; i < batchCreate.count; i++) {
       const company = batchCreate.companies[i % batchCreate.companies.length] || 'Tech Company';
       const location = batchCreate.locations[i % batchCreate.locations.length] || 'Bangalore, Karnataka';
@@ -301,7 +387,8 @@ const AdminJobPosting: React.FC = () => {
         description: `We are hiring a ${batchCreate.baseTitle} to join our team at ${company}.`,
         requirements: ["2+ years experience", "Relevant skills", "Good communication"],
         applyLink: "mailto:careers@company.com",
-        featured: i < 2
+        featured: i < 2,
+        isNew: true
       });
     }
     setBulkJsonInput(JSON.stringify(jobs, null, 2));
@@ -403,15 +490,15 @@ const AdminJobPosting: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Admin Job Posting - Add Job Opportunities | CareerCraft.in</title>
-        <meta name="description" content="Post new job opportunities on CareerCraft.in - India's premier career platform for IT, engineering, marketing and business jobs." />
-        <meta name="keywords" content="post jobs India, admin job portal, career opportunities, hire candidates India, job posting platform" />
+        <title>Admin Job Posting - Add Latest Job Opportunities | CareerCraft.in</title>
+        <meta name="description" content="Post new latest job opportunities on CareerCraft.in - India's premier career platform for IT, engineering, marketing and business jobs. Auto-cleaned every 90 days." />
+        <meta name="keywords" content="post latest jobs India, admin job portal, career opportunities, hire candidates India, job posting platform, auto-clean jobs" />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://careercraft.in/admin/job-posting" />
         
         {/* Open Graph */}
         <meta property="og:title" content="Admin Job Posting - CareerCraft.in" />
-        <meta property="og:description" content="Post new job opportunities on CareerCraft.in" />
+        <meta property="og:description" content="Post new latest job opportunities on CareerCraft.in" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
 
@@ -421,7 +508,7 @@ const AdminJobPosting: React.FC = () => {
             "@context": "https://schema.org",
             "@type": "WebPage",
             "name": "Admin Job Posting - CareerCraft.in",
-            "description": "Admin panel for posting job opportunities on CareerCraft.in",
+            "description": "Admin panel for posting latest job opportunities on CareerCraft.in",
             "url": "https://careercraft.in/admin/job-posting"
           })}
         </script>
@@ -438,24 +525,38 @@ const AdminJobPosting: React.FC = () => {
             >
               ← Back to Job Applications
             </Link>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Posting</h1>
-            <p className="text-gray-600">Add new job opportunities to CareerCraft.in</p>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Posting - Latest Jobs</h1>
+            <p className="text-gray-600">Add new job opportunities to CareerCraft.in. Jobs auto-clean after 90 days.</p>
           </div>
 
           {showSuccess && (
             <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-              Job posted successfully! It will now appear on the Job Applications page.
+              Job posted successfully! It will now appear on the Job Applications page (showing latest first).
             </div>
           )}
 
           {/* Storage Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <div>
-              <h3 className="font-semibold text-blue-800">CareerCraft Job Portal Status</h3>
-              <p className="text-blue-700 text-sm">
-                Manual Jobs: {manualJobs.length} | Pages: {Math.ceil(manualJobs.length / 10)} | 
-                Featured: {manualJobs.filter(j => j.featured).length}
-              </p>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+              <div>
+                <h3 className="font-semibold text-blue-800">CareerCraft Job Portal Status</h3>
+                <p className="text-blue-700 text-sm">
+                  Latest Jobs: {manualJobs.length} | Pages: {Math.ceil(manualJobs.length / 10)} | 
+                  Featured: {manualJobs.filter(j => j.featured).length} | 
+                  New Today: {manualJobs.filter(j => j.isNew).length}
+                </p>
+                <p className="text-blue-700 text-sm">
+                  Auto-Cleanup: Every 90 days | Last Cleanup: {lastCleanup || 'Never'}
+                </p>
+              </div>
+              {cleanupStats && cleanupStats.removed > 0 && (
+                <div className="mt-2 md:mt-0 bg-red-50 border border-red-200 rounded p-2">
+                  <p className="text-red-700 text-sm">
+                    <AlertCircle size={14} className="inline mr-1" />
+                    Auto-cleaned: {cleanupStats.removed} old jobs removed
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -499,7 +600,12 @@ const AdminJobPosting: React.FC = () => {
               {activeTab === 'single' ? (
                 /* Single Job Form */
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Post New Job on CareerCraft</h2>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Post Latest Job on CareerCraft</h2>
+                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                      Shows as LATEST
+                    </span>
+                  </div>
                   
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Basic Information */}
@@ -673,17 +779,25 @@ Bachelor's degree in Computer Science..."
                     <div className="pt-4">
                       <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
                       >
-                        Post Job on CareerCraft
+                        Post Latest Job on CareerCraft
                       </button>
+                      <p className="text-xs text-gray-500 text-center mt-2">
+                        Job will appear as "Latest" and auto-clean after 90 days
+                      </p>
                     </div>
                   </form>
                 </div>
               ) : (
                 /* Bulk Upload Form */
                 <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Bulk Job Upload</h2>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Bulk Job Upload</h2>
+                    <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                      All jobs marked as LATEST
+                    </span>
+                  </div>
                   
                   {/* Batch Job Creator */}
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -741,9 +855,9 @@ Bachelor's degree in Computer Science..."
                     
                     <button
                       onClick={generateBatchJobs}
-                      className="w-full bg-green-600 text-white py-2 px-4 rounded text-sm font-medium hover:bg-green-700 transition-colors"
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 px-4 rounded text-sm font-medium hover:from-green-700 hover:to-emerald-700 transition-all"
                     >
-                      Generate Batch Jobs for India
+                      Generate Latest Batch Jobs for India
                     </button>
                   </div>
 
@@ -780,10 +894,11 @@ Bachelor's degree in Computer Science..."
     "type": "Full-time",
     "sector": "IT/Software",
     "salary": "₹8,00,000 - ₹15,00,000 PA",
-    "description": "Job description for Indian market...",
+    "description": "Latest job for Indian market...",
     "requirements": ["Requirement 1", "Requirement 2"],
     "applyLink": "mailto:careers@company.com",
-    "featured": false
+    "featured": false,
+    "isNew": true
   }
 ]`}
                       rows={12}
@@ -801,7 +916,7 @@ Bachelor's degree in Computer Science..."
                         : 'bg-red-100 border border-red-400 text-red-700'
                     }`}>
                       <h4 className="font-semibold mb-2">Upload Results:</h4>
-                      <p>Successfully uploaded: {bulkUploadResults.success} jobs</p>
+                      <p>Successfully uploaded: {bulkUploadResults.success} latest jobs</p>
                       <p>Failed: {bulkUploadResults.failed} jobs</p>
                       {bulkUploadResults.errors.length > 0 && (
                         <div className="mt-2">
@@ -828,10 +943,10 @@ Bachelor's degree in Computer Science..."
                     <button
                       onClick={handleBulkUpload}
                       disabled={!bulkJsonInput.trim()}
-                      className="bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                       <Upload size={16} className="mr-2" />
-                      Upload Jobs
+                      Upload Latest Jobs
                     </button>
                     <button
                       onClick={() => setBulkJsonInput('')}
@@ -872,15 +987,53 @@ Bachelor's degree in Computer Science..."
                 </div>
               </div>
 
+              {/* Auto-Cleanup Section */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle size={18} className="text-red-600" />
+                  <h4 className="font-semibold text-red-800">🔄 Auto-Cleanup System</h4>
+                </div>
+                <p className="text-red-700 text-sm mb-3">
+                  Jobs older than 90 days are automatically removed to keep listings fresh.
+                </p>
+                <div className="space-y-2 text-sm text-red-700 mb-4">
+                  <div className="flex justify-between">
+                    <span>Last Cleanup:</span>
+                    <span className="font-medium">{lastCleanup || 'Never'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Jobs before:</span>
+                    <span className="font-medium">{cleanupStats?.before || manualJobs.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Jobs after:</span>
+                    <span className="font-medium">{cleanupStats?.after || manualJobs.length}</span>
+                  </div>
+                  {cleanupStats && cleanupStats.removed > 0 && (
+                    <div className="flex justify-between">
+                      <span>Removed:</span>
+                      <span className="font-medium bg-red-100 px-2 py-0.5 rounded">{cleanupStats.removed} old jobs</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={handleCleanup}
+                  className="w-full bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors flex items-center justify-center"
+                >
+                  <Trash2 size={16} className="mr-2" />
+                  Clean Old Jobs Now
+                </button>
+              </div>
+
               {/* Preview and Existing Jobs */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">CareerCraft Jobs ({manualJobs.length})</h3>
+                  <h3 className="text-xl font-bold text-gray-800">Latest CareerCraft Jobs ({manualJobs.length})</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={exportJobs}
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      title="Export all jobs"
+                      title="Export all latest jobs"
                     >
                       Export
                     </button>
@@ -893,24 +1046,34 @@ Bachelor's degree in Computer Science..."
                     </button>
                   </div>
                 </div>
+                <div className="text-xs text-gray-500 mb-3 flex items-center gap-2">
+                  <Clock size={12} />
+                  Showing newest first • Auto-cleaned every 90 days
+                </div>
                 {manualJobs.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No jobs posted yet on CareerCraft</p>
+                  <p className="text-gray-500 text-sm">No latest jobs posted yet on CareerCraft</p>
                 ) : (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {manualJobs.map(manualJob => {
-                      const isNew = manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) < 24 * 60 * 60 * 1000;
+                      const isNew = manualJob.isNew || (manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) < 24 * 60 * 60 * 1000);
+                      const isOld = manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) > 60 * 24 * 60 * 60 * 1000; // 60+ days
                       
                       return (
-                        <div key={manualJob.id} className="border border-gray-200 rounded-lg p-3">
+                        <div key={manualJob.id} className={`border rounded-lg p-3 ${isOld ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h4 className="font-semibold text-gray-800">{manualJob.title}</h4>
-                              <p className="text-sm text-gray-600">{manualJob.company}</p>
+                              <h4 className="font-semibold text-gray-800 text-sm line-clamp-1">{manualJob.title}</h4>
+                              <p className="text-xs text-gray-600">{manualJob.company}</p>
                               <p className="text-xs text-gray-500">{manualJob.location}</p>
-                              <div className="flex gap-1 mt-1">
+                              <div className="flex flex-wrap gap-1 mt-1">
                                 {isNew && (
                                   <span className="inline-block bg-red-100 text-red-800 text-xs px-1 py-0.5 rounded">
                                     NEW
+                                  </span>
+                                )}
+                                {isOld && (
+                                  <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-1 py-0.5 rounded">
+                                    OLD (Will auto-clean)
                                   </span>
                                 )}
                                 {manualJob.featured && (
@@ -928,7 +1091,7 @@ Bachelor's degree in Computer Science..."
                                 </span>
                               </div>
                               <p className="text-xs text-gray-400 mt-1">
-                                Added: {manualJob.addedTimestamp ? new Date(manualJob.addedTimestamp).toLocaleDateString() : 'Recently'}
+                                Added: {manualJob.addedTimestamp ? new Date(manualJob.addedTimestamp).toLocaleDateString('en-IN') : 'Recently'}
                               </p>
                             </div>
                             <button
@@ -953,12 +1116,13 @@ Bachelor's degree in Computer Science..."
                 </h4>
                 {activeTab === 'single' ? (
                   <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Jobs appear as "Latest" for 90 days</li>
                     <li>• Use clear, descriptive job titles</li>
                     <li>• Include specific requirements for Indian market</li>
                     <li>• Provide realistic INR salary ranges</li>
                     <li>• Use Indian city names and states</li>
                     <li>• Mark high-priority roles as "Featured"</li>
-                    <li>• Jobs are automatically timestamped</li>
+                    <li>• Jobs auto-clean after 90 days</li>
                   </ul>
                 ) : (
                   <ul className="text-sm text-blue-700 space-y-1">
@@ -968,20 +1132,39 @@ Bachelor's degree in Computer Science..."
                     <li>• Use arrays for requirements field</li>
                     <li>• Validate JSON before uploading</li>
                     <li>• Include Indian salary ranges in INR</li>
+                    <li>• All jobs marked as "Latest"</li>
                   </ul>
                 )}
               </div>
 
               {/* Quick Stats */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">CareerCraft Stats</h4>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-semibold text-green-800 mb-2">CareerCraft Latest Stats</h4>
                 <div className="text-sm text-green-700 space-y-1">
-                  <p>• Total Jobs: {manualJobs.length}</p>
-                  <p>• Featured Jobs: {manualJobs.filter(j => j.featured).length}</p>
-                  <p>• Pages: {Math.ceil(manualJobs.length / 10)}</p>
-                  <p>• IT/Software Jobs: {manualJobs.filter(j => j.sector === 'IT/Software').length}</p>
-                  <p>• Engineering Jobs: {manualJobs.filter(j => j.sector === 'Engineering').length}</p>
-                  <p>• Remote Jobs: {manualJobs.filter(j => j.type === 'Remote').length}</p>
+                  <div className="flex justify-between">
+                    <span>Total Latest Jobs:</span>
+                    <span className="font-bold">{manualJobs.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Featured Jobs:</span>
+                    <span className="font-bold">{manualJobs.filter(j => j.featured).length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>IT/Software Jobs:</span>
+                    <span className="font-bold">{manualJobs.filter(j => j.sector === 'IT/Software').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Remote Jobs:</span>
+                    <span className="font-bold">{manualJobs.filter(j => j.type === 'Remote').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>New Today:</span>
+                    <span className="font-bold">{manualJobs.filter(j => j.isNew).length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Auto-clean in:</span>
+                    <span className="font-bold">90 days</span>
+                  </div>
                 </div>
               </div>
             </div>

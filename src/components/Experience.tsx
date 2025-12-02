@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ExperienceProps } from './types';
 
-const Experience = ({ experiences, onUpdate, onAdd, onRemove, template }: ExperienceProps) => {
+const Experience = ({ experiences, onUpdate, onAdd, onRemove, template, onFieldInteraction }: ExperienceProps) => {
   const [expandedExperience, setExpandedExperience] = useState<number | null>(null);
 
   const formStyle = template?.formStyle || {
@@ -34,6 +34,7 @@ const Experience = ({ experiences, onUpdate, onAdd, onRemove, template }: Experi
     if (experience) {
       const updatedBullets = [...experience.description, ''];
       onUpdate(expId, 'description', updatedBullets);
+      onFieldInteraction?.(`description_add_${expId}`, 'change');
     }
   };
 
@@ -43,6 +44,7 @@ const Experience = ({ experiences, onUpdate, onAdd, onRemove, template }: Experi
       const updatedBullets = [...experience.description];
       updatedBullets[index] = value;
       onUpdate(expId, 'description', updatedBullets);
+      onFieldInteraction?.(`description_${expId}_${index}`, 'change');
     }
   };
 
@@ -77,7 +79,12 @@ const Experience = ({ experiences, onUpdate, onAdd, onRemove, template }: Experi
                 type="text"
                 placeholder="Job Title"
                 value={exp.title}
-                onChange={(e) => onUpdate(exp.id, 'title', e.target.value)}
+                onChange={(e) => {
+                  onUpdate(exp.id, 'title', e.target.value);
+                  onFieldInteraction?.(`title_${exp.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`title_${exp.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`title_${exp.id}`, 'blur')}
                 className={`w-full text-lg font-semibold p-2 border-b ${formStyle.borderColor} focus:outline-none focus:border-blue-500 bg-transparent`}
               />
               <div className="flex space-x-2 ml-4">
@@ -109,7 +116,12 @@ const Experience = ({ experiences, onUpdate, onAdd, onRemove, template }: Experi
                   type="text"
                   placeholder="Company Name"
                   value={exp.company}
-                  onChange={(e) => onUpdate(exp.id, 'company', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(exp.id, 'company', e.target.value);
+                    onFieldInteraction?.(`company_${exp.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`company_${exp.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`company_${exp.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -121,7 +133,12 @@ const Experience = ({ experiences, onUpdate, onAdd, onRemove, template }: Experi
                   type="text"
                   placeholder="e.g., 2020 - Present"
                   value={exp.period}
-                  onChange={(e) => onUpdate(exp.id, 'period', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(exp.id, 'period', e.target.value);
+                    onFieldInteraction?.(`period_${exp.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`period_${exp.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`period_${exp.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -138,6 +155,8 @@ const Experience = ({ experiences, onUpdate, onAdd, onRemove, template }: Experi
                     placeholder="Describe your responsibilities and achievements..."
                     value={item}
                     onChange={(e) => updateBulletPoint(exp.id, itemIndex, e.target.value)}
+                    onFocus={() => onFieldInteraction?.(`description_${exp.id}_${itemIndex}`, 'focus')}
+                    onBlur={() => onFieldInteraction?.(`description_${exp.id}_${itemIndex}`, 'blur')}
                     rows={2}
                     className="flex-1 p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 resize-vertical"
                   />

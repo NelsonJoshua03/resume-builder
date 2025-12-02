@@ -185,7 +185,7 @@ const TemplateGridPreview = ({
   selectedTemplate, 
   onSelect, 
   resumeData,
-  sectionOrder 
+  sectionOrder
 }: { 
   templates: TemplatesMap;
   selectedTemplate: string;
@@ -199,11 +199,21 @@ const TemplateGridPreview = ({
     trackButtonClick(`preview_${templateName.toLowerCase()}`, 'template_grid', 'resume_builder');
   };
 
+  const handleSelect = (templateId: string) => {
+    onSelect(templateId);
+    handleTemplatePreview(templateId);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
-      <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">
-        Choose Your Resume Template
-      </h2>
+      <div className="text-center mb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
+          Choose Your Resume Template
+        </h2>
+        <p className="text-gray-600 text-sm md:text-base">
+          Select a template to preview and download your resume instantly
+        </p>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {Object.values(templates).map((template) => {
@@ -217,10 +227,7 @@ const TemplateGridPreview = ({
                   ? 'ring-4 ring-blue-500 scale-105 shadow-2xl'
                   : 'ring-1 ring-gray-200 hover:ring-2 hover:ring-blue-300 hover:scale-102 hover:shadow-xl'
               } rounded-lg overflow-hidden bg-white`}
-              onClick={() => {
-                onSelect(template.id);
-                handleTemplatePreview(template.name);
-              }}
+              onClick={() => handleSelect(template.id)}
             >
               {/* Template Preview Container */}
               <div className="relative h-64 md:h-80 overflow-hidden bg-gray-50">
@@ -264,16 +271,24 @@ const TemplateGridPreview = ({
                 <button
                   className={`w-full py-2 px-4 rounded-lg font-semibold transition-colors ${
                     selectedTemplate === template.id
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelect(template.id);
-                    handleTemplatePreview(template.name);
+                    handleSelect(template.id);
                   }}
                 >
-                  {selectedTemplate === template.id ? '✓ Selected' : 'Select Template'}
+                  {selectedTemplate === template.id ? (
+                    <>
+                      <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Selected Template
+                    </>
+                  ) : (
+                    'Select Template'
+                  )}
                 </button>
               </div>
             </div>
@@ -297,6 +312,9 @@ const ResumeBuilder = () => {
   const resumeRef = useRef<HTMLDivElement>(null);
   const [isMobilePreview, setIsMobilePreview] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'preview'>('grid');
+  const [showDownloadPrompt, setShowDownloadPrompt] = useState(false);
+  const [lastSelectedTemplate, setLastSelectedTemplate] = useState('');
+  const [autoDownloadTriggered, setAutoDownloadTriggered] = useState(false);
   
   const { 
     trackResumeGeneration, 
@@ -304,23 +322,92 @@ const ResumeBuilder = () => {
     trackTemplateChange,
     trackCTAClick,
     trackUserFlow,
-    trackPageView 
+    trackPageView,
+    trackEvent 
   } = useGoogleAnalytics();
 
   // Track page view on mount
   useEffect(() => {
     trackPageView('Resume Builder', '/builder');
-  }, [trackPageView]);
+    
+    // Track entry to builder page
+    trackEvent('resume_funnel', {
+      step: 'builder_entered',
+      event_category: 'Conversion Funnel',
+      event_label: 'builder_entered'
+    });
+  }, [trackPageView, trackEvent]);
+
+  // Track resume completion status
+  useEffect(() => {
+    const completion = calculateResumeCompletion(resumeData);
+    trackEvent('resume_completion_status', {
+      completion_percentage: completion,
+      sections_completed: getCompletedSectionsCount(resumeData),
+      event_category: 'Resume Progress',
+      event_label: `${completion}%_complete`
+    });
+  }, [resumeData, trackEvent]);
+
+  // Auto-download when template is selected in grid mode
+  useEffect(() => {
+    if (viewMode === 'preview' && !autoDownloadTriggered && lastSelectedTemplate) {
+      // Small delay to ensure preview is rendered
+      const timer = setTimeout(() => {
+        triggerActualResumeDownload();
+        setAutoDownloadTriggered(true);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [viewMode, lastSelectedTemplate, autoDownloadTriggered]);
 
   const selectTemplate = (template: string) => {
     updateSelectedTemplate(template);
     trackTemplateChange(template);
     trackButtonClick('template_select', 'template_selector', 'resume_builder');
     
+    // Track funnel step
+    trackEvent('resume_funnel', {
+      step: 'template_selected',
+      template_name: template,
+      event_category: 'Conversion Funnel',
+      event_label: 'template_selected'
+    });
+    
+    setLastSelectedTemplate(template);
+    setAutoDownloadTriggered(false);
+    
     // Switch to preview mode when template is selected
     if (viewMode === 'grid') {
       setViewMode('preview');
       trackUserFlow('template_grid', 'template_preview', 'template_selection');
+    }
+  };
+
+  const triggerActualResumeDownload = () => {
+    if (!resumeRef.current) return;
+    
+    // Find the download button in MobilePDFGenerator and trigger it
+    const downloadButton = document.querySelector('[aria-label="Download PDF document"]') as HTMLButtonElement;
+    if (downloadButton && !downloadButton.disabled) {
+      downloadButton.click();
+      trackButtonClick('auto_download_template', 'template_selection', 'resume_builder');
+      trackResumeGeneration('auto', resumeData.selectedTemplate, 'downloaded');
+      
+      // Track funnel step
+      trackEvent('resume_funnel', {
+        step: 'download_triggered',
+        template_name: resumeData.selectedTemplate,
+        event_category: 'Conversion Funnel',
+        event_label: 'download_triggered'
+      });
+      
+      // Show success message
+      setTimeout(() => {
+        const currentTemplate = TEMPLATES[resumeData.selectedTemplate as keyof typeof TEMPLATES] || TEMPLATES.creative;
+        setShowDownloadPrompt(true);
+      }, 500);
     }
   };
 
@@ -351,6 +438,82 @@ const ResumeBuilder = () => {
         canonicalUrl="https://careercraft.in/builder"
       />
       
+      {/* Success Download Prompt Modal */}
+      {showDownloadPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 text-lg">✅</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Resume Downloaded!</h3>
+              </div>
+              <button 
+                onClick={() => setShowDownloadPrompt(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <p className="text-gray-600 mb-6">
+              Your <strong className="text-blue-600">{currentTemplate.name}</strong> resume has been downloaded successfully! 
+              The PDF includes all your information and is ready to use.
+            </p>
+            
+            <div className="bg-green-50 p-4 rounded-lg mb-6">
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500">✓</span>
+                  <span>Your actual resume with all data</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500">✓</span>
+                  <span>Professional {currentTemplate.name} template</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500">✓</span>
+                  <span>ATS-friendly formatting</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500">✓</span>
+                  <span>Searchable text and clean layout</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDownloadPrompt(false);
+                  trackButtonClick('close_success_prompt', 'modal', 'resume_builder');
+                }}
+                className="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+              >
+                Close
+              </button>
+              <Link
+                to="/edit"
+                onClick={() => {
+                  setShowDownloadPrompt(false);
+                  trackCTAClick('edit_from_success', 'modal', 'resume_builder');
+                  // Track funnel step
+                  trackEvent('resume_funnel', {
+                    step: 'edit_from_download',
+                    event_category: 'Conversion Funnel',
+                    event_label: 'edit_from_download'
+                  });
+                }}
+                className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-center"
+              >
+                Edit & Customize
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="min-h-screen bg-gray-50 py-4 md:py-8">
         <div className="mx-auto px-4 max-w-7xl">
           <header className="text-center mb-6 md:mb-8">
@@ -363,6 +526,12 @@ const ResumeBuilder = () => {
                 onClick={() => {
                   trackCTAClick('edit_resume', 'header', 'resume_builder');
                   trackUserFlow('builder', 'edit', 'navigation');
+                  // Track funnel step
+                  trackEvent('resume_funnel', {
+                    step: 'edit_started',
+                    event_category: 'Conversion Funnel',
+                    event_label: 'edit_started'
+                  });
                 }}
                 className="bg-blue-600 text-white px-4 md:px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold inline-flex items-center gap-2 text-sm md:text-base"
               >
@@ -399,26 +568,39 @@ const ResumeBuilder = () => {
                 sectionOrder={sectionOrder}
               />
               
-              {/* Quick Actions */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 md:p-6 rounded-xl border border-purple-200">
-                <h3 className="font-semibold text-gray-800 mb-3 md:mb-4 text-center text-lg md:text-xl">Ready to Customize?</h3>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button
-                    onClick={() => handleViewModeChange('preview')}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm md:text-base"
-                  >
-                    Customize Selected Template
-                  </button>
-                  <Link
-                    to="/premium"
-                    onClick={() => {
-                      trackCTAClick('view_premium_templates', 'quick_actions', 'resume_builder');
-                      trackUserFlow('builder', 'premium', 'navigation');
-                    }}
-                    className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold text-center text-sm md:text-base"
-                  >
-                    View Premium Templates
-                  </Link>
+              {/* Download CTA Banner */}
+              <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 md:p-6 rounded-xl border border-green-200">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-800 text-lg md:text-xl mb-1">Select a Template to Download</h3>
+                    <p className="text-gray-600 text-sm md:text-base">
+                      Choose a template above to get your complete resume PDF immediately
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleViewModeChange('preview')}
+                      className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm md:text-base"
+                    >
+                      Preview Current Template
+                    </button>
+                    <Link
+                      to="/edit"
+                      onClick={() => {
+                        trackCTAClick('edit_first_grid', 'cta_banner', 'resume_builder');
+                        trackUserFlow('builder', 'edit', 'navigation');
+                        // Track funnel step
+                        trackEvent('resume_funnel', {
+                          step: 'edit_from_grid',
+                          event_category: 'Conversion Funnel',
+                          event_label: 'edit_from_grid'
+                        });
+                      }}
+                      className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold text-center text-sm md:text-base"
+                    >
+                      Edit Resume First
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -451,7 +633,7 @@ const ResumeBuilder = () => {
 
                 {/* Preview Container */}
                 <div className="bg-white rounded-lg shadow-sm p-3">
-                  {/* Mobile Preview Toggle and Download Button */}
+                  {/* Mobile Preview Toggle */}
                   <div className="flex justify-between items-center mb-3">
                     <button
                       onClick={toggleMobilePreview}
@@ -463,14 +645,6 @@ const ResumeBuilder = () => {
                     >
                       {isMobilePreview ? '📄 Back to Preview' : '🔍 Read Full Resume'}
                     </button>
-
-                    <MobilePDFGenerator 
-                      resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
-                      personalInfo={resumeData.personalInfo}
-                      resumeData={resumeData}
-                      template={currentTemplate}
-                      sectionOrder={sectionOrder}
-                    />
                   </div>
 
                   {/* Resume Preview */}
@@ -497,8 +671,32 @@ const ResumeBuilder = () => {
                     </div>
                   </div>
 
-                  {/* Social Sharing */}
-                  <div className="mt-3">
+                  {/* Prominent Download Button for Mobile */}
+                  <div className="mt-4">
+                    <div className="bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded-lg border border-green-200 mb-3">
+                      <h4 className="font-semibold text-gray-800 mb-2 text-center">Download Your Resume</h4>
+                      <p className="text-gray-600 text-xs text-center mb-3">
+                        Your <strong>{currentTemplate.name}</strong> template is ready
+                      </p>
+                      <MobilePDFGenerator 
+                        resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
+                        personalInfo={resumeData.personalInfo}
+                        resumeData={resumeData}
+                        template={currentTemplate}
+                        sectionOrder={sectionOrder}
+                        onDownloadStart={() => {
+                          // Track funnel step
+                          trackEvent('resume_funnel', {
+                            step: 'download_initiated',
+                            template_name: currentTemplate.name,
+                            event_category: 'Conversion Funnel',
+                            event_label: 'download_initiated'
+                          });
+                        }}
+                      />
+                    </div>
+
+                    {/* Social Sharing */}
                     <SocialSharing 
                       resumeTitle={resumeData.personalInfo.title}
                     />
@@ -535,6 +733,12 @@ const ResumeBuilder = () => {
                       onClick={() => {
                         trackCTAClick('edit_resume_mobile', 'quick_actions', 'resume_builder');
                         trackUserFlow('builder', 'edit', 'navigation');
+                        // Track funnel step
+                        trackEvent('resume_funnel', {
+                          step: 'edit_from_preview',
+                          event_category: 'Conversion Funnel',
+                          event_label: 'edit_from_preview'
+                        });
                       }}
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors w-full text-center block"
                     >
@@ -557,18 +761,38 @@ const ResumeBuilder = () => {
                       sectionOrder={sectionOrder}
                     />
                     
-                    <div className="flex flex-wrap gap-3 justify-center mt-6">
-                      <MobilePDFGenerator 
-                        resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
-                        personalInfo={resumeData.personalInfo}
-                        resumeData={resumeData}
-                        template={currentTemplate}
-                        sectionOrder={sectionOrder}
-                      />
-
-                      <SocialSharing 
-                        resumeTitle={resumeData.personalInfo.title}
-                      />
+                    {/* Prominent Download Section */}
+                    <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div>
+                          <h3 className="font-semibold text-gray-800 text-lg mb-1">Your Resume is Ready to Download!</h3>
+                          <p className="text-gray-600 text-sm">
+                            Template: <strong className="text-blue-600">{currentTemplate.name}</strong> • 
+                            Sections: <strong>{sectionOrder.filter(s => s.enabled).length}</strong>
+                          </p>
+                        </div>
+                        <div className="flex gap-3">
+                          <MobilePDFGenerator 
+                            resumeRef={resumeRef as React.RefObject<HTMLDivElement>}
+                            personalInfo={resumeData.personalInfo}
+                            resumeData={resumeData}
+                            template={currentTemplate}
+                            sectionOrder={sectionOrder}
+                            onDownloadStart={() => {
+                              // Track funnel step
+                              trackEvent('resume_funnel', {
+                                step: 'download_initiated',
+                                template_name: currentTemplate.name,
+                                event_category: 'Conversion Funnel',
+                                event_label: 'download_initiated'
+                              });
+                            }}
+                          />
+                          <SocialSharing 
+                            resumeTitle={resumeData.personalInfo.title}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -612,6 +836,12 @@ const ResumeBuilder = () => {
                       onClick={() => {
                         trackCTAClick('edit_resume_desktop', 'quick_actions', 'resume_builder');
                         trackUserFlow('builder', 'edit', 'navigation');
+                        // Track funnel step
+                        trackEvent('resume_funnel', {
+                          step: 'edit_from_preview',
+                          event_category: 'Conversion Funnel',
+                          event_label: 'edit_from_preview'
+                        });
                       }}
                       className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors w-full text-center block font-semibold"
                     >
@@ -633,6 +863,12 @@ const ResumeBuilder = () => {
                         onClick={() => {
                           trackCTAClick('view_premium_from_preview', 'template_exploration', 'resume_builder');
                           trackUserFlow('builder', 'premium', 'navigation');
+                          // Track funnel step
+                          trackEvent('resume_funnel', {
+                            step: 'premium_explored',
+                            event_category: 'Conversion Funnel',
+                            event_label: 'premium_explored'
+                          });
                         }}
                         className="flex-1 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors text-center font-semibold"
                       >
@@ -679,7 +915,7 @@ const ResumeBuilder = () => {
               >
                 <div className="w-8 h-8 md:w-10 md:h-10 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
                   <svg className="w-4 h-4 md:w-5 md:h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
                 <h3 className="font-semibold text-gray-800">Professional</h3>
@@ -691,6 +927,92 @@ const ResumeBuilder = () => {
       </div>
     </>
   );
+};
+
+// Helper function to calculate resume completion
+const calculateResumeCompletion = (resumeData: any): number => {
+  let completedFields = 0;
+  let totalFields = 0;
+
+  // Personal Info
+  const personalFields = ['name', 'email', 'phone', 'title'];
+  totalFields += personalFields.length;
+  completedFields += personalFields.filter(field => {
+    const value = resumeData.personalInfo[field];
+    if (Array.isArray(value)) {
+      return value.length > 0 && value[0] !== '';
+    }
+    return value && value.toString().trim() !== '';
+  }).length;
+
+  // Experience (at least one entry with title and company)
+  if (resumeData.experiences.length > 0) {
+    completedFields += 2;
+    totalFields += 2;
+  } else {
+    totalFields += 2;
+  }
+
+  // Education (at least one entry)
+  if (resumeData.education.length > 0) {
+    completedFields += 2;
+    totalFields += 2;
+  } else {
+    totalFields += 2;
+  }
+
+  // Skills (at least 3 skills)
+  if (resumeData.skills.length >= 3) {
+    completedFields += 1;
+    totalFields += 1;
+  } else {
+    totalFields += 1;
+  }
+
+  // Summary (at least one summary point)
+  if (resumeData.personalInfo.summary && resumeData.personalInfo.summary.length > 0) {
+    completedFields += 1;
+    totalFields += 1;
+  } else {
+    totalFields += 1;
+  }
+
+  return Math.round((completedFields / totalFields) * 100);
+};
+
+// Helper function to count completed sections
+const getCompletedSectionsCount = (resumeData: any): number => {
+  let completedSections = 0;
+  
+  // Personal Info (name, email, phone, title)
+  const hasPersonalInfo = ['name', 'email', 'phone', 'title'].every(field => {
+    const value = resumeData.personalInfo[field];
+    if (Array.isArray(value)) {
+      return value.length > 0 && value[0] !== '';
+    }
+    return value && value.toString().trim() !== '';
+  });
+  if (hasPersonalInfo) completedSections++;
+  
+  // Experience
+  if (resumeData.experiences.length > 0) completedSections++;
+  
+  // Education
+  if (resumeData.education.length > 0) completedSections++;
+  
+  // Skills
+  if (resumeData.skills.length >= 3) completedSections++;
+  
+  // Projects
+  if (resumeData.projects.length > 0) completedSections++;
+  
+  // Awards
+  if (resumeData.awards.length > 0) completedSections++;
+  
+  // Summary
+  if (resumeData.personalInfo.summary && resumeData.personalInfo.summary.length > 0) completedSections++;
+  
+  return completedSections;
 };
 
 export default ResumeBuilder;

@@ -1,9 +1,24 @@
-// src/components/JobApplications.tsx - UPDATED WITH ENHANCED ANALYTICS
+// src/components/JobApplications.tsx - UPDATED WITH SOCIAL SHARING (FIXED NAVIGATOR.SHARE)
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
+import { 
+  Share2, 
+  ExternalLink, 
+  Copy, 
+  Facebook, 
+  Twitter, 
+  Linkedin, 
+  MessageCircle,
+  Mail,
+  X,
+  Bell,
+  Send,
+  Users,
+  TrendingUp
+} from 'lucide-react';
 
 interface Job {
   id: string;
@@ -31,6 +46,12 @@ const JobApplications: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const jobsPerPage = 10;
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  const [copySuccess, setCopySuccess] = useState<boolean>(false);
+  const [newsletterEmail, setNewsletterEmail] = useState<string>('');
+  const [showNotificationBanner, setShowNotificationBanner] = useState<boolean>(false);
+  const [totalShares, setTotalShares] = useState<number>(0);
 
   // Use BOTH enhanced analytics and Google Analytics
   const { 
@@ -40,23 +61,56 @@ const JobApplications: React.FC = () => {
     trackJobSearch
   } = useEnhancedAnalytics();
   
-  const { trackButtonClick } = useGoogleAnalytics();
+  const { trackButtonClick, trackSocialShare } = useGoogleAnalytics();
 
-  // Track daily page view on mount
+  // Clean up old jobs (older than 3 months) and load jobs
   useEffect(() => {
     trackDailyPageView('Job Applications', '/job-applications');
     
     // Load manual jobs from localStorage
     const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
     
+    // Filter out jobs older than 90 days (3 months)
+    const now = Date.now();
+    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+    
+    const recentJobs = savedJobs.filter((job: Job) => {
+      const jobTimestamp = job.addedTimestamp || new Date(job.postedDate).getTime();
+      return jobTimestamp >= ninetyDaysAgo;
+    });
+    
+    // Update localStorage with only recent jobs
+    if (recentJobs.length !== savedJobs.length) {
+      localStorage.setItem('manualJobs', JSON.stringify(recentJobs));
+    }
+    
+    // Sort by addedTimestamp (newest first)
+    const sortedJobs = recentJobs.sort((a: Job, b: Job) => {
+      const timeA = a.addedTimestamp || new Date(a.postedDate).getTime();
+      const timeB = b.addedTimestamp || new Date(b.postedDate).getTime();
+      return timeB - timeA; // Descending order (newest first)
+    });
+
     // Add page numbers if not present
-    const jobsWithPages = savedJobs.map((job: Job, index: number) => ({
+    const jobsWithPages = sortedJobs.map((job: Job, index: number) => ({
       ...job,
       page: job.page || Math.floor(index / jobsPerPage) + 1,
       addedTimestamp: job.addedTimestamp || Date.now()
     }));
 
     setJobs(jobsWithPages);
+    
+    // Load total shares
+    const shares = parseInt(localStorage.getItem('total_job_shares') || '0');
+    setTotalShares(shares);
+    
+    // Show notification banner if first visit today
+    const today = new Date().toDateString();
+    const lastVisit = localStorage.getItem('last_job_page_visit');
+    if (lastVisit !== today) {
+      setShowNotificationBanner(true);
+      localStorage.setItem('last_job_page_visit', today);
+    }
   }, [trackDailyPageView]);
 
   // Popular Indian cities for quick filters
@@ -134,26 +188,205 @@ const JobApplications: React.FC = () => {
     trackButtonClick(`filter_type_${type}`, 'type_filters', 'job_applications');
   };
 
+  // Share functionality
+  const handleShareClick = (job: Job) => {
+    setSelectedJob(job);
+    setShowShareModal(true);
+    trackButtonClick('open_share_modal', 'job_card', 'job_applications');
+  };
+
+  const closeShareModal = () => {
+    setShowShareModal(false);
+    setSelectedJob(null);
+    setCopySuccess(false);
+  };
+
+  const copyToClipboard = () => {
+    if (selectedJob) {
+      const jobUrl = `${window.location.origin}/job-applications?job=${selectedJob.id}`;
+      navigator.clipboard.writeText(jobUrl);
+      setCopySuccess(true);
+      trackButtonClick('copy_job_link', 'share_modal', 'job_applications');
+      trackSocialShare('copy_link', 'job', selectedJob.id);
+      
+      // Update total shares
+      const newTotal = totalShares + 1;
+      setTotalShares(newTotal);
+      localStorage.setItem('total_job_shares', newTotal.toString());
+      
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
+
+  const shareOnFacebook = () => {
+    if (selectedJob) {
+      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=Check out this job: ${selectedJob.title} at ${selectedJob.company}`;
+      window.open(url, '_blank');
+      trackSocialShare('facebook', 'job', selectedJob.id);
+      trackButtonClick('share_facebook', 'share_modal', 'job_applications');
+      incrementShares();
+    }
+  };
+
+  const shareOnTwitter = () => {
+    if (selectedJob) {
+      const text = `Check out this job opportunity: ${selectedJob.title} at ${selectedJob.company} in ${selectedJob.location}`;
+      const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
+      window.open(url, '_blank');
+      trackSocialShare('twitter', 'job', selectedJob.id);
+      trackButtonClick('share_twitter', 'share_modal', 'job_applications');
+      incrementShares();
+    }
+  };
+
+  const shareOnLinkedIn = () => {
+    if (selectedJob) {
+      const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`;
+      window.open(url, '_blank');
+      trackSocialShare('linkedin', 'job', selectedJob.id);
+      trackButtonClick('share_linkedin', 'share_modal', 'job_applications');
+      incrementShares();
+    }
+  };
+
+  const shareOnWhatsApp = () => {
+    if (selectedJob) {
+      const text = `Check out this job opportunity on CareerCraft: ${selectedJob.title} at ${selectedJob.company} - ${window.location.href}`;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+      trackSocialShare('whatsapp', 'job', selectedJob.id);
+      trackButtonClick('share_whatsapp', 'share_modal', 'job_applications');
+      incrementShares();
+    }
+  };
+
+  const shareViaEmail = () => {
+    if (selectedJob) {
+      const subject = `Job Opportunity: ${selectedJob.title} at ${selectedJob.company}`;
+      const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\n\nView details: ${window.location.href}`;
+      window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      trackSocialShare('email', 'job', selectedJob.id);
+      trackButtonClick('share_email', 'share_modal', 'job_applications');
+      incrementShares();
+    }
+  };
+
+  // Fixed: Native Web Share API with proper type checking
+  const nativeShare = async () => {
+    if (selectedJob && 'share' in navigator && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({
+          title: `${selectedJob.title} at ${selectedJob.company}`,
+          text: `Check out this job opportunity on CareerCraft: ${selectedJob.title} at ${selectedJob.company} in ${selectedJob.location}`,
+          url: window.location.href,
+        });
+        trackSocialShare('native', 'job', selectedJob.id);
+        trackButtonClick('native_share', 'share_modal', 'job_applications');
+        incrementShares();
+      } catch (error) {
+        // User cancelled the share or error occurred
+        console.log('Error sharing:', error);
+      }
+    } else {
+      // Fallback: Show the share modal instead
+      setShowShareModal(true);
+    }
+  };
+
+  // Helper function to increment shares
+  const incrementShares = () => {
+    const newTotal = totalShares + 1;
+    setTotalShares(newTotal);
+    localStorage.setItem('total_job_shares', newTotal.toString());
+  };
+
+  // Newsletter signup
+  const handleNewsletterSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newsletterEmail) {
+      trackButtonClick('newsletter_signup_jobs', 'newsletter', 'job_applications');
+      
+      // Save to localStorage
+      const subscribers = JSON.parse(localStorage.getItem('job_subscribers') || '[]');
+      subscribers.push({ 
+        email: newsletterEmail, 
+        date: new Date().toISOString(),
+        preferences: {
+          sector: selectedSector !== 'all' ? selectedSector : 'all',
+          location: locationFilter || 'all'
+        }
+      });
+      localStorage.setItem('job_subscribers', JSON.stringify(subscribers));
+      
+      alert(`Thank you! You'll receive job alerts at ${newsletterEmail}`);
+      setNewsletterEmail('');
+    }
+  };
+
+  // Enable notifications
+  const requestNotificationPermission = () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          trackButtonClick('notification_enabled', 'system', 'job_applications');
+          localStorage.setItem('job_notifications', 'true');
+          alert('Notifications enabled! You will receive job alerts.');
+        }
+      });
+    } else if (Notification.permission === 'granted') {
+      alert('Notifications are already enabled.');
+    }
+  };
+
+  // Download jobs as CSV
+  const downloadJobsCSV = () => {
+    const csvContent = [
+      ['Title', 'Company', 'Location', 'Type', 'Sector', 'Salary', 'Posted Date', 'Apply Link'],
+      ...jobs.map(job => [
+        `"${job.title}"`,
+        `"${job.company}"`,
+        `"${job.location}"`,
+        `"${job.type}"`,
+        `"${job.sector}"`,
+        `"${job.salary}"`,
+        `"${job.postedDate}"`,
+        `"${job.applyLink}"`
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `careercraft-jobs-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    trackButtonClick('download_jobs_csv', 'export', 'job_applications');
+  };
+
   return (
     <>
       <Helmet>
-        <title>Job Opportunities in India 2025 | Latest Job Openings | CareerCraft.in</title>
-        <meta name="description" content="Browse manually curated job opportunities from top Indian companies. Find IT, engineering, marketing, fresher jobs across Bangalore, Mumbai, Delhi, Hyderabad and more." />
-        <meta name="keywords" content="Indian job portal 2025, jobs in India, IT jobs Bangalore, engineering jobs Pune, fresher jobs India, remote jobs India, latest job openings, career opportunities India" />
+        <title>Latest Job Opportunities in India 2025 | Fresh Job Openings | CareerCraft.in</title>
+        <meta name="description" content="Browse latest manually curated job opportunities from top Indian companies. Updated daily. Find IT, engineering, marketing, fresher jobs across Bangalore, Mumbai, Delhi, Hyderabad and more." />
+        <meta name="keywords" content="latest jobs India 2025, fresh job openings, IT jobs Bangalore today, engineering jobs Pune, fresher jobs India, remote jobs India, daily job updates, career opportunities India" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href="https://careercraft.in/job-applications" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="Job Opportunities in India 2025 | Latest Job Openings | CareerCraft.in" />
-        <meta property="og:description" content="Browse manually curated job opportunities from top Indian companies. Find IT, engineering, marketing jobs across major Indian cities." />
+        <meta property="og:title" content="Latest Job Opportunities in India 2025 | Fresh Job Openings | CareerCraft.in" />
+        <meta property="og:description" content="Browse latest manually curated job opportunities from top Indian companies. Updated daily. Find IT, engineering, marketing jobs across major Indian cities." />
         <meta property="og:url" content="https://careercraft.in/job-applications" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Job Opportunities in India 2025 | Latest Job Openings | CareerCraft.in" />
-        <meta name="twitter:description" content="Browse manually curated job opportunities from top Indian companies. Find your dream job today." />
+        <meta name="twitter:title" content="Latest Job Opportunities in India 2025 | Fresh Job Openings | CareerCraft.in" />
+        <meta name="twitter:description" content="Browse latest manually curated job opportunities from top Indian companies. Updated daily. Find your dream job today." />
         <meta name="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
 
         {/* Structured Data */}
@@ -161,8 +394,8 @@ const JobApplications: React.FC = () => {
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "ItemList",
-            "name": "Job Opportunities in India",
-            "description": "Curated job postings from top Indian companies and startups",
+            "name": "Latest Job Opportunities in India",
+            "description": "Daily updated curated job postings from top Indian companies and startups",
             "url": "https://careercraft.in/job-applications",
             "numberOfItems": jobs.length,
             "itemListElement": jobs.slice(0, 10).map((job, index) => ({
@@ -188,12 +421,39 @@ const JobApplications: React.FC = () => {
         </script>
       </Helmet>
 
+      {/* Notification Banner */}
+      {showNotificationBanner && (
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4">
+          <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
+            <div className="flex items-center mb-2 md:mb-0">
+              <Bell size={20} className="mr-2" />
+              <span className="font-semibold">Turn on notifications to never miss a job!</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={requestNotificationPermission}
+                className="bg-white text-blue-600 px-4 py-1 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
+              >
+                Enable Notifications
+              </button>
+              <button
+                onClick={() => setShowNotificationBanner(false)}
+                className="text-white hover:text-blue-200 text-sm"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Job Opportunities in India</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Latest Job Opportunities in India</h1>
           <p className="text-xl max-w-2xl mx-auto mb-8">
-            Curated job postings from top Indian companies and startups.
+            Freshly updated job postings from top Indian companies. Updated daily.
+            <span className="block text-sm text-blue-200 mt-2">Share jobs to help friends & grow community</span>
           </p>
           
           {/* Search Form */}
@@ -222,7 +482,7 @@ const JobApplications: React.FC = () => {
                   type="submit"
                   className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                 >
-                  Find Jobs
+                  Find Latest Jobs
                 </button>
               </div>
             </div>
@@ -245,15 +505,31 @@ const JobApplications: React.FC = () => {
           </div>
 
           {/* Stats */}
-          <div className="mt-6 flex justify-center items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-blue-100">Total Jobs: {totalJobsCount}</span>
+          <div className="mt-6 flex flex-wrap justify-center items-center gap-4">
+            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+              <span className="text-blue-100">Latest Jobs: {totalJobsCount}</span>
+              <span className="text-green-300 text-sm">(Updated: {new Date().toLocaleDateString('en-IN')})</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+              <Share2 size={16} />
+              <span className="text-blue-100">Shared: {totalShares} times</span>
             </div>
             <button 
               onClick={clearFilters}
               className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
             >
               Clear Filters
+            </button>
+            <button
+              onClick={() => {
+                if (jobs.length > 0) {
+                  handleShareClick(jobs[0]);
+                }
+              }}
+              className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-yellow-600 hover:to-amber-600 transition-colors flex items-center gap-2"
+            >
+              <Share2 size={16} />
+              Share Jobs
             </button>
           </div>
         </div>
@@ -310,11 +586,16 @@ const JobApplications: React.FC = () => {
 
                 {/* Stats */}
                 <div className="border-t border-gray-200 pt-4">
-                  <h4 className="font-semibold text-gray-800 mb-2">Job Stats</h4>
-                  <p className="text-sm text-gray-600">{filteredJobs.length} jobs found</p>
-                  <p className="text-sm text-gray-600">{totalJobsCount} total jobs</p>
+                  <h4 className="font-semibold text-gray-800 mb-2">Latest Job Stats</h4>
+                  <p className="text-sm text-gray-600">{filteredJobs.length} fresh jobs found</p>
+                  <p className="text-sm text-gray-600">{totalJobsCount} total latest jobs</p>
                   <p className="text-sm text-gray-600">{jobs.filter(j => j.type === 'Remote').length} remote positions</p>
+                  <p className="text-sm text-gray-600">Auto-cleaned: Older than 90 days</p>
                   <p className="text-sm text-gray-600">Page {currentPage} of {totalPages}</p>
+                  <p className="text-sm text-gray-600 font-medium text-green-600">
+                    <Share2 size={12} className="inline mr-1" />
+                    {totalShares} jobs shared by community
+                  </p>
                 </div>
               </div>
 
@@ -347,6 +628,20 @@ const JobApplications: React.FC = () => {
                   View Analytics
                 </Link>
               </div>
+
+              {/* Export Jobs */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
+                <h3 className="font-bold text-green-800 mb-2">📥 Export Jobs</h3>
+                <p className="text-green-700 text-sm mb-3">
+                  Download all jobs as CSV for offline reference
+                </p>
+                <button 
+                  onClick={downloadJobsCSV}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors block text-center w-full"
+                >
+                  Download CSV
+                </button>
+              </div>
             </div>
 
             {/* Jobs List */}
@@ -356,14 +651,17 @@ const JobApplications: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-blue-800 font-semibold">
-                      📋 CareerCraft Curated Jobs
+                      📋 Latest CareerCraft Curated Jobs
                     </p>
                     <p className="text-blue-700 text-sm">
-                      Showing {filteredJobs.length} filtered jobs from our Indian job database
+                      Showing {filteredJobs.length} freshly filtered jobs from our Indian job database
                     </p>
                     <p className="text-blue-700 text-sm">
-                      {totalJobsCount} total jobs • Sorted by newest first
+                      {totalJobsCount} latest jobs • Sorted by newest first • Auto-cleaned every 90 days
                     </p>
+                  </div>
+                  <div className="text-sm text-blue-700 bg-blue-100 px-3 py-1 rounded-full">
+                    Updated: {new Date().toLocaleDateString('en-IN')}
                   </div>
                 </div>
               </div>
@@ -371,10 +669,10 @@ const JobApplications: React.FC = () => {
               {/* Featured Jobs */}
               {featuredJobs.length > 0 && (
                 <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4">Featured Opportunities</h2>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">⭐ Latest Featured Opportunities</h2>
                   <div className="space-y-4">
                     {featuredJobs.map(job => (
-                      <JobCard key={job.id} job={job} featured />
+                      <JobCard key={job.id} job={job} featured onShare={handleShareClick} />
                     ))}
                   </div>
                 </div>
@@ -383,17 +681,17 @@ const JobApplications: React.FC = () => {
               {/* All Jobs */}
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {selectedSector === 'all' ? 'All Job Opportunities in India' : `${selectedSector} Jobs in India`} 
+                  {selectedSector === 'all' ? 'All Latest Job Opportunities in India' : `Latest ${selectedSector} Jobs in India`} 
                   <span className="text-gray-600 text-lg ml-2">({filteredJobs.length})</span>
                 </h2>
                 <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
+                  Page {currentPage} of {totalPages} • Newest First
                 </div>
               </div>
               
               {currentJobs.length === 0 ? (
                 <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">No jobs found</h3>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">No latest jobs found</h3>
                   <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
                   <button 
                     onClick={clearFilters}
@@ -406,7 +704,7 @@ const JobApplications: React.FC = () => {
                 <>
                   <div className="space-y-6">
                     {currentJobs.map(job => (
-                      <JobCard key={job.id} job={job} />
+                      <JobCard key={job.id} job={job} onShare={handleShareClick} />
                     ))}
                   </div>
 
@@ -448,16 +746,216 @@ const JobApplications: React.FC = () => {
                   )}
                 </>
               )}
+
+              {/* Newsletter Signup */}
+              <div className="mt-12 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                <div className="flex flex-col md:flex-row items-center justify-between">
+                  <div className="mb-4 md:mb-0">
+                    <h3 className="font-bold text-blue-800 text-lg mb-2">📬 Get Daily Job Alerts</h3>
+                    <p className="text-blue-700 text-sm">
+                      We'll send you fresh job openings matching your profile
+                    </p>
+                  </div>
+                  <form 
+                    onSubmit={handleNewsletterSignup}
+                    className="flex gap-2 w-full md:w-auto"
+                  >
+                    <input
+                      type="email"
+                      placeholder="Your email address"
+                      required
+                      value={newsletterEmail}
+                      onChange={(e) => setNewsletterEmail(e.target.value)}
+                      className="flex-1 px-4 py-2 rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button 
+                      type="submit"
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors whitespace-nowrap flex items-center gap-2"
+                    >
+                      <Send size={16} />
+                      Get Alerts
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {/* Community Stats */}
+              <div className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
+                <h3 className="font-bold text-green-800 mb-4 flex items-center gap-2">
+                  <TrendingUp size={20} />
+                  CareerCraft Community Impact
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
+                    <div className="font-bold text-green-600 text-xl">
+                      {totalJobsCount}
+                    </div>
+                    <div className="text-gray-600">Latest Jobs</div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
+                    <div className="font-bold text-blue-600 text-xl">
+                      {totalShares}
+                    </div>
+                    <div className="text-gray-600">Jobs Shared</div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
+                    <div className="font-bold text-purple-600 text-xl">
+                      {Math.ceil(totalJobsCount / 10)}
+                    </div>
+                    <div className="text-gray-600">Job Pages</div>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
+                    <div className="font-bold text-amber-600 text-xl">
+                      90
+                    </div>
+                    <div className="text-gray-600">Days Fresh</div>
+                  </div>
+                </div>
+                <p className="text-green-700 text-sm mt-4 text-center">
+                  <Users size={14} className="inline mr-1" />
+                  Every share helps a friend find their dream job. Keep sharing!
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Share Modal */}
+      {showShareModal && selectedJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-800">Share Job Opportunity</h3>
+                <button
+                  onClick={closeShareModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-700 mb-2">{selectedJob.title}</h4>
+                <p className="text-sm text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
+                <p className="text-xs text-gray-500 mt-1">Share with friends who might be interested</p>
+              </div>
+
+              {/* Native Share Button - FIXED CONDITION */}
+              {'share' in navigator && typeof navigator.share === 'function' && (
+                <button
+                  onClick={nativeShare}
+                  className="w-full mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <Share2 size={20} />
+                  Share via Device
+                </button>
+              )}
+
+              {/* Social Sharing Options */}
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <button
+                  onClick={shareOnFacebook}
+                  className="flex flex-col items-center justify-center p-4 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors"
+                >
+                  <Facebook size={24} />
+                  <span className="text-xs mt-2">Facebook</span>
+                </button>
+                
+                <button
+                  onClick={shareOnTwitter}
+                  className="flex flex-col items-center justify-center p-4 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <Twitter size={24} />
+                  <span className="text-xs mt-2">Twitter/X</span>
+                </button>
+                
+                <button
+                  onClick={shareOnLinkedIn}
+                  className="flex flex-col items-center justify-center p-4 bg-[#0A66C2] text-white rounded-lg hover:bg-[#0958b3] transition-colors"
+                >
+                  <Linkedin size={24} />
+                  <span className="text-xs mt-2">LinkedIn</span>
+                </button>
+                
+                <button
+                  onClick={shareOnWhatsApp}
+                  className="flex flex-col items-center justify-center p-4 bg-[#25D366] text-white rounded-lg hover:bg-[#20b857] transition-colors"
+                >
+                  <MessageCircle size={24} />
+                  <span className="text-xs mt-2">WhatsApp</span>
+                </button>
+                
+                <button
+                  onClick={shareViaEmail}
+                  className="flex flex-col items-center justify-center p-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <Mail size={24} />
+                  <span className="text-xs mt-2">Email</span>
+                </button>
+                
+                <button
+                  onClick={copyToClipboard}
+                  className="flex flex-col items-center justify-center p-4 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+                >
+                  <Copy size={24} />
+                  <span className="text-xs mt-2">
+                    {copySuccess ? 'Copied!' : 'Copy Link'}
+                  </span>
+                </button>
+              </div>
+
+              {/* Copy Link Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Direct Link to Job
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/job-applications?job=${selectedJob.id}`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
+                  />
+                  <button
+                    onClick={copyToClipboard}
+                    className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors text-sm"
+                  >
+                    {copySuccess ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={closeShareModal}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    trackButtonClick('apply_from_share', 'share_modal', 'job_applications');
+                    window.open(selectedJob.applyLink, '_blank');
+                    closeShareModal();
+                  }}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
+                >
+                  <ExternalLink size={16} className="inline mr-2" />
+                  Apply Now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
-// Job Card Component
-const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = false }) => {
+// Job Card Component with Share Button
+const JobCard: React.FC<{ job: Job; featured?: boolean; onShare: (job: Job) => void }> = ({ job, featured = false, onShare }) => {
   const { trackJobApplication, trackJobView } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
   
@@ -474,6 +972,11 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
 
   const handleBuildResumeClick = () => {
     trackButtonClick('build_resume_from_job', 'job_card', 'job_applications');
+  };
+
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onShare(job);
   };
 
   // Track job view only once when component mounts
@@ -494,16 +997,26 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
               <p className="text-lg text-gray-700 mb-2">{job.company} • {job.location}</p>
             </div>
             <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={handleShareClick}
+                className="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                title="Share this job"
+              >
+                <Share2 size={18} />
+              </button>
               {isNewJob && (
                 <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
-                  NEW
+                  NEW TODAY
                 </span>
               )}
               {featured && (
                 <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                  Featured
+                  ⭐ Featured
                 </span>
               )}
+              <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                Updated: {new Date(job.addedTimestamp || job.postedDate).toLocaleDateString('en-IN')}
+              </span>
             </div>
           </div>
           
@@ -532,7 +1045,7 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
 
           <p className="text-sm text-gray-500">
             Posted {new Date(job.postedDate).toLocaleDateString()}
-            {job.addedTimestamp && ` • Added ${new Date(job.addedTimestamp).toLocaleDateString()}`}
+            {job.addedTimestamp && ` • Last Updated: ${new Date(job.addedTimestamp).toLocaleDateString('en-IN')}`}
           </p>
         </div>
 
@@ -542,14 +1055,22 @@ const JobCard: React.FC<{ job: Job; featured?: boolean }> = ({ job, featured = f
             target="_blank" 
             rel="noopener noreferrer"
             onClick={handleApplyClick}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center flex items-center justify-center gap-2"
           >
+            <ExternalLink size={18} />
             Apply Now
           </a>
+          <button
+            onClick={handleShareClick}
+            className="border border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-center flex items-center justify-center gap-2"
+          >
+            <Share2 size={18} />
+            Share Job
+          </button>
           <Link 
             to="/builder" 
             onClick={handleBuildResumeClick}
-            className="border border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-center"
+            className="border border-green-600 text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors text-center"
           >
             Build Resume First
           </Link>

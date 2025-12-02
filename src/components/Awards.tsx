@@ -1,6 +1,6 @@
 import { AwardsProps } from './types';
 
-const Awards = ({ awards, onUpdate, onAdd, onRemove, template }: AwardsProps) => {
+const Awards = ({ awards, onUpdate, onAdd, onRemove, template, onFieldInteraction }: AwardsProps) => {
   const formStyle = template?.formStyle || {
     sectionBg: 'bg-white shadow-md rounded-lg',
     headerColor: 'text-gray-800',
@@ -41,7 +41,12 @@ const Awards = ({ awards, onUpdate, onAdd, onRemove, template }: AwardsProps) =>
                 type="text"
                 placeholder="Award Title"
                 value={award.title}
-                onChange={(e) => onUpdate(award.id, 'title', e.target.value)}
+                onChange={(e) => {
+                  onUpdate(award.id, 'title', e.target.value);
+                  onFieldInteraction?.(`title_${award.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`title_${award.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`title_${award.id}`, 'blur')}
                 className={`w-full text-lg font-semibold p-2 border-b ${formStyle.borderColor} focus:outline-none focus:border-blue-500 bg-transparent`}
               />
               {index > 0 && (
@@ -64,7 +69,12 @@ const Awards = ({ awards, onUpdate, onAdd, onRemove, template }: AwardsProps) =>
                   type="text"
                   placeholder="Organization Name"
                   value={award.issuer}
-                  onChange={(e) => onUpdate(award.id, 'issuer', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(award.id, 'issuer', e.target.value);
+                    onFieldInteraction?.(`issuer_${award.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`issuer_${award.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`issuer_${award.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -76,7 +86,12 @@ const Awards = ({ awards, onUpdate, onAdd, onRemove, template }: AwardsProps) =>
                   type="text"
                   placeholder="e.g., 2023"
                   value={award.year}
-                  onChange={(e) => onUpdate(award.id, 'year', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(award.id, 'year', e.target.value);
+                    onFieldInteraction?.(`year_${award.id}`, 'change');
+                  }}
+                  onFocus={() => onFieldInteraction?.(`year_${award.id}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`year_${award.id}`, 'blur')}
                   className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -89,7 +104,12 @@ const Awards = ({ awards, onUpdate, onAdd, onRemove, template }: AwardsProps) =>
               <textarea
                 placeholder="Describe the award and its significance..."
                 value={award.description}
-                onChange={(e) => onUpdate(award.id, 'description', e.target.value)}
+                onChange={(e) => {
+                  onUpdate(award.id, 'description', e.target.value);
+                  onFieldInteraction?.(`description_${award.id}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`description_${award.id}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`description_${award.id}`, 'blur')}
                 rows={3}
                 className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 resize-vertical"
               />

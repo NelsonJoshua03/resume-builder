@@ -24,8 +24,11 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fortawesome/fontawesome-free": "^6.7.2",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "axios": "^1.12.2",
     "cheerio": "^1.0.0-rc.12",
+    "gray-matter": "^4.0.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.544.0",
@@ -37,7 +40,10 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.28.0",
     "react-share": "^5.2.2",
+    "react-syntax-highlighter": "^16.1.0",
     "react-to-print": "^3.1.1",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {

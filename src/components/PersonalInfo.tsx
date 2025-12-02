@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PersonalInfoProps } from '@/components/types';
 
-const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
+const PersonalInfo = ({ data, onChange, template, onFieldInteraction }: PersonalInfoProps) => {
   const [newBullet, setNewBullet] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(data.profilePicture || null);
 
@@ -16,11 +16,13 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
     const updatedSummary = [...data.summary];
     updatedSummary[index] = value;
     onChange('summary', updatedSummary);
+    onFieldInteraction?.(`summary_${index}`, 'change');
   };
 
   const addBulletPoint = () => {
     if (newBullet.trim()) {
       onChange('summary', [...data.summary, newBullet.trim()]);
+      onFieldInteraction?.('summary_add', 'change');
       setNewBullet('');
     }
   };
@@ -40,13 +42,11 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('Please select an image smaller than 5MB');
         return;
       }
 
-      // Check file type
       if (!file.type.startsWith('image/')) {
         alert('Please select a valid image file');
         return;
@@ -57,6 +57,7 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
         const result = reader.result as string;
         setImagePreview(result);
         onChange('profilePicture', result);
+        onFieldInteraction?.('profilePicture', 'change');
       };
       reader.readAsDataURL(file);
     }
@@ -65,6 +66,7 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
   const handleRemoveImage = () => {
     setImagePreview(null);
     onChange('profilePicture', '');
+    onFieldInteraction?.('profilePicture', 'change');
   };
 
   return (
@@ -74,7 +76,7 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
       </h2>
       
       <div className="space-y-4">
-        {/* Profile Picture Upload Section - Optional */}
+        {/* Profile Picture Upload Section */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Profile Picture <span className="text-gray-500 text-xs">(Optional)</span>
@@ -113,6 +115,8 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
                       accept="image/*"
                       onChange={handleImageUpload}
                       className="hidden"
+                      onFocus={() => onFieldInteraction?.('profilePicture', 'focus')}
+                      onBlur={() => onFieldInteraction?.('profilePicture', 'blur')}
                     />
                   </label>
                 </div>
@@ -130,7 +134,12 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
             type="text" 
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
             value={data.name}
-            onChange={(e) => onChange('name', e.target.value)}
+            onChange={(e) => {
+              onChange('name', e.target.value);
+              onFieldInteraction?.('name', 'change');
+            }}
+            onFocus={() => onFieldInteraction?.('name', 'focus')}
+            onBlur={() => onFieldInteraction?.('name', 'blur')}
             placeholder="John Doe"
             required
           />
@@ -142,7 +151,12 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
             type="text" 
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
             value={data.title}
-            onChange={(e) => onChange('title', e.target.value)}
+            onChange={(e) => {
+              onChange('title', e.target.value);
+              onFieldInteraction?.('title', 'change');
+            }}
+            onFocus={() => onFieldInteraction?.('title', 'focus')}
+            onBlur={() => onFieldInteraction?.('title', 'blur')}
             placeholder="Software Engineer"
             required
           />
@@ -155,7 +169,12 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
               type="email" 
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
               value={data.email}
-              onChange={(e) => onChange('email', e.target.value)}
+              onChange={(e) => {
+                onChange('email', e.target.value);
+                onFieldInteraction?.('email', 'change');
+              }}
+              onFocus={() => onFieldInteraction?.('email', 'focus')}
+              onBlur={() => onFieldInteraction?.('email', 'blur')}
               placeholder="john.doe@email.com"
               required
             />
@@ -166,7 +185,12 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
               type="tel" 
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
               value={data.phone}
-              onChange={(e) => onChange('phone', e.target.value)}
+              onChange={(e) => {
+                onChange('phone', e.target.value);
+                onFieldInteraction?.('phone', 'change');
+              }}
+              onFocus={() => onFieldInteraction?.('phone', 'focus')}
+              onBlur={() => onFieldInteraction?.('phone', 'blur')}
               placeholder="(555) 123-4567"
               required
             />
@@ -184,6 +208,8 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   value={bullet}
                   onChange={(e) => handleBulletChange(index, e.target.value)}
+                  onFocus={() => onFieldInteraction?.(`summary_${index}`, 'focus')}
+                  onBlur={() => onFieldInteraction?.(`summary_${index}`, 'blur')}
                   placeholder="Add a summary point"
                 />
                 <button
@@ -202,7 +228,12 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
                 className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Add a new summary point"
                 value={newBullet}
-                onChange={(e) => setNewBullet(e.target.value)}
+                onChange={(e) => {
+                  setNewBullet(e.target.value);
+                  onFieldInteraction?.('summary_new', 'change');
+                }}
+                onFocus={() => onFieldInteraction?.('summary_new', 'focus')}
+                onBlur={() => onFieldInteraction?.('summary_new', 'blur')}
                 onKeyPress={handleKeyPress}
               />
               <button
@@ -218,28 +249,6 @@ const PersonalInfo = ({ data, onChange, template }: PersonalInfoProps) => {
           <p className="text-xs text-gray-500 mt-2">
             Tip: Press Enter to quickly add bullet points
           </p>
-        </div>
-
-        {/* Quick Tips */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h3 className="font-semibold text-blue-800 mb-2 text-sm flex items-center">
-            <i className="fas fa-lightbulb mr-2"></i>
-            Quick Tips
-          </h3>
-          <ul className="text-xs text-blue-700 space-y-1">
-            <li className="flex items-start">
-              <i className="fas fa-check-circle mr-2 mt-0.5 text-green-500"></i>
-              Profile picture is optional - focus on your professional details first
-            </li>
-            <li className="flex items-start">
-              <i className="fas fa-check-circle mr-2 mt-0.5 text-green-500"></i>
-              Keep your summary concise and impactful
-            </li>
-            <li className="flex items-start">
-              <i className="fas fa-check-circle mr-2 mt-0.5 text-green-500"></i>
-              Use bullet points to highlight key achievements
-            </li>
-          </ul>
         </div>
       </div>
     </div>

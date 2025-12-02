@@ -1,9 +1,10 @@
-// src/components/GovernmentExams.tsx - FIXED VERSION
+// src/components/GovernmentExams.tsx - UPDATED WITH LATEST EXAMS & AUTO-CLEANUP
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
+import { Clock, AlertCircle, Filter, Calendar } from 'lucide-react';
 
 interface GovExam {
   id: string;
@@ -36,18 +37,42 @@ const GovernmentExams: React.FC = () => {
   const [selectedOrg, setSelectedOrg] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string>('all');
   const examsPerPage = 12;
 
   const { trackDailyPageView, trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
 
+  // Load and clean exams
+  const loadAndCleanExams = () => {
+    const savedExams = JSON.parse(localStorage.getItem('governmentExams') || '[]');
+    
+    // Filter out exams older than 90 days (3 months)
+    const now = Date.now();
+    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+    
+    const recentExams = savedExams.filter((exam: GovExam) => {
+      const examTimestamp = exam.addedTimestamp || Date.now();
+      return examTimestamp >= ninetyDaysAgo;
+    });
+    
+    // Sort by addedTimestamp (newest first)
+    const sortedExams = recentExams.sort((a: GovExam, b: GovExam) => {
+      const timeA = a.addedTimestamp || Date.now();
+      const timeB = b.addedTimestamp || Date.now();
+      return timeB - timeA; // Descending order (newest first)
+    });
+    
+    setExams(sortedExams);
+    setLastUpdated(new Date().toLocaleString('en-IN'));
+  };
+
   // Track daily page view on mount
   useEffect(() => {
-    trackDailyPageView('Government Exams', '/government-exams');
-    
-    // Load exams from localStorage
-    const savedExams = JSON.parse(localStorage.getItem('governmentExams') || '[]');
-    setExams(savedExams);
+    trackDailyPageView('Latest Government Exams', '/government-exams');
+    loadAndCleanExams();
   }, [trackDailyPageView]);
 
   // Exam levels/categories
@@ -81,32 +106,26 @@ const GovernmentExams: React.FC = () => {
     'Others'
   ];
 
-  // Filter exams
-  const filteredExams = exams.filter(exam => {
-    const matchesLevel = selectedLevel === 'all' || exam.examLevel === selectedLevel;
-    const matchesOrg = selectedOrg === 'all' || exam.organization === selectedOrg;
-    const matchesSearch = searchTerm === '' || 
-      exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.posts.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    return matchesLevel && matchesOrg && matchesSearch;
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredExams.length / examsPerPage);
-  const startIndex = (currentPage - 1) * examsPerPage;
-  const currentExams = filteredExams.slice(startIndex, startIndex + examsPerPage);
-
-  // Featured exams
-  const featuredExams = exams.filter(exam => exam.featured);
-
   // Check if application is open
   const isApplicationOpen = (exam: GovExam) => {
     const now = new Date();
     const startDate = new Date(exam.applicationStartDate);
     const endDate = new Date(exam.applicationEndDate);
     return now >= startDate && now <= endDate;
+  };
+
+  // Check if application is upcoming
+  const isApplicationUpcoming = (exam: GovExam) => {
+    const now = new Date();
+    const startDate = new Date(exam.applicationStartDate);
+    return now < startDate;
+  };
+
+  // Check if application is closed
+  const isApplicationClosed = (exam: GovExam) => {
+    const now = new Date();
+    const endDate = new Date(exam.applicationEndDate);
+    return now > endDate;
   };
 
   // Days remaining to apply
@@ -116,6 +135,40 @@ const GovernmentExams: React.FC = () => {
     const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
   };
+
+  // Filter exams
+  const filteredExams = exams.filter(exam => {
+    const matchesLevel = selectedLevel === 'all' || exam.examLevel === selectedLevel;
+    const matchesOrg = selectedOrg === 'all' || exam.organization === selectedOrg;
+    const matchesSearch = searchTerm === '' || 
+      exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exam.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exam.posts.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesStatus = true;
+    if (applicationStatusFilter === 'open') {
+      matchesStatus = isApplicationOpen(exam);
+    } else if (applicationStatusFilter === 'upcoming') {
+      matchesStatus = isApplicationUpcoming(exam);
+    } else if (applicationStatusFilter === 'closed') {
+      matchesStatus = isApplicationClosed(exam);
+    }
+    
+    return matchesLevel && matchesOrg && matchesSearch && matchesStatus;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredExams.length / examsPerPage);
+  const startIndex = (currentPage - 1) * examsPerPage;
+  const currentExams = filteredExams.slice(startIndex, startIndex + examsPerPage);
+
+  // Featured exams
+  const featuredExams = exams.filter(exam => exam.featured);
+  
+  // New exams (added in last 7 days)
+  const newExams = exams.filter(exam => 
+    exam.isNew || (exam.addedTimestamp && (Date.now() - exam.addedTimestamp) < 7 * 24 * 60 * 60 * 1000)
+  );
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
@@ -129,6 +182,7 @@ const GovernmentExams: React.FC = () => {
     setSelectedLevel('all');
     setSelectedOrg('all');
     setSearchTerm('');
+    setApplicationStatusFilter('all');
     setCurrentPage(1);
     trackButtonClick('clear_filters', 'filters', 'government_exams');
   };
@@ -143,23 +197,73 @@ const GovernmentExams: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>Government Exams 2025 - Sarkari Naukri Updates | CareerCraft.in</title>
-        <meta name="description" content="Latest Government Job Exams 2025 - UPSC, SSC, Banking, Railway, Defense notifications. Get exam dates, eligibility, syllabus for all Sarkari Naukri exams in India." />
-        <meta name="keywords" content="government exams 2025, sarkari exam, UPSC notification, SSC exams, banking jobs, railway recruitment, defense jobs India, govt job exam dates" />
+        <title>Latest Government Exams 2025 - Sarkari Naukri Updates | CareerCraft.in</title>
+        <meta name="description" content="Latest Government Job Exams 2025 - UPSC, SSC, Banking, Railway, Defense notifications. Get exam dates, eligibility, syllabus for all Sarkari Naukri exams in India. Updated daily, auto-cleaned every 90 days." />
+        <meta name="keywords" content="latest government exams 2025, sarkari exam updates, UPSC notification today, SSC exams latest, banking jobs 2025, railway recruitment, defense jobs India, govt job exam dates, latest sarkari naukri" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <link rel="canonical" href="https://careercraft.in/government-exams" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Latest Government Exams 2025 - Sarkari Naukri Updates | CareerCraft.in" />
+        <meta property="og:description" content="Latest Government Job Exams 2025 - UPSC, SSC, Banking, Railway, Defense notifications. Get exam dates, eligibility, syllabus for all Sarkari Naukri exams in India." />
+        <meta property="og:url" content="https://careercraft.in/government-exams" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+        <meta property="og:site_name" content="CareerCraft.in - India's Career Platform" />
+        <meta property="og:locale" content="en_IN" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Latest Government Exams 2025 - Sarkari Naukri Updates | CareerCraft.in" />
+        <meta name="twitter:description" content="Latest Government Job Exams 2025 - UPSC, SSC, Banking, Railway, Defense notifications. Get exam dates, eligibility, syllabus for all Sarkari Naukri exams in India." />
+        <meta name="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+        <meta name="twitter:site" content="@CareerCraftIN" />
+
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "Latest Government Exams in India",
+            "description": "Updated list of latest government job exams and notifications for Indian job seekers",
+            "url": "https://careercraft.in/government-exams",
+            "numberOfItems": exams.length,
+            "itemListElement": exams.slice(0, 10).map((exam, index) => ({
+              "@type": "ListItem",
+              "position": index + 1,
+              "item": {
+                "@type": "EducationalOccupationalCredential",
+                "name": exam.examName,
+                "description": exam.eligibility,
+                "credentialCategory": exam.examLevel,
+                "recognizedBy": {
+                  "@type": "Organization",
+                  "name": exam.organization
+                },
+                "validFor": {
+                  "@type": "Country",
+                  "name": "India"
+                },
+                "url": exam.applyLink
+              }
+            }))
+          })}
+        </script>
       </Helmet>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-green-600 to-green-500 text-white py-16">
+      <section className="bg-gradient-to-r from-green-600 to-emerald-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            🏛️ Government Exams 2025
+            🏛️ Latest Government Exams 2025
           </h1>
           <p className="text-xl max-w-3xl mx-auto mb-8">
             Complete Guide to Sarkari Naukri Exams - UPSC, SSC, Banking, Railway, Defense & More
+            <span className="block text-sm text-green-200 mt-2">Auto-cleaned every 90 days • Updated: {lastUpdated}</span>
           </p>
           
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="max-w-4xl mx-auto bg-white rounded-lg p-4 shadow-lg">
+          <form onSubmit={handleSearch} className="max-w-5xl mx-auto bg-white rounded-xl p-4 shadow-2xl">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <input
@@ -174,7 +278,10 @@ const GovernmentExams: React.FC = () => {
                 <select 
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                   value={selectedLevel}
-                  onChange={(e) => setSelectedLevel(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedLevel(e.target.value);
+                    setCurrentPage(1);
+                  }}
                 >
                   {examLevels.map(level => (
                     <option key={level} value={level}>
@@ -186,25 +293,81 @@ const GovernmentExams: React.FC = () => {
               <div>
                 <button 
                   type="submit"
-                  className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
                 >
-                  Search Exams
+                  Search Latest Exams
                 </button>
               </div>
+            </div>
+            
+            {/* Advanced Filters Toggle */}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="flex items-center gap-2 text-green-700 hover:text-green-800 text-sm"
+              >
+                <Filter size={16} />
+                {showAdvancedFilters ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
+              </button>
+              
+              {showAdvancedFilters && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Organization</label>
+                    <select 
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                      value={selectedOrg}
+                      onChange={(e) => {
+                        setSelectedOrg(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      {organizations.map(org => (
+                        <option key={org} value={org}>
+                          {org === 'all' ? 'All Organizations' : org}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Application Status</label>
+                    <select
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                      value={applicationStatusFilter}
+                      onChange={(e) => {
+                        setApplicationStatusFilter(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="open">Currently Open</option>
+                      <option value="upcoming">Upcoming</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </form>
 
           {/* Stats */}
           <div className="mt-6 flex flex-wrap justify-center items-center gap-4">
-            <div className="bg-green-700 px-4 py-2 rounded-lg">
+            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
               <span className="font-bold text-2xl">{exams.length}</span>
-              <span className="text-sm ml-2">Total Exams</span>
+              <span className="text-sm ml-2">Latest Exams</span>
             </div>
-            <div className="bg-green-700 px-4 py-2 rounded-lg">
+            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
               <span className="font-bold text-2xl">
                 {exams.filter(e => isApplicationOpen(e)).length}
               </span>
               <span className="text-sm ml-2">Applications Open</span>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+              <span className="font-bold text-2xl">
+                {newExams.length}
+              </span>
+              <span className="text-sm ml-2">New This Week</span>
             </div>
             <button 
               onClick={clearFilters}
@@ -274,22 +437,65 @@ const GovernmentExams: React.FC = () => {
                         {org === 'all' ? 'All Organizations' : org}
                       </option>
                     ))}
-                </select>
+                  </select>
+                </div>
+
+                {/* Application Status Filter */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Application Status
+                  </label>
+                  <select 
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    value={applicationStatusFilter}
+                    onChange={(e) => {
+                      setApplicationStatusFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="open">Currently Open</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="closed">Closed</option>
+                  </select>
                 </div>
 
                 {/* Stats */}
                 <div className="border-t border-gray-200 pt-4">
-                  <h4 className="font-semibold text-gray-800 mb-2">Quick Stats</h4>
+                  <h4 className="font-semibold text-gray-800 mb-2">Latest Exam Stats</h4>
                   <p className="text-sm text-gray-600 mb-1">
-                    {filteredExams.length} exams found
+                    {filteredExams.length} latest exams found
                   </p>
                   <p className="text-sm text-gray-600 mb-1">
                     {exams.filter(e => isApplicationOpen(e)).length} accepting applications
+                  </p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    {newExams.length} new this week
+                  </p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Auto-cleaned every 90 days
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Updated: {lastUpdated.split(',')[0]}
                   </p>
                   <p className="text-sm text-gray-600">
                     Page {currentPage} of {totalPages}
                   </p>
                 </div>
+              </div>
+
+              {/* Auto-Cleanup Info */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle size={16} className="text-yellow-600" />
+                  <h3 className="font-bold text-yellow-800 text-sm">🔄 Auto-Cleanup Active</h3>
+                </div>
+                <p className="text-yellow-700 text-xs mb-2">
+                  Exams older than 90 days are automatically removed to keep listings fresh.
+                </p>
+                <p className="text-yellow-700 text-xs">
+                  Showing only latest exams from last 3 months
+                </p>
               </div>
 
               {/* Resume Builder CTA */}
@@ -329,11 +535,30 @@ const GovernmentExams: React.FC = () => {
 
             {/* Exams List */}
             <div className="lg:w-3/4">
+              {/* New Exams Section */}
+              {newExams.length > 0 && (
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                      <span className="text-red-500 mr-2">🔥</span> New Exams This Week
+                    </h2>
+                    <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+                      {newExams.length} new exams
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {newExams.slice(0, 4).map(exam => (
+                      <ExamCard key={exam.id} exam={exam} newExam />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Featured Exams */}
               {featuredExams.length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                    ⭐ Featured Government Exams
+                    <span className="text-yellow-500 mr-2">⭐</span> Latest Featured Government Exams
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {featuredExams.map(exam => (
@@ -346,17 +571,18 @@ const GovernmentExams: React.FC = () => {
               {/* All Exams */}
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-gray-800">
-                  All Government Exams 2025
+                  All Latest Government Exams 2025
                   <span className="text-gray-600 text-lg ml-2">({filteredExams.length})</span>
                 </h2>
-                <div className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
+                <div className="text-sm text-gray-600 flex items-center gap-2">
+                  <Clock size={14} />
+                  Page {currentPage} of {totalPages} • Updated: {lastUpdated.split(',')[0]}
                 </div>
               </div>
               
               {currentExams.length === 0 ? (
                 <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">No exams found</h3>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">No latest exams found</h3>
                   <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
                   <button 
                     onClick={clearFilters}
@@ -403,7 +629,7 @@ const GovernmentExams: React.FC = () => {
                               onClick={() => goToPage(pageNum)}
                               className={`px-3 py-2 rounded-lg border ${
                                 currentPage === pageNum
-                                  ? 'bg-green-600 text-white border-green-600'
+                                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white border-green-600'
                                   : 'border-gray-300 text-gray-600 hover:bg-gray-50'
                               }`}
                             >
@@ -433,7 +659,7 @@ const GovernmentExams: React.FC = () => {
 };
 
 // Exam Card Component
-const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featured = false }) => {
+const ExamCard: React.FC<{ exam: GovExam; featured?: boolean; newExam?: boolean }> = ({ exam, featured = false, newExam = false }) => {
   const { trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
   
@@ -453,6 +679,7 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featu
 
   const daysLeft = getDaysRemaining();
   const applicationOpen = isApplicationOpen();
+  const isRecent = exam.addedTimestamp && (Date.now() - exam.addedTimestamp) < 24 * 60 * 60 * 1000;
 
   const handleApplyClick = () => {
     trackGovExamApplication(exam.id, exam.examName, exam.organization);
@@ -460,31 +687,47 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featu
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${
-      featured ? 'border-l-4 border-green-500' : ''
+    <div className={`bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${
+      featured ? 'ring-2 ring-yellow-400' : newExam ? 'ring-2 ring-red-400' : ''
     }`}>
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
-          <h3 className="text-xl font-bold text-gray-800 mb-1">{exam.examName}</h3>
+          <div className="flex items-start gap-2 mb-1">
+            <h3 className="text-xl font-bold text-gray-800">{exam.examName}</h3>
+            <div className="flex flex-col items-end gap-1">
+              {isRecent && (
+                <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                  NEW TODAY
+                </span>
+              )}
+              {exam.isNew && !isRecent && (
+                <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+                  NEW
+                </span>
+              )}
+              {featured && (
+                <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">
+                  Featured
+                </span>
+              )}
+              {newExam && (
+                <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2 py-1 rounded-full">
+                  This Week
+                </span>
+              )}
+            </div>
+          </div>
           <p className="text-gray-600 mb-2">{exam.organization}</p>
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+            <Calendar size={12} />
+            <span>Added: {exam.addedTimestamp ? new Date(exam.addedTimestamp).toLocaleDateString('en-IN') : 'Recently'}</span>
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          {exam.isNew && (
-            <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
-              NEW
-            </span>
-          )}
-          {featured && (
-            <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-              Featured
-            </span>
-          )}
-          {applicationOpen && (
-            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-              Apply Now
-            </span>
-          )}
-        </div>
+        {applicationOpen && (
+          <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+            Apply Now
+          </span>
+        )}
       </div>
 
       <div className="space-y-2 mb-4">
@@ -537,8 +780,9 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featu
 
       {applicationOpen && daysLeft > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-          <p className="text-sm font-semibold text-yellow-800">
-            ⚠️ Only {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left to apply!
+          <p className="text-sm font-semibold text-yellow-800 flex items-center gap-2">
+            <AlertCircle size={14} />
+            Only {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left to apply!
           </p>
         </div>
       )}
@@ -550,6 +794,11 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featu
         <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
           {exam.organization}
         </span>
+        {exam.admitCardDate && (
+          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+            Admit Card: {new Date(exam.admitCardDate).toLocaleDateString('en-IN')}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -558,7 +807,7 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean }> = ({ exam, featu
           target="_blank" 
           rel="noopener noreferrer"
           onClick={handleApplyClick}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors text-center"
+          className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all text-center shadow-md hover:shadow-lg"
         >
           Apply Online
         </a>

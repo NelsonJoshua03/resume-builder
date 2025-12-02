@@ -30,7 +30,7 @@ import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import NewTemplatesPage from './components/NewTemplatesPage';
 import EditResumePage from './components/EditResumePage';
-
+import './styles/blog.css';
 // Import ALL analytics dashboards
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import LocalAnalyticsDashboard from './components/LocalAnalyticsDashboard';

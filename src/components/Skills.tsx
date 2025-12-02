@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SkillsProps, Skill } from './types';
 
-const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template }: SkillsProps) => {
+const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFieldInteraction }: SkillsProps) => {
   const [newSkill, setNewSkill] = useState('');
   const [newProficiency, setNewProficiency] = useState<Skill['proficiency']>('Intermediate');
 
@@ -15,6 +15,7 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template }: Skil
   const handleAddSkill = () => {
     if (newSkill.trim()) {
       onAdd({ name: newSkill.trim(), proficiency: newProficiency });
+      onFieldInteraction?.('skill_add', 'change');
       setNewSkill('');
       setNewProficiency('Intermediate');
     }
@@ -46,7 +47,12 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template }: Skil
             <div className="flex items-center space-x-3">
               <select
                 value={skill.proficiency}
-                onChange={(e) => onUpdateProficiency(index, e.target.value as Skill['proficiency'])}
+                onChange={(e) => {
+                  onUpdateProficiency(index, e.target.value as Skill['proficiency']);
+                  onFieldInteraction?.(`proficiency_${index}`, 'change');
+                }}
+                onFocus={() => onFieldInteraction?.(`proficiency_${index}`, 'focus')}
+                onBlur={() => onFieldInteraction?.(`proficiency_${index}`, 'blur')}
                 className="text-sm border border-gray-300 rounded px-3 py-1 bg-white focus:outline-none focus:border-blue-500"
               >
                 {proficiencyOptions.map(option => (
@@ -73,12 +79,22 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template }: Skil
           className="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" 
           placeholder="Add a skill"
           value={newSkill}
-          onChange={(e) => setNewSkill(e.target.value)}
+          onChange={(e) => {
+            setNewSkill(e.target.value);
+            onFieldInteraction?.('skill_new', 'change');
+          }}
+          onFocus={() => onFieldInteraction?.('skill_new', 'focus')}
+          onBlur={() => onFieldInteraction?.('skill_new', 'blur')}
           onKeyPress={handleKeyPress}
         />
         <select
           value={newProficiency}
-          onChange={(e) => setNewProficiency(e.target.value as Skill['proficiency'])}
+          onChange={(e) => {
+            setNewProficiency(e.target.value as Skill['proficiency']);
+            onFieldInteraction?.('proficiency_new', 'change');
+          }}
+          onFocus={() => onFieldInteraction?.('proficiency_new', 'focus')}
+          onBlur={() => onFieldInteraction?.('proficiency_new', 'blur')}
           className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
         >
           {proficiencyOptions.map(option => (
