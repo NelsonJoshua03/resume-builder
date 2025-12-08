@@ -11,6 +11,7 @@
     "start": "vite --host --port 3001",
     "build": "tsc && vite build",
     "build:production": "tsc && vite build --mode production",
+    "build:netlify": "NODE_VERSION=20 tsc && vite build --mode production",
     "build:analyze": "ANALYZE=true vite build --mode production",
     "preview": "vite preview --host --port 3001",
     "preview:production": "vite preview --host --port 3002",
@@ -141,7 +142,7 @@
     "url": "https://github.com/NelsonJoshua03/careercraft/issues"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": ">=20.0.0",
     "npm": ">=9.0.0"
   },
   "browserslist": {
@@ -155,5 +156,15 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "overrides": {
+    "cheerio": {
+      "glob": "10.3.10",
+      "minimatch": "9.0.3",
+      "lru-cache": "10.0.0"
+    },
+    "glob": "10.3.10",
+    "minimatch": "9.0.3",
+    "lru-cache": "10.0.0"
   }
 }
