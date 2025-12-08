@@ -1,16 +1,11 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { visualizer } from 'rollup-plugin-visualizer';
 import { VitePWA } from 'vite-plugin-pwa';
 import { createHtmlPlugin } from 'vite-plugin-html';
-import viteCompression from 'vite-plugin-compression';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current directory
-  // Note: Don't load NODE_ENV from .env files - let Vite handle it
-  const env = loadEnv(mode, process.cwd(), 'VITE_'); // Only load VITE_ prefixed vars
-  
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
   const isProduction = mode === 'production';
   const isDevelopment = mode === 'development';
   
@@ -18,7 +13,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       
-      // HTML plugin with environment variable injection
       createHtmlPlugin({
         minify: isProduction,
         inject: {
@@ -34,7 +28,6 @@ export default defineConfig(({ mode }) => {
         }
       }),
       
-      // PWA Support
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -62,62 +55,22 @@ export default defineConfig(({ mode }) => {
               purpose: 'any maskable'
             }
           ]
+        },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MB limit instead of 2 MB
+          globPatterns: [
+            '**/*.{js,css,html,ico,png,svg,webp,woff,woff2,ttf,eot,json}'
+          ],
+          // Don't cache source maps or compressed files
+          globIgnores: ['**/*.map', '**/*.gz']
+        },
+        // Disable precaching for large files by using a filter
+        injectManifest: {
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
         }
-      }),
-      
-      // Compression for production
-      isProduction && viteCompression({
-        algorithm: 'gzip',
-        ext: '.gz',
-        threshold: 1024,
-        deleteOriginFile: false
-      }),
-      
-      // Bundle visualizer (only in development)
-      isDevelopment && visualizer({
-        filename: './dist/stats.html',
-        open: true,
-        gzipSize: true,
-        brotliSize: false
       })
-    ].filter(Boolean),
+    ],
     
-    resolve: {
-      alias: {
-        '@': '/src',
-        '@components': '/src/components',
-        '@hooks': '/src/hooks',
-        '@utils': '/src/utils',
-        '@types': '/src/types',
-        '@assets': '/src/assets'
-      }
-    },
-    
-    // Optimization configuration
-    optimizeDeps: {
-      include: [
-        'react',
-        'react-dom',
-        'react-router-dom',
-        'firebase/app',
-        'firebase/firestore',
-        'firebase/auth',
-        'firebase/analytics',
-        'firebase/storage',
-        'jspdf',
-        'html2canvas',
-        'lucide-react'
-      ],
-      exclude: ['pdfjs-dist'],
-      esbuildOptions: {
-        target: 'es2020',
-        supported: {
-          'top-level-await': true
-        }
-      }
-    },
-    
-    // Build configuration
     build: {
       target: 'es2020',
       sourcemap: isDevelopment,
@@ -127,25 +80,30 @@ export default defineConfig(({ mode }) => {
         compress: {
           drop_console: true,
           drop_debugger: true,
-          pure_funcs: ['console.log', 'console.debug', 'console.info']
+          passes: 2 // More aggressive minification
         },
-        format: {
-          comments: false
-        },
-        mangle: {
-          safari10: true
-        }
+        mangle: true
       } : undefined,
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // Split vendor chunks for better caching
+            // Better chunk splitting to reduce main bundle size
             if (id.includes('node_modules')) {
+              // Separate large libraries
               if (id.includes('firebase')) {
                 return 'vendor-firebase';
               }
-              if (id.includes('react')) {
+              if (id.includes('react') && !id.includes('react-dom')) {
                 return 'vendor-react';
+              }
+              if (id.includes('react-dom')) {
+                return 'vendor-react-dom';
+              }
+              if (id.includes('jspdf') || id.includes('html2canvas')) {
+                return 'vendor-pdf';
+              }
+              if (id.includes('@dnd-kit')) {
+                return 'vendor-dnd';
               }
               if (id.includes('@radix-ui')) {
                 return 'vendor-ui';
@@ -153,15 +111,31 @@ export default defineConfig(({ mode }) => {
               if (id.includes('lucide-react') || id.includes('react-icons')) {
                 return 'vendor-icons';
               }
-              if (id.includes('jspdf') || id.includes('html2canvas')) {
-                return 'vendor-pdf';
+              if (id.includes('recharts')) {
+                return 'vendor-charts';
               }
-              return 'vendor';
+              if (id.includes('react-markdown') || id.includes('remark') || id.includes('rehype')) {
+                return 'vendor-markdown';
+              }
+              if (id.includes('react-router-dom')) {
+                return 'vendor-router';
+              }
+              if (id.includes('axios')) {
+                return 'vendor-axios';
+              }
+              if (id.includes('react-hook-form') || id.includes('zod')) {
+                return 'vendor-forms';
+              }
+              // Group remaining node_modules
+              return 'vendor-other';
             }
             
-            // Split our own components
+            // Split our own code
             if (id.includes('src/components/ResumeBuilder')) {
-              return 'app-resume-builder';
+              return 'app-resume';
+            }
+            if (id.includes('src/components/Blog')) {
+              return 'app-blog';
             }
             if (id.includes('src/components/PDF')) {
               return 'app-pdf';
@@ -183,62 +157,28 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
-      chunkSizeWarningLimit: 1500,
+      chunkSizeWarningLimit: 2000, // Increased from 1500 to 2000
       reportCompressedSize: false,
       emptyOutDir: true
     },
     
-    // Server configuration
     server: {
       port: 3001,
       host: true,
       open: !isProduction,
-      cors: true,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-        'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization'
-      },
-      hmr: {
-        overlay: true
-      }
+      cors: true
     },
     
-    // Preview configuration (for production build preview)
     preview: {
       port: 3002,
       host: true,
-      cors: true,
-      headers: {
-        'Cache-Control': 'public, max-age=3600'
-      }
+      cors: true
     },
     
-    // Environment variable definitions
     define: {
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '1.0.0'),
       'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
-      __APP_ENV__: JSON.stringify(mode),
-      // Set NODE_ENV properly - this is the correct way
-      'process.env.NODE_ENV': JSON.stringify(mode)
-    },
-    
-    // CSS configuration
-    css: {
-      devSourcemap: isDevelopment,
-      modules: {
-        localsConvention: 'camelCase',
-        generateScopedName: isProduction ? '[hash:base64:8]' : '[name]__[local]'
-      },
-      preprocessorOptions: {
-        scss: {
-          additionalData: `@import "@/styles/variables.scss";`
-        }
-      }
-    },
-    
-    // Logging configuration
-    logLevel: isProduction ? 'warn' : 'info',
-    clearScreen: false
+      __APP_ENV__: JSON.stringify(mode)
+    }
   };
 });

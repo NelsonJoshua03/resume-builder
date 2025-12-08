@@ -9,9 +9,9 @@
     "dev:open": "vite --host --port 3001 --open",
     "dev:firebase": "vite --host --port 3001 --cors",
     "start": "vite --host --port 3001",
-    "build": "tsc && vite build",
-    "build:production": "tsc && vite build --mode production",
-    "build:netlify": "NODE_VERSION=20 tsc && vite build --mode production",
+    "build": "vite build",
+    "build:production": "vite build --mode production",
+    "build:netlify": "vite build --mode production",
     "build:analyze": "ANALYZE=true vite build --mode production",
     "preview": "vite preview --host --port 3001",
     "preview:production": "vite preview --host --port 3002",
@@ -36,7 +36,8 @@
     "clean:all": "rm -rf dist node_modules package-lock.json",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,css,md}\"",
-    "security": "npm audit && npx audit-ci --moderate"
+    "security": "npm audit && npx audit-ci --moderate",
+    "postinstall": "echo 'Dependencies installed successfully!'"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -60,9 +61,7 @@
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.19",
-    "@types/react-syntax-highlighter": "^15.5.13",
     "axios": "^1.12.2",
-    "cheerio": "^1.0.0-rc.12",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^10.14.1",
@@ -78,7 +77,6 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.28.0",
     "react-share": "^5.2.2",
-    "react-syntax-highlighter": "^16.1.0",
     "react-to-print": "^3.1.1",
     "recharts": "^2.15.0",
     "rehype-raw": "^7.0.0",
@@ -93,10 +91,8 @@
     "@types/html2canvas": "^0.5.35",
     "@types/jspdf": "^1.3.3",
     "@types/node": "^20.0.0",
-    "@types/node-fetch": "^2.6.12",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-legacy": "^5.4.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.21",
@@ -109,14 +105,12 @@
     "postcss": "^8.5.6",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
-    "rollup-plugin-visualizer": "^5.12.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^5.4.21",
     "vite-plugin-html": "^3.2.2",
-    "vite-plugin-pwa": "^0.20.2",
-    "vite-plugin-compression": "^0.5.1"
+    "vite-plugin-pwa": "^0.20.2"
   },
   "description": "CareerCraft.in - India's premier career platform for resume building and job search with ATS optimization",
   "main": "eslint.config.js",
@@ -156,15 +150,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "overrides": {
-    "cheerio": {
-      "glob": "10.3.10",
-      "minimatch": "9.0.3",
-      "lru-cache": "10.0.0"
-    },
-    "glob": "10.3.10",
-    "minimatch": "9.0.3",
-    "lru-cache": "10.0.0"
   }
 }

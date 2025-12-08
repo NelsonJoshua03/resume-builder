@@ -1,13 +1,11 @@
 [build]
-  command = "npm run build"
+  command = "npm run build:netlify"
   publish = "dist"
-  functions = "netlify/functions"
 
 [dev]
   targetPort = 3001
   framework = "vite"
 
-# Environment variables
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
@@ -24,16 +22,6 @@
   NODE_VERSION = "20"
   NPM_FLAGS = "--legacy-peer-deps"
 
-# Plugin for better Node.js support
-[[plugins]]
-  package = "@netlify/plugin-lighthouse"
-
-# Edge Functions (if needed)
-[[edge_functions]]
-  path = "/api/*"
-  function = "api"
-
-# Redirects for SEO - UPDATED FOR CAREERCRAFT.IN
 [[redirects]]
   from = "https://resumecvforge.netlify.app/*"
   to = "https://careercraft.in/:splat"
@@ -44,7 +32,6 @@
   to = "https://careercraft.in/:splat"
   status = 301
 
-# Priority redirects for SEO files
 [[redirects]]
   from = "/sitemap.xml"
   to = "/sitemap.xml"
@@ -57,20 +44,17 @@
   status = 200
   force = true
 
-# Redirect for Google verification file
 [[redirects]]
   from = "/google213349ae4cc6099f.html"
   to = "/google213349ae4cc6099f.html"
   status = 200
   force = true
 
-# Blog redirects for better SEO
 [[redirects]]
   from = "/blog/*"
   to = "/blog/:splat"
   status = 200
 
-# SPA fallback for all other routes (must come last)
 [[redirects]]
   from = "/*"
   to = "/index.html"
