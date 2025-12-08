@@ -1,9 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
 import { createHtmlPlugin } from 'vite-plugin-html';
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   const isProduction = mode === 'production';
@@ -26,48 +24,6 @@ export default defineConfig(({ mode }) => {
             environment: mode
           }
         }
-      }),
-      
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-        manifest: {
-          name: 'CareerCraft India',
-          short_name: 'CareerCraft',
-          description: 'India\'s premier career platform - Free ATS-friendly resume builder and job portal',
-          theme_color: '#2563eb',
-          background_color: '#ffffff',
-          display: 'standalone',
-          orientation: 'portrait',
-          scope: '/',
-          start_url: '/',
-          icons: [
-            {
-              src: '/logos/careercraft-logo-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any maskable'
-            },
-            {
-              src: '/logos/careercraft-logo-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
-          ]
-        },
-        workbox: {
-          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MB limit instead of 2 MB
-          globPatterns: [
-            '**/*.{js,css,html,ico,png,svg,webp,woff,woff2,ttf,eot,json}'
-          ],
-          // Don't cache source maps or compressed files
-          globIgnores: ['**/*.map', '**/*.gz']
-        },
-        // Disable precaching for large files by using a filter
-        injectManifest: {
-          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024
-        }
       })
     ],
     
@@ -80,16 +36,14 @@ export default defineConfig(({ mode }) => {
         compress: {
           drop_console: true,
           drop_debugger: true,
-          passes: 2 // More aggressive minification
+          passes: 2
         },
         mangle: true
       } : undefined,
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // Better chunk splitting to reduce main bundle size
             if (id.includes('node_modules')) {
-              // Separate large libraries
               if (id.includes('firebase')) {
                 return 'vendor-firebase';
               }
@@ -126,11 +80,9 @@ export default defineConfig(({ mode }) => {
               if (id.includes('react-hook-form') || id.includes('zod')) {
                 return 'vendor-forms';
               }
-              // Group remaining node_modules
               return 'vendor-other';
             }
             
-            // Split our own code
             if (id.includes('src/components/ResumeBuilder')) {
               return 'app-resume';
             }
@@ -157,7 +109,7 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
-      chunkSizeWarningLimit: 2000, // Increased from 1500 to 2000
+      chunkSizeWarningLimit: 2000,
       reportCompressedSize: false,
       emptyOutDir: true
     },

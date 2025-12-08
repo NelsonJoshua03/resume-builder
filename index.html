@@ -9,19 +9,17 @@
     <!-- Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     
-    <!-- Content Security Policy - PRODUCTION OPTIMIZED -->
+    <!-- Content Security Policy - SIMPLIFIED FOR NETLIFY -->
     <meta http-equiv="Content-Security-Policy" 
-          content="default-src 'self' https:;
-                   script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+          content="default-src 'self' https: data: blob:;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:
                            https://www.googletagmanager.com 
                            https://pagead2.googlesyndication.com 
                            https://cdnjs.cloudflare.com
                            https://*.googleapis.com
                            https://*.gstatic.com
                            https://*.google.com
-                           https://*.google-analytics.com
-                           https://ep1.adtrafficquality.google
-                           https://ep2.adtrafficquality.google;
+                           https://*.google-analytics.com;
                    style-src 'self' 'unsafe-inline' 
                            https://cdnjs.cloudflare.com 
                            https://fonts.googleapis.com;
@@ -41,8 +39,6 @@
                            https://*.firebaseio.com
                            wss://*.firebaseio.com
                            https://firebasestorage.googleapis.com
-                           https://ep1.adtrafficquality.google
-                           https://ep2.adtrafficquality.google
                            https://raw.githubusercontent.com;
                    worker-src 'self' blob:;
                    manifest-src 'self';
@@ -259,11 +255,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/logos/careercraft-favicon-16x16.png">
     <link rel="mask-icon" href="/logos/careercraft-safari-pinned-tab.svg" color="#2563eb">
     <link rel="shortcut icon" href="/logos/careercraft-favicon.ico">
-    <link rel="manifest" href="/site.webmanifest">
-    
-    <!-- Preload critical assets -->
-    <link rel="preload" href="/src/styles/global.css" as="style">
-    <link rel="preload" href="/src/main.tsx" as="script">
+    <link rel="manifest" href="/manifest.webmanifest">
     
     <!-- Critical CSS for Edge Compatibility -->
     <style>
@@ -385,9 +377,6 @@
       <div class="loading-skeleton" style="height: 100vh;"></div>
     </div>
     
-    <!-- Main application script -->
-    <script type="module" src="/src/main.tsx"></script>
-    
     <!-- Performance monitoring -->
     <script>
       // Track page load performance
@@ -454,37 +443,6 @@
             violatedDirective: e.violatedDirective,
             originalPolicy: e.originalPolicy
           });
-        });
-      }
-    </script>
-    
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= gaMeasurementId %>"></script>
-    <script>
-      // Initialize analytics with environment-specific settings
-      const isProduction = '<%= environment %>' === 'production';
-      const analyticsId = '<%= gaMeasurementId %>';
-      
-      if (analyticsId) {
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        
-        gtag('config', analyticsId, {
-          'debug_mode': !isProduction,
-          'transport_type': 'beacon',
-          'anonymize_ip': true,
-          'allow_google_signals': isProduction,
-          'allow_ad_personalization_signals': isProduction
-        });
-        
-        // Track initial page view
-        gtag('event', 'page_view', {
-          'page_title': document.title,
-          'page_location': window.location.href,
-          'page_path': window.location.pathname,
-          'environment': '<%= environment %>',
-          'send_to': analyticsId
         });
       }
     </script>
