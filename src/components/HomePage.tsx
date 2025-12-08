@@ -1,5 +1,5 @@
 // src/components/HomePage.tsx - UPDATED WITH FIXED TRACKING
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileText, 
@@ -61,8 +61,9 @@ const HomePage = () => {
     trackUserFlow(from, to, action);
   };
 
-  const handleExternalLinkClick = (linkText: string, destination: string) => {
-    trackExternalLink(linkText, destination, 'homepage');
+  const handleExternalLinkClick = (linkText: string) => {
+    // Fixed: Removed unused 'destination' parameter
+    trackExternalLink(linkText);
     trackButtonClick(`external_${linkText.toLowerCase()}`, 'contact_section', 'homepage');
   };
 
@@ -354,7 +355,7 @@ const HomePage = () => {
                   className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExternalLinkClick('contact_email', 'mailto:contact@careercraft.in');
+                    handleExternalLinkClick('contact_email');
                   }}
                 >
                   contact@careercraft.in
@@ -378,7 +379,7 @@ const HomePage = () => {
                   className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExternalLinkClick('contact_linkedin', 'https://linkedin.com');
+                    handleExternalLinkClick('contact_linkedin');
                   }}
                 >
                   Connect with us
@@ -402,7 +403,7 @@ const HomePage = () => {
                   className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExternalLinkClick('contact_instagram', 'https://instagram.com');
+                    handleExternalLinkClick('contact_instagram');
                   }}
                 >
                   Follow us

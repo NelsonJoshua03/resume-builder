@@ -702,7 +702,6 @@ const MobilePDFGenerator = ({
 
       const renderTwoColumnPersonalInfo = () => {
         const leftColumnWidth = 65;
-        const rightColumnWidth = contentWidth - leftColumnWidth - 10;
         const sidebarColor = hexToRgb(primaryColor);
         
         // Draw sidebar background for entire first page

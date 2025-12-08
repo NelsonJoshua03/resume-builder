@@ -14,28 +14,32 @@ const SocialSharing: React.FC<SocialSharingProps> = ({ resumeTitle }) => {
   const shareOnFacebook = () => {
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(title)}`;
     trackButtonClick('share_facebook', 'social_sharing', 'resume');
-    trackSocialShare('facebook', 'resume', resumeTitle);
+    // Fix: trackSocialShare expects only 1 argument
+    trackSocialShare('facebook');
     window.open(url, '_blank', 'width=600,height=400');
   };
 
   const shareOnTwitter = () => {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(shareUrl)}&hashtags=CareerCraft,ResumeBuilder,IndiaJobs`;
     trackButtonClick('share_twitter', 'social_sharing', 'resume');
-    trackSocialShare('twitter', 'resume', resumeTitle);
+    // Fix: trackSocialShare expects only 1 argument
+    trackSocialShare('twitter');
     window.open(url, '_blank', 'width=600,height=400');
   };
 
   const shareOnLinkedIn = () => {
     const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
     trackButtonClick('share_linkedin', 'social_sharing', 'resume');
-    trackSocialShare('linkedin', 'resume', resumeTitle);
+    // Fix: trackSocialShare expects only 1 argument
+    trackSocialShare('linkedin');
     window.open(url, '_blank', 'width=600,height=400');
   };
 
   const shareOnWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(title + ' ' + shareUrl)}`;
     trackButtonClick('share_whatsapp', 'social_sharing', 'resume');
-    trackSocialShare('whatsapp', 'resume', resumeTitle);
+    // Fix: trackSocialShare expects only 1 argument
+    trackSocialShare('whatsapp');
     window.open(url, '_blank', 'width=600,height=400');
   };
 

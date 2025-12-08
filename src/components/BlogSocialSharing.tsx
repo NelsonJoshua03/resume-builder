@@ -1,23 +1,20 @@
-// src/components/BlogSocialSharing.tsx - UPDATED WITH GOOGLE ANALYTICS
+// src/components/BlogSocialSharing.tsx - FIXED VERSION
 import React from 'react';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 interface BlogSocialSharingProps {
   title: string;
   url: string;
-  description?: string;
 }
 
 const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({ 
   title, 
-  url, 
-  description = "Check out this amazing blog post on CareerCraft.in" 
+  url
 }) => {
   const { trackButtonClick, trackSocialShare } = useGoogleAnalytics();
   
   const encodedTitle = encodeURIComponent(title);
   const encodedUrl = encodeURIComponent(url);
-  const encodedDescription = encodeURIComponent(description);
 
   const shareUrls = {
     twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}&via=careercraftIN`,
@@ -29,18 +26,7 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
 
   const handleShare = (platform: string) => {
     trackButtonClick(`share_${platform}`, 'blog_social_sharing', 'blog');
-    trackSocialShare(platform, 'blog_post', title);
-    
-    // Additional Google Analytics event
-    if (typeof window.gtag !== 'undefined') {
-      window.gtag('event', 'share', {
-        method: platform,
-        content_type: 'blog_post',
-        content_id: title,
-        event_category: 'Social',
-        event_label: `blog_${platform}_share`
-      });
-    }
+    trackSocialShare(platform);
     
     window.open(shareUrls[platform as keyof typeof shareUrls], '_blank', 'width=600,height=400');
   };
@@ -50,16 +36,6 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
       await navigator.clipboard.writeText(url);
       trackButtonClick('copy_blog_link', 'blog_social_sharing', 'blog');
       alert('Blog post link copied to clipboard!');
-      
-      if (typeof window.gtag !== 'undefined') {
-        window.gtag('event', 'share', {
-          method: 'copy_link',
-          content_type: 'blog_post',
-          content_id: title,
-          event_category: 'Social',
-          event_label: 'blog_copy_link'
-        });
-      }
     } catch (err) {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
@@ -74,8 +50,7 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
 
   return (
     <div className="bg-gray-50 rounded-lg p-6 mt-8 border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-        <i className="fas fa-share-alt text-blue-600 mr-2"></i>
+      <h3 className="text-lg font-semibold text-gray-800 mb-4">
         Share this post
       </h3>
       
@@ -84,7 +59,6 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
           onClick={() => handleShare('twitter')}
           className="flex items-center gap-2 bg-blue-400 text-white px-4 py-2 rounded-lg hover:bg-blue-500 transition-colors"
         >
-          <i className="fab fa-twitter"></i>
           Twitter
         </button>
         
@@ -92,7 +66,6 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
           onClick={() => handleShare('linkedin')}
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <i className="fab fa-linkedin"></i>
           LinkedIn
         </button>
         
@@ -100,7 +73,6 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
           onClick={() => handleShare('facebook')}
           className="flex items-center gap-2 bg-blue-800 text-white px-4 py-2 rounded-lg hover:bg-blue-900 transition-colors"
         >
-          <i className="fab fa-facebook"></i>
           Facebook
         </button>
         
@@ -108,7 +80,6 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
           onClick={() => handleShare('whatsapp')}
           className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
         >
-          <i className="fab fa-whatsapp"></i>
           WhatsApp
         </button>
         
@@ -116,7 +87,6 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
           onClick={() => handleShare('telegram')}
           className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
         >
-          <i className="fab fa-telegram"></i>
           Telegram
         </button>
 
@@ -124,23 +94,13 @@ const BlogSocialSharing: React.FC<BlogSocialSharingProps> = ({
           onClick={handleCopyLink}
           className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
         >
-          <i className="fas fa-link"></i>
           Copy Link
         </button>
       </div>
       
       <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <p className="text-sm text-blue-700 flex items-center">
-          <i className="fas fa-info-circle mr-2"></i>
+        <p className="text-sm text-blue-700">
           Sharing helps other job seekers discover CareerCraft.in! 🙏
-        </p>
-      </div>
-
-      {/* Analytics Tracking Info */}
-      <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
-        <p className="text-xs text-green-700">
-          <i className="fas fa-chart-line mr-1"></i>
-          Shares are tracked to improve content quality
         </p>
       </div>
     </div>

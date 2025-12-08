@@ -1,5 +1,5 @@
-// src/components/GovernmentExams.tsx - UPDATED WITH LATEST EXAMS & AUTO-CLEANUP
-import React, { useState, useEffect } from 'react';
+// src/components/GovernmentExams.tsx - FIXED WITH NO INFINITE LOOPS
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
@@ -42,11 +42,11 @@ const GovernmentExams: React.FC = () => {
   const [applicationStatusFilter, setApplicationStatusFilter] = useState<string>('all');
   const examsPerPage = 12;
 
-  const { trackDailyPageView, trackGovExamApplication } = useEnhancedAnalytics();
+  const { trackDailyPageView } = useEnhancedAnalytics(); // REMOVED: Unused trackGovExamApplication
   const { trackButtonClick } = useGoogleAnalytics();
 
-  // Load and clean exams
-  const loadAndCleanExams = () => {
+  // Load and clean exams - memoized with useCallback
+  const loadAndCleanExams = useCallback(() => {
     const savedExams = JSON.parse(localStorage.getItem('governmentExams') || '[]');
     
     // Filter out exams older than 90 days (3 months)
@@ -67,13 +67,23 @@ const GovernmentExams: React.FC = () => {
     
     setExams(sortedExams);
     setLastUpdated(new Date().toLocaleString('en-IN'));
-  };
+    
+    // Update localStorage with cleaned exams
+    if (recentExams.length !== savedExams.length) {
+      localStorage.setItem('governmentExams', JSON.stringify(recentExams));
+    }
+  }, []);
 
   // Track daily page view on mount
   useEffect(() => {
     trackDailyPageView('Latest Government Exams', '/government-exams');
     loadAndCleanExams();
-  }, [trackDailyPageView]);
+    
+    // Cleanup function
+    return () => {
+      // Any cleanup if needed
+    };
+  }, [trackDailyPageView, loadAndCleanExams]);
 
   // Exam levels/categories
   const examLevels = [
@@ -107,55 +117,49 @@ const GovernmentExams: React.FC = () => {
   ];
 
   // Check if application is open
-  const isApplicationOpen = (exam: GovExam) => {
+  const isApplicationOpen = useCallback((exam: GovExam) => {
     const now = new Date();
     const startDate = new Date(exam.applicationStartDate);
     const endDate = new Date(exam.applicationEndDate);
     return now >= startDate && now <= endDate;
-  };
+  }, []);
 
   // Check if application is upcoming
-  const isApplicationUpcoming = (exam: GovExam) => {
+  const isApplicationUpcoming = useCallback((exam: GovExam) => {
     const now = new Date();
     const startDate = new Date(exam.applicationStartDate);
     return now < startDate;
-  };
+  }, []);
 
   // Check if application is closed
-  const isApplicationClosed = (exam: GovExam) => {
+  const isApplicationClosed = useCallback((exam: GovExam) => {
     const now = new Date();
     const endDate = new Date(exam.applicationEndDate);
     return now > endDate;
-  };
+  }, []);
 
-  // Days remaining to apply
-  const getDaysRemaining = (endDate: string) => {
-    const now = new Date();
-    const end = new Date(endDate);
-    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
-  };
-
-  // Filter exams
-  const filteredExams = exams.filter(exam => {
-    const matchesLevel = selectedLevel === 'all' || exam.examLevel === selectedLevel;
-    const matchesOrg = selectedOrg === 'all' || exam.organization === selectedOrg;
-    const matchesSearch = searchTerm === '' || 
-      exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.posts.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    let matchesStatus = true;
-    if (applicationStatusFilter === 'open') {
-      matchesStatus = isApplicationOpen(exam);
-    } else if (applicationStatusFilter === 'upcoming') {
-      matchesStatus = isApplicationUpcoming(exam);
-    } else if (applicationStatusFilter === 'closed') {
-      matchesStatus = isApplicationClosed(exam);
-    }
-    
-    return matchesLevel && matchesOrg && matchesSearch && matchesStatus;
-  });
+  // Filter exams - memoized to prevent recalculations
+  const filteredExams = React.useMemo(() => {
+    return exams.filter(exam => {
+      const matchesLevel = selectedLevel === 'all' || exam.examLevel === selectedLevel;
+      const matchesOrg = selectedOrg === 'all' || exam.organization === selectedOrg;
+      const matchesSearch = searchTerm === '' || 
+        exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exam.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exam.posts.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      let matchesStatus = true;
+      if (applicationStatusFilter === 'open') {
+        matchesStatus = isApplicationOpen(exam);
+      } else if (applicationStatusFilter === 'upcoming') {
+        matchesStatus = isApplicationUpcoming(exam);
+      } else if (applicationStatusFilter === 'closed') {
+        matchesStatus = isApplicationClosed(exam);
+      }
+      
+      return matchesLevel && matchesOrg && matchesSearch && matchesStatus;
+    });
+  }, [exams, selectedLevel, selectedOrg, searchTerm, applicationStatusFilter, isApplicationOpen, isApplicationUpcoming, isApplicationClosed]);
 
   // Pagination
   const totalPages = Math.ceil(filteredExams.length / examsPerPage);
@@ -163,12 +167,12 @@ const GovernmentExams: React.FC = () => {
   const currentExams = filteredExams.slice(startIndex, startIndex + examsPerPage);
 
   // Featured exams
-  const featuredExams = exams.filter(exam => exam.featured);
+  const featuredExams = React.useMemo(() => exams.filter(exam => exam.featured), [exams]);
   
   // New exams (added in last 7 days)
-  const newExams = exams.filter(exam => 
+  const newExams = React.useMemo(() => exams.filter(exam => 
     exam.isNew || (exam.addedTimestamp && (Date.now() - exam.addedTimestamp) < 7 * 24 * 60 * 60 * 1000)
-  );
+  ), [exams]);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
@@ -663,19 +667,19 @@ const ExamCard: React.FC<{ exam: GovExam; featured?: boolean; newExam?: boolean 
   const { trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
   
-  const isApplicationOpen = () => {
+  const isApplicationOpen = useCallback(() => {
     const now = new Date();
     const startDate = new Date(exam.applicationStartDate);
     const endDate = new Date(exam.applicationEndDate);
     return now >= startDate && now <= endDate;
-  };
+  }, [exam.applicationStartDate, exam.applicationEndDate]);
 
-  const getDaysRemaining = () => {
+  const getDaysRemaining = useCallback(() => {
     const now = new Date();
     const end = new Date(exam.applicationEndDate);
     const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
-  };
+  }, [exam.applicationEndDate]);
 
   const daysLeft = getDaysRemaining();
   const applicationOpen = isApplicationOpen();

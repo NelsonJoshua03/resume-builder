@@ -27,7 +27,7 @@ const ModernIconsTemplate: React.FC<ModernIconsTemplateProps> = ({
   skills,
   awards,
   customFields,
-  customColors,
+  // customColors, // Remove unused parameter
   sectionOrder = []
 }) => {
   // Helper function to render sections based on sectionOrder

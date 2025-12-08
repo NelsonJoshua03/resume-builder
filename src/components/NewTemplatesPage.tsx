@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useResume } from './ResumeContext';
 import ModernIconsTemplate from './ModernIconsTemplate';
 import CreativePortfolioTemplate from './CreativePortfolioTemplate';
-import NewTemplatesPDFGenerator from './NewTemplatesPDFGenerator';
+import ImprovedPDFGenerator from './ImprovedPDFGenerator'; // CHANGED: Import ImprovedPDFGenerator
 import SocialSharing from './SocialSharing';
 import FileUpload from './FileUpload';
 import SectionOrderCustomizer from './SectionOrderCustomizer';
@@ -21,7 +21,7 @@ const QRCodeGenerator = () => {
     setUrl(window.location.href);
   }, []);
 
-  const SimpleQRCode = ({ value, size = 128 }: { value: string; size?: number }) => {
+  const SimpleQRCode = ({ value: _value, size = 128 }: { value: string; size?: number }) => {
     return (
       <div className="border-2 border-gray-300 p-4 bg-white rounded-lg">
         <div className="text-center text-xs text-gray-500 mb-2">
@@ -187,7 +187,7 @@ const TemplatePreviewCard = ({
 const NewTemplatesPage = () => {
   const { resumeData, sectionOrder, handleSectionReorder, handleFileUpload } = useResume();
   const [selectedTemplate, setSelectedTemplate] = useState<'modernIcons' | 'creativePortfolio'>('modernIcons');
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [_isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isMobilePreview, setIsMobilePreview] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'preview'>('grid');
 
@@ -197,7 +197,6 @@ const NewTemplatesPage = () => {
   const { 
     trackButtonClick, 
     trackCTAClick, 
-    trackTemplateChange,
     trackUserFlow,
     trackPremiumTemplateView,
     trackPageView 
@@ -308,8 +307,7 @@ const NewTemplatesPage = () => {
   const handleTemplateSelect = (templateId: keyof typeof TEMPLATES) => {
     setSelectedTemplate(templateId);
     setViewMode('preview');
-    trackTemplateChange(templateId);
-    trackPremiumTemplateView(templateId, 'template_grid');
+    trackPremiumTemplateView(templateId);
     trackUserFlow('template_grid', 'template_preview', 'template_selection');
   };
 
@@ -424,9 +422,9 @@ const NewTemplatesPage = () => {
                   </div>
                 </div>
 
-                {/* PDF Download Section */}
+                {/* PDF Download Section - CHANGED: Now using ImprovedPDFGenerator */}
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <NewTemplatesPDFGenerator 
+                  <ImprovedPDFGenerator 
                     resumeRef={currentRef as React.RefObject<HTMLDivElement>}
                     personalInfo={resumeData.personalInfo}
                     template={currentTemplate}
@@ -537,10 +535,10 @@ const NewTemplatesPage = () => {
                       )}
                     </div>
 
-                    {/* PDF Download Section */}
+                    {/* PDF Download Section - CHANGED: Now using ImprovedPDFGenerator */}
                     <div className="mt-6 p-4 md:p-6 bg-blue-50 rounded-xl border border-blue-200">
                       <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-3">Download Your Resume</h3>
-                      <NewTemplatesPDFGenerator 
+                      <ImprovedPDFGenerator 
                         resumeRef={currentRef as React.RefObject<HTMLDivElement>}
                         personalInfo={resumeData.personalInfo}
                         template={currentTemplate}

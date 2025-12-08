@@ -1,4 +1,4 @@
-// src/App.tsx - COMPLETE WITH ALL ANALYTICS DASHBOARDS
+// src/App.tsx - FIXED VERSION
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -30,12 +30,13 @@ import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import NewTemplatesPage from './components/NewTemplatesPage';
 import EditResumePage from './components/EditResumePage';
+import ErrorBoundary from './components/ErrorBoundary';
 import './styles/blog.css';
 // Import ALL analytics dashboards
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import LocalAnalyticsDashboard from './components/LocalAnalyticsDashboard';
 import AdminDashboard from './components/AdminDashboard';
-import DailyAnalyticsDashboard from './components/DailyAnalyticsDashboard'; // NEW
+import DailyAnalyticsDashboard from './components/DailyAnalyticsDashboard';
 
 // Import PDF styles globally
 import './components/PDFStyles.css';
@@ -44,57 +45,57 @@ function App() {
   return (
     <HelmetProvider>
       <ResumeProvider>
-        <Router future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true
-        }}>
+        <Router>
+          {/* Move GoogleAnalytics component OUTSIDE of ErrorBoundary */}
           <GoogleAnalytics />
           <Layout>
-            <Routes>
-              {/* Main Pages */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/builder" element={<ResumeBuilder />} />
-              <Route path="/job-disciplines" element={<JobDisciplines />} />
-              <Route path="/job-applications" element={<JobApplications />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/blog" element={<Blog />} />
-              <Route path="/blog/:slug" element={<BlogPost />} />
-              <Route path="/premium" element={<NewTemplatesPage />} />
-              <Route path="/edit" element={<EditResumePage/>} />
+            <ErrorBoundary>
+              <Routes>
+                {/* Main Pages */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/builder" element={<ResumeBuilder />} />
+                <Route path="/job-disciplines" element={<JobDisciplines />} />
+                <Route path="/job-applications" element={<JobApplications />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
+                <Route path="/premium" element={<NewTemplatesPage />} />
+                <Route path="/edit" element={<EditResumePage/>} />
 
-              {/* Analytics & Admin Dashboards */}
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
-              <Route path="/admin/daily-analytics" element={<DailyAnalyticsDashboard />} /> {/* NEW */}
-              <Route path="/local-analytics" element={<LocalAnalyticsDashboard />} />
-              <Route path="/admin/job-posting" element={<AdminJobPosting />} />
-              <Route path="/admin/job-drives" element={<AdminJobDrives />} />
-              <Route path="/admin/government-exams" element={<AdminGovernmentExams />} />
+                {/* Analytics & Admin Dashboards */}
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
+                <Route path="/admin/daily-analytics" element={<DailyAnalyticsDashboard />} />
+                <Route path="/local-analytics" element={<LocalAnalyticsDashboard />} />
+                <Route path="/admin/job-posting" element={<AdminJobPosting />} />
+                <Route path="/admin/job-drives" element={<AdminJobDrives />} />
+                <Route path="/admin/government-exams" element={<AdminGovernmentExams />} />
 
-              {/* Job Discipline Pages - Engineering */}
-              <Route path="/job-disciplines/engineering" element={<JobDisciplines />} />
-              <Route path="/job-disciplines/mechanical-engineering" element={<MechanicalEngineering />} />
-              <Route path="/job-disciplines/static-engineer" element={<StaticEngineer />} />
-              <Route path="/job-disciplines/civil-engineering" element={<CivilEngineering />} />
-              <Route path="/job-disciplines/electrical-engineering" element={<ElectricalEngineering />} />
+                {/* Job Discipline Pages - Engineering */}
+                <Route path="/job-disciplines/engineering" element={<JobDisciplines />} />
+                <Route path="/job-disciplines/mechanical-engineering" element={<MechanicalEngineering />} />
+                <Route path="/job-disciplines/static-engineer" element={<StaticEngineer />} />
+                <Route path="/job-disciplines/civil-engineering" element={<CivilEngineering />} />
+                <Route path="/job-disciplines/electrical-engineering" element={<ElectricalEngineering />} />
 
-              {/* Job Discipline Pages - Technology */}
-              <Route path="/job-disciplines/software-development" element={<SoftwareDevelopment />} />
-              <Route path="/job-disciplines/data-science" element={<DataScience />} />
-              <Route path="/job-disciplines/cybersecurity" element={<Cybersecurity />} />
+                {/* Job Discipline Pages - Technology */}
+                <Route path="/job-disciplines/software-development" element={<SoftwareDevelopment />} />
+                <Route path="/job-disciplines/data-science" element={<DataScience />} />
+                <Route path="/job-disciplines/cybersecurity" element={<Cybersecurity />} />
 
-              {/* Career Resources */}
-              <Route path="/fresh-graduate-guide" element={<FreshGraduateGuide />} />
-              <Route path="/terms" element={<TermsOfService />} />
-              <Route path="/cookies" element={<CookiePolicy />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/job-drives" element={<JobDrives />} />
-              <Route path="/government-exams" element={<GovernmentExams />} />
+                {/* Career Resources */}
+                <Route path="/fresh-graduate-guide" element={<FreshGraduateGuide />} />
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/cookies" element={<CookiePolicy />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/job-drives" element={<JobDrives />} />
+                <Route path="/government-exams" element={<GovernmentExams />} />
 
-              {/* Redirect any unknown routes to home */}
-              <Route path="*" element={<HomePage />} />
-            </Routes>
+                {/* Redirect any unknown routes to home */}
+                <Route path="*" element={<HomePage />} />
+              </Routes>
+            </ErrorBoundary>
           </Layout>
         </Router>
       </ResumeProvider>

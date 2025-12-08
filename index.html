@@ -1,32 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/logos/careercraft-favicon.png">
     
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     
-    <!-- Content Security Policy - SIMPLIFIED -->
+    <!-- Content Security Policy - PRODUCTION OPTIMIZED -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
                    script-src 'self' 'unsafe-inline' 'unsafe-eval' 
                            https://www.googletagmanager.com 
                            https://pagead2.googlesyndication.com 
-                           https://cdnjs.cloudflare.com;
+                           https://cdnjs.cloudflare.com
+                           https://*.googleapis.com
+                           https://*.gstatic.com
+                           https://*.google.com
+                           https://*.google-analytics.com
+                           https://ep1.adtrafficquality.google
+                           https://ep2.adtrafficquality.google;
                    style-src 'self' 'unsafe-inline' 
                            https://cdnjs.cloudflare.com 
                            https://fonts.googleapis.com;
                    font-src 'self' 
                            https://cdnjs.cloudflare.com 
                            https://fonts.gstatic.com;
-                   img-src 'self' data: https:;
+                   img-src 'self' data: blob: https:;
                    frame-src 'self' https:;
                    connect-src 'self' 
                            https://www.google-analytics.com 
-                           https://region1.google-analytics.com 
-                           https://raw.githubusercontent.com;">
+                           https://*.google-analytics.com 
+                           https://*.gstatic.com
+                           https://*.googleapis.com
+                           https://*.google.com
+                           https://identitytoolkit.googleapis.com
+                           https://firestore.googleapis.com
+                           https://*.firebaseio.com
+                           wss://*.firebaseio.com
+                           https://firebasestorage.googleapis.com
+                           https://ep1.adtrafficquality.google
+                           https://ep2.adtrafficquality.google
+                           https://raw.githubusercontent.com;
+                   worker-src 'self' blob:;
+                   manifest-src 'self';
+                   media-src 'self' blob:;">
+    
+    <!-- Preconnect for critical domains -->
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com">
+    
+    <!-- Google Analytics (GA4) with your Measurement ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WSKZJDJW77"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      
+      // Configure Google Analytics
+      gtag('config', 'G-WSKZJDJW77', {
+        'debug_mode': false,
+        'transport_type': 'beacon',
+        'cookie_flags': 'SameSite=None;Secure',
+        'cookie_expires': 63072000,
+        'anonymize_ip': true,
+        'allow_google_signals': false,
+        'allow_ad_personalization_signals': false
+      });
+      
+      // Track page view immediately
+      gtag('event', 'page_view', {
+        'page_title': document.title,
+        'page_location': window.location.href,
+        'page_path': window.location.pathname,
+        'send_to': 'G-WSKZJDJW77'
+      });
+    </script>
     
     <!-- Google AdSense Auto Ads -->
     <meta name="google-adsense-account" content="ca-pub-7970100235833186">
@@ -36,13 +91,14 @@
     <meta name="google-site-verification" content="72ogLK0F0xw0H23swyyhs8idWOcyyv7hr1-zAMZ9v7w" />
     
     <!-- Primary Meta Tags -->
-    <title>CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform</title>
-    <meta name="title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform">
-    <meta name="description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in India. Free resume templates for engineers, IT, developers & freshers.">
-    <meta name="keywords" content="resume builder India, ATS resume maker, job portal India, Indian job search, engineering jobs India, IT jobs India, fresher jobs India, free resume maker, CV builder India, career platform India, Bangalore jobs, Delhi jobs, Mumbai jobs, Chennai jobs, Hyderabad jobs">
+    <title><%= title %></title>
+    <meta name="title" content="<%= title %>">
+    <meta name="description" content="<%= description %>">
+    <meta name="keywords" content="<%= keywords %>">
     <meta name="author" content="CareerCraft India">
-    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta name="theme-color" content="#2563eb">
+    <meta name="color-scheme" content="light dark">
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://careercraft.in/">
@@ -58,8 +114,10 @@
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web Browser",
       "permissions": "browser",
-      "areaServed": "IN",
-      "countryOfOrigin": "India",
+      "areaServed": {
+        "@type": "Country",
+        "name": "IN"
+      },
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -68,7 +126,14 @@
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "4.8",
-        "ratingCount": "1250"
+        "ratingCount": "1250",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "CareerCraft",
+        "url": "https://careercraft.in/"
       }
     }
     </script>
@@ -89,31 +154,82 @@
       "sameAs": [
         "https://www.linkedin.com/in/career-coach-expert-2a47a0399",
         "https://www.instagram.com/career_craft_india/"
-      ]
+      ],
+      "logo": "https://careercraft.in/logos/careercraft-logo-square.png",
+      "foundingDate": "2024"
+    }
+    </script>
+    
+    <!-- Schema for Resume Builder Service -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "serviceType": "Resume Builder",
+      "provider": {
+        "@type": "Organization",
+        "name": "CareerCraft"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "India"
+      },
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Resume Templates",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "ATS Optimized Resume"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Creative Resume Template"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Professional Resume Template"
+            }
+          }
+        ]
+      }
     }
     </script>
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://careercraft.in/" />
-    <meta property="og:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
-    <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India." />
-    <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
-    <meta property="og:image:width" content="500" />
-    <meta property="og:image:height" content="500" />
+    <meta property="og:title" content="<%= title %>" />
+    <meta property="og:description" content="<%= description %>" />
+    <meta property="og:image" content="https://careercraft.in/logos/careercraft-og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="CareerCraft - Resume Builder & Job Portal" />
     <meta property="og:locale" content="en_IN" />
     <meta property="og:site_name" content="CareerCraft India" />
+    <meta property="og:updated_time" content="2024-12-01T00:00:00+05:30" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://careercraft.in/" />
-    <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
-    <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
-    <meta property="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
+    <meta property="twitter:title" content="<%= title %>" />
+    <meta property="twitter:description" content="<%= description %>" />
+    <meta property="twitter:image" content="https://careercraft.in/logos/careercraft-twitter-image.png" />
+    <meta property="twitter:site" content="@careercraft_in" />
+    <meta property="twitter:creator" content="@careercraft_in" />
     
     <!-- Preload critical resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"></noscript>
     
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -124,12 +240,30 @@
     <meta name="geo.placename" content="India">
     <meta name="rating" content="general">
     <meta name="revisit-after" content="7 days">
+    <meta name="generator" content="Vite + React">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="application-name" content="CareerCraft">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CareerCraft">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    <meta name="msapplication-TileColor" content="#2563eb">
+    <meta name="msapplication-tap-highlight" content="no">
     
     <!-- Favicon and App Icons -->
     <link rel="apple-touch-icon" sizes="180x180" href="/logos/careercraft-logo-square.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/logos/careercraft-favicon.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/logos/careercraft-favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/logos/careercraft-favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/logos/careercraft-favicon-16x16.png">
+    <link rel="mask-icon" href="/logos/careercraft-safari-pinned-tab.svg" color="#2563eb">
+    <link rel="shortcut icon" href="/logos/careercraft-favicon.ico">
     <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- Preload critical assets -->
+    <link rel="preload" href="/src/styles/global.css" as="style">
+    <link rel="preload" href="/src/main.tsx" as="script">
     
     <!-- Critical CSS for Edge Compatibility -->
     <style>
@@ -150,6 +284,11 @@
         width: 100%;
         overflow-x: hidden;
         position: relative;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
       
       /* Force full width containers */
@@ -160,10 +299,194 @@
       .max-w-7xl {
         max-width: 80rem !important;
       }
+
+      /* Fix for Vite development */
+      #root {
+        width: 100%;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      
+      /* Critical loading styles */
+      .loading-skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+      }
+      
+      @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      
+      /* Prevent layout shift */
+      img, video, iframe {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+      
+      /* Performance optimizations */
+      * {
+        box-sizing: border-box;
+      }
+      
+      /* Hide content until JS loads */
+      .js-required {
+        display: none;
+      }
+      
+      .js-loaded .js-required {
+        display: block;
+      }
     </style>
+    
+    <!-- Inline critical JavaScript -->
+    <script>
+      // Set theme before page loads to prevent flash
+      (function() {
+        try {
+          const theme = localStorage.getItem('theme') || 'light';
+          document.documentElement.classList.add(theme);
+          document.documentElement.classList.add('js-loaded');
+        } catch (e) {}
+        
+        // Performance monitoring
+        if ('performance' in window) {
+          window.pageLoadStart = performance.now();
+        }
+        
+        // Error tracking setup
+        window.addEventListener('error', function(e) {
+          if (window.dataLayer) {
+            gtag('event', 'error_occurred', {
+              'error_message': e.message,
+              'error_source': e.filename + ':' + e.lineno,
+              'event_category': 'Errors'
+            });
+          }
+        });
+      })();
+    </script>
   </head>
-  <body style="margin: 0; padding: 0; width: 100%; overflow-x: hidden;">
-    <div id="root" style="width: 100%; overflow-x: hidden;"></div>
+  <body class="antialiased bg-gray-50 text-gray-900">
+    <!-- Loading indicator for JS -->
+    <noscript>
+      <div class="p-8 text-center">
+        <h1 class="text-2xl font-bold mb-4">CareerCraft Resume Builder</h1>
+        <p class="mb-4">JavaScript is required to use this application.</p>
+        <p>Please enable JavaScript in your browser settings.</p>
+      </div>
+    </noscript>
+    
+    <!-- Main app container -->
+    <div id="root">
+      <!-- Loading skeleton -->
+      <div class="loading-skeleton" style="height: 100vh;"></div>
+    </div>
+    
+    <!-- Main application script -->
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Performance monitoring -->
+    <script>
+      // Track page load performance
+      window.addEventListener('load', function() {
+        if ('performance' in window) {
+          const loadTime = performance.now() - window.pageLoadStart;
+          if (window.dataLayer) {
+            gtag('event', 'page_load', {
+              'load_time_ms': Math.round(loadTime),
+              'event_category': 'Performance',
+              'event_label': 'Page Load Time'
+            });
+          }
+          
+          // Log to console in development
+          if ('<%= environment %>' === 'development') {
+            console.log(`🚀 Page loaded in ${Math.round(loadTime)}ms`);
+          }
+        }
+      });
+      
+      // Track user engagement
+      let lastActivity = Date.now();
+      document.addEventListener('click', () => {
+        lastActivity = Date.now();
+      });
+      document.addEventListener('scroll', () => {
+        lastActivity = Date.now();
+      });
+      document.addEventListener('keydown', () => {
+        lastActivity = Date.now();
+      });
+      
+      // Report session duration on exit
+      window.addEventListener('beforeunload', function() {
+        const sessionDuration = Date.now() - window.pageLoadStart;
+        if (window.dataLayer && sessionDuration > 1000) {
+          gtag('event', 'session_end', {
+            'session_duration_ms': Math.round(sessionDuration),
+            'event_category': 'Engagement',
+            'event_label': 'Session Duration'
+          });
+        }
+      });
+      
+      // Development helper
+      if ('<%= environment %>' === 'development') {
+        console.log('🚀 Development mode - Environment:', '<%= environment %>');
+        console.log('📊 Google Analytics ID:', '<%= gaMeasurementId %>');
+        
+        // Remove CSP for development if needed
+        if (window.location.search.includes('nocsp')) {
+          const meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+          if (meta) {
+            meta.remove();
+            console.log('🔓 CSP removed for development');
+          }
+        }
+        
+        // Monitor CSP violations
+        document.addEventListener('securitypolicyviolation', (e) => {
+          console.warn('🔒 CSP Violation:', {
+            blockedURI: e.blockedURI,
+            violatedDirective: e.violatedDirective,
+            originalPolicy: e.originalPolicy
+          });
+        });
+      }
+    </script>
+    
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= gaMeasurementId %>"></script>
+    <script>
+      // Initialize analytics with environment-specific settings
+      const isProduction = '<%= environment %>' === 'production';
+      const analyticsId = '<%= gaMeasurementId %>';
+      
+      if (analyticsId) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        
+        gtag('config', analyticsId, {
+          'debug_mode': !isProduction,
+          'transport_type': 'beacon',
+          'anonymize_ip': true,
+          'allow_google_signals': isProduction,
+          'allow_ad_personalization_signals': isProduction
+        });
+        
+        // Track initial page view
+        gtag('event', 'page_view', {
+          'page_title': document.title,
+          'page_location': window.location.href,
+          'page_path': window.location.pathname,
+          'environment': '<%= environment %>',
+          'send_to': analyticsId
+        });
+      }
+    </script>
   </body>
 </html>

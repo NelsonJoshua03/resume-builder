@@ -1,5 +1,5 @@
 // src/components/DailyAnalyticsDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import SEO from './SEO';
 
 const DailyAnalyticsDashboard = () => {
@@ -36,16 +36,6 @@ const DailyAnalyticsDashboard = () => {
     const key = `daily_user_${selectedDate}_/${page}`;
     const users = JSON.parse(localStorage.getItem(key) || '[]');
     return users.length;
-  };
-
-  const getPreviousDays = (days: number) => {
-    const dates = [];
-    for (let i = 0; i < days; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      dates.push(date.toISOString().split('T')[0]);
-    }
-    return dates;
   };
 
   return (

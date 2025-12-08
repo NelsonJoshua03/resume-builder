@@ -1,5 +1,5 @@
 // src/components/LocalAnalyticsDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import SEO from './SEO';
 
@@ -41,7 +41,6 @@ const LocalAnalyticsDashboard = () => {
     
     // Collect daily data
     data.dailyData = {};
-    const today = new Date().toISOString().split('T')[0];
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('daily_')) {
         data.dailyData[key] = localStorage.getItem(key);

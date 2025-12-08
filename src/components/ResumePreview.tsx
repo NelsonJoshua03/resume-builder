@@ -485,26 +485,26 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
 
   // Render different layouts based on template
   const renderTemplate = () => {
-  // Get enabled sections in correct order
-  const enabledSections = currentSectionOrder
-    .filter(section => section.enabled)
-    .sort((a, b) => a.order - b.order);
+    // Get enabled sections in correct order
+    const enabledSections = currentSectionOrder
+      .filter(section => section.enabled)
+      .sort((a, b) => a.order - b.order);
 
-  switch(template.layout) {
-    case 'ats':
-      return renderATSTemplate(enabledSections);
-    case 'professional':
-      return renderProfessionalTemplate(enabledSections);
-    case 'creative':
-      return renderCreativeTemplate(enabledSections);
-    case 'executive':
-      return renderExecutiveTemplate(enabledSections);
-    case 'tech':
-      return renderTechTemplate(enabledSections);
-    case 'twoColumn':
-      return renderTwoColumnTemplate();
-    default:
-      return renderATSTemplate(enabledSections); // Default to ATS
+    switch(template.layout) {
+      case 'ats':
+        return renderATSTemplate(enabledSections);
+      case 'professional':
+        return renderProfessionalTemplate(enabledSections);
+      case 'creative':
+        return renderCreativeTemplate(enabledSections);
+      case 'executive':
+        return renderExecutiveTemplate(enabledSections);
+      case 'tech':
+        return renderTechTemplate(enabledSections);
+      case 'twoColumn':
+        return renderTwoColumnTemplate();
+      default:
+        return renderATSTemplate(enabledSections); // Default to ATS
     }
   };
 

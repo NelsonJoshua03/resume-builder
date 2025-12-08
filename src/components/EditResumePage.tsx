@@ -1,5 +1,5 @@
 // EditResumePage.tsx - OPTIMIZED WITH COMPLETE MOBILE NAVIGATION
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useResume } from './ResumeContext';
 import PersonalInfo from './PersonalInfo';
@@ -57,7 +57,7 @@ const EditResumePage = () => {
   const [showAllSections, setShowAllSections] = useState(false);
   const [showSectionPrompts, setShowSectionPrompts] = useState(false);
   const [fieldEditStartTime, setFieldEditStartTime] = useState<Record<string, number>>({});
-  const [totalEditTime, setTotalEditTime] = useState<number>(0);
+  const [_totalEditTime, setTotalEditTime] = useState<number>(0);
   const pageEnterTime = useRef<number>(Date.now());
   const lastSectionSwitchTime = useRef<number>(Date.now());
 

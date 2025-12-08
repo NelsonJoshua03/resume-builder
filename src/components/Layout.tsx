@@ -1,6 +1,6 @@
-// src/components/Layout.tsx - UPDATED WITH GOOGLE ANALYTICS & ENHANCED SEO
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+// src/components/Layout.tsx - COMPLETE UPDATED VERSION WITHOUT DEBUG PANEL
+import React, { useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
 interface LayoutProps {
@@ -9,7 +9,67 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   
+  // Navigation fix for React Router v6 issues
+  useEffect(() => {
+    // Fix for navigation getting stuck
+    const handleNavigationError = (e: Event) => {
+      console.log('Navigation error detected');
+      // Prevent default and try programmatic navigation
+      if (e.type === 'popstate') {
+        // Force React Router to update
+        setTimeout(() => {
+          navigate(location.pathname, { replace: true });
+        }, 50);
+      }
+    };
+
+    window.addEventListener('popstate', handleNavigationError);
+    
+    // Clean up scroll restoration to prevent conflicts
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+
+    // Clean up
+    return () => {
+      window.removeEventListener('popstate', handleNavigationError);
+    };
+  }, [location.pathname, navigate]);
+
+  // Fix for navigation links that stop working
+  const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    // If we're already on the same page, force a reload
+    if (location.pathname === path) {
+      e.preventDefault();
+      window.location.href = path;
+      return;
+    }
+    
+    // For builder page specifically, always do fresh navigation
+    if (path === '/builder' && location.pathname.includes('/blog')) {
+      e.preventDefault();
+      navigate(path, { replace: true });
+      // Force a small delay to ensure clean state
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 10);
+    }
+  };
+
+  // Reset scroll on location change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  // Add a navigation debug log (only in console, not visible to users)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📍 Navigation: ${location.pathname}`);
+    }
+  }, [location.pathname]);
+
   return (
     <>
       <Helmet>
@@ -30,6 +90,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', 'G-JW2bS0D8YB');
+            
+            // Enhanced navigation tracking
+            window.addEventListener('popstate', function() {
+              gtag('event', 'page_view', {
+                page_path: window.location.pathname,
+                page_title: document.title
+              });
+            });
           `}
         </script>
 
@@ -82,7 +150,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="container mx-auto px-3 md:px-4 py-3 w-full max-w-7xl">
             <nav className="flex justify-between items-center w-full">
               {/* Logo Removed - Only Text Brand */}
-              <Link to="/" className="flex items-center">
+              <Link 
+                to="/" 
+                className="flex items-center"
+                onClick={(e) => handleNavigation(e, '/')}
+              >
                 <span className="text-xl md:text-2xl font-bold text-blue-600">
                   CareerCraft.in
                 </span>
@@ -92,41 +164,29 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="hidden md:flex space-x-4 lg:space-x-6">
                 <Link 
                   to="/government-exams" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/government-exams') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/government-exams') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={(e) => handleNavigation(e, '/government-exams')}
                 >
                   Government Exams
                 </Link>
                 <Link 
                   to="/job-disciplines" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/job-disciplines') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/job-disciplines') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={(e) => handleNavigation(e, '/job-disciplines')}
                 >
                   Job Disciplines
                 </Link>
                 <Link 
                   to="/job-applications" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/job-applications') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/job-applications') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={(e) => handleNavigation(e, '/job-applications')}
                 >
                   Job Applications
                 </Link>
                 <Link 
                   to="/job-drives" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/job-drives') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/job-drives') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={(e) => handleNavigation(e, '/job-drives')}
                 >
                   Walk-in Drives
                 </Link>
@@ -143,6 +203,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <Link 
                       to="/builder" 
                       className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-100"
+                      onClick={(e) => handleNavigation(e, '/builder')}
                     >
                       <div className="font-medium">ATS Templates</div>
                       <div className="text-xs text-gray-500">Free & ATS-optimized</div>
@@ -150,6 +211,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <Link 
                       to="/premium" 
                       className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                      onClick={(e) => handleNavigation(e, '/premium')}
                     >
                       <div className="font-medium flex items-center gap-2">
                         <span>Premium Templates</span>
@@ -162,31 +224,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                 <Link 
                   to="/blog" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/blog') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/blog') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={(e) => handleNavigation(e, '/blog')}
                 >
                   Blog
                 </Link>
                 <Link 
                   to="/about" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname === '/about' 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname === '/about' ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={(e) => handleNavigation(e, '/about')}
                 >
                   About
                 </Link>
                 <Link 
                   to="/contact" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname === '/contact' 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname === '/contact' ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
+                  onClick={(e) => handleNavigation(e, '/contact')}
                 >
                   Contact
                 </Link>
@@ -197,12 +250,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Link 
                   to="/premium" 
                   className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-colors hidden md:block text-sm"
+                  onClick={(e) => handleNavigation(e, '/premium')}
                 >
                   🎨 Premium
                 </Link>
                 <Link 
                   to="/builder" 
                   className="bg-blue-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm md:text-base"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // Force clean navigation to builder
+                    if (location.pathname === '/builder') {
+                      window.location.href = '/builder';
+                    } else {
+                      navigate('/builder', { replace: true });
+                      setTimeout(() => {
+                        window.scrollTo(0, 0);
+                      }, 10);
+                    }
+                  }}
                 >
                   Build Resume
                 </Link>
@@ -252,39 +318,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Quick Links</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Home</Link></li>
-                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Government Exams</Link></li>
-                  <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Disciplines</Link></li>
-                  <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Applications</Link></li>
-                  <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Walk-in Drives</Link></li>
+                  <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/')}>Home</Link></li>
+                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/government-exams')}>Government Exams</Link></li>
+                  <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/job-disciplines')}>Job Disciplines</Link></li>
+                  <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/job-applications')}>Job Applications</Link></li>
+                  <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/job-drives')}>Walk-in Drives</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resume Tools</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">ATS Resume Builder</Link></li>
-                  <li><Link to="/premium" className="text-purple-400 hover:text-purple-300 transition-colors text-sm md:text-base">Premium Templates</Link></li>
-                  <li><Link to="/edit" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Edit Resume</Link></li>
-                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Fresh Graduate Guide</Link></li>
+                  <li><Link to="/builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/builder')}>ATS Resume Builder</Link></li>
+                  <li><Link to="/premium" className="text-purple-400 hover:text-purple-300 transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/premium')}>Premium Templates</Link></li>
+                  <li><Link to="/edit" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/edit')}>Edit Resume</Link></li>
+                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/fresh-graduate-guide')}>Fresh Graduate Guide</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resources</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Blog</Link></li>
-                  <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">About Us</Link></li>
-                  <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Contact</Link></li>
+                  <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/blog')}>Blog</Link></li>
+                  <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/about')}>About Us</Link></li>
+                  <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/contact')}>Contact</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Legal</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Privacy Policy</Link></li>
-                  <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Terms of Service</Link></li>
-                  <li><Link to="/cookies" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Cookie Policy</Link></li>
+                  <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/privacy')}>Privacy Policy</Link></li>
+                  <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/terms')}>Terms of Service</Link></li>
+                  <li><Link to="/cookies" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/cookies')}>Cookie Policy</Link></li>
                 </ul>
               </div>
             </div>

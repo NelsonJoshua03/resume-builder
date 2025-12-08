@@ -9,9 +9,10 @@ const Privacy: React.FC = () => {
     trackButtonClick('privacy_email_click', emailType, 'privacy_page');
   };
 
-  const handleExternalLinkClick = (linkType: string) => {
-    trackButtonClick('privacy_external_link', linkType, 'privacy_page');
-  };
+  // Remove unused handleExternalLinkClick function
+  // const handleExternalLinkClick = (linkType: string) => {
+  //   trackButtonClick('privacy_external_link', linkType, 'privacy_page');
+  // };
 
   return (
     <>
