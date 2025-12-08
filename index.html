@@ -9,41 +9,6 @@
     <!-- Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
     
-    <!-- Content Security Policy - SIMPLIFIED FOR NETLIFY -->
-    <meta http-equiv="Content-Security-Policy" 
-          content="default-src 'self' https: data: blob:;
-                   script-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:
-                           https://www.googletagmanager.com 
-                           https://pagead2.googlesyndication.com 
-                           https://cdnjs.cloudflare.com
-                           https://*.googleapis.com
-                           https://*.gstatic.com
-                           https://*.google.com
-                           https://*.google-analytics.com;
-                   style-src 'self' 'unsafe-inline' 
-                           https://cdnjs.cloudflare.com 
-                           https://fonts.googleapis.com;
-                   font-src 'self' 
-                           https://cdnjs.cloudflare.com 
-                           https://fonts.gstatic.com;
-                   img-src 'self' data: blob: https:;
-                   frame-src 'self' https:;
-                   connect-src 'self' 
-                           https://www.google-analytics.com 
-                           https://*.google-analytics.com 
-                           https://*.gstatic.com
-                           https://*.googleapis.com
-                           https://*.google.com
-                           https://identitytoolkit.googleapis.com
-                           https://firestore.googleapis.com
-                           https://*.firebaseio.com
-                           wss://*.firebaseio.com
-                           https://firebasestorage.googleapis.com
-                           https://raw.githubusercontent.com;
-                   worker-src 'self' blob:;
-                   manifest-src 'self';
-                   media-src 'self' blob:;">
-    
     <!-- Preconnect for critical domains -->
     <link rel="preconnect" href="https://www.googletagmanager.com">
     <link rel="preconnect" href="https://pagead2.googlesyndication.com">
@@ -426,23 +391,36 @@
       if ('<%= environment %>' === 'development') {
         console.log('🚀 Development mode - Environment:', '<%= environment %>');
         console.log('📊 Google Analytics ID:', '<%= gaMeasurementId %>');
+      }
+    </script>
+    
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= gaMeasurementId %>"></script>
+    <script>
+      // Initialize analytics with environment-specific settings
+      const isProduction = '<%= environment %>' === 'production';
+      const analyticsId = '<%= gaMeasurementId %>';
+      
+      if (analyticsId) {
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
         
-        // Remove CSP for development if needed
-        if (window.location.search.includes('nocsp')) {
-          const meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-          if (meta) {
-            meta.remove();
-            console.log('🔓 CSP removed for development');
-          }
-        }
+        gtag('config', analyticsId, {
+          'debug_mode': !isProduction,
+          'transport_type': 'beacon',
+          'anonymize_ip': true,
+          'allow_google_signals': isProduction,
+          'allow_ad_personalization_signals': isProduction
+        });
         
-        // Monitor CSP violations
-        document.addEventListener('securitypolicyviolation', (e) => {
-          console.warn('🔒 CSP Violation:', {
-            blockedURI: e.blockedURI,
-            violatedDirective: e.violatedDirective,
-            originalPolicy: e.originalPolicy
-          });
+        // Track initial page view
+        gtag('event', 'page_view', {
+          'page_title': document.title,
+          'page_location': window.location.href,
+          'page_path': window.location.pathname,
+          'environment': '<%= environment %>',
+          'send_to': analyticsId
         });
       }
     </script>
