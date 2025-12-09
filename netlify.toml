@@ -8,10 +8,10 @@
 
 # Environment variables
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20.18.1"
 
 [context.production.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20.18.1"
 
 # Redirects for SEO - UPDATED FOR CAREERCRAFT.IN
 [[redirects]]
