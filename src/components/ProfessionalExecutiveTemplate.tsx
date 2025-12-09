@@ -27,7 +27,7 @@ const ProfessionalExecutiveTemplate: React.FC<ProfessionalExecutiveTemplateProps
   skills,
   awards,
   customFields,
-  // customColors, // Remove unused parameter
+  customColors,
   sectionOrder = []
 }) => {
   // Helper function to render sections based on sectionOrder

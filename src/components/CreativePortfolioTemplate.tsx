@@ -27,7 +27,7 @@ const CreativePortfolioTemplate: React.FC<CreativePortfolioTemplateProps> = ({
   skills,
   awards,
   customFields,
-  // customColors, // Remove unused parameter
+  customColors,
   sectionOrder = []
 }) => {
   // Helper function to render sections based on sectionOrder

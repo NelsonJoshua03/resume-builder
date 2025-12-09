@@ -1,6 +1,6 @@
-// src/components/Layout.tsx - COMPLETE UPDATED VERSION WITHOUT DEBUG PANEL
-import React, { useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+// src/components/Layout.tsx - UPDATED WITH FIXED NAVIGATION DROPDOWN
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
 interface LayoutProps {
@@ -9,95 +9,56 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  
-  // Navigation fix for React Router v6 issues
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
   useEffect(() => {
-    // Fix for navigation getting stuck
-    const handleNavigationError = (e: Event) => {
-      console.log('Navigation error detected');
-      // Prevent default and try programmatic navigation
-      if (e.type === 'popstate') {
-        // Force React Router to update
-        setTimeout(() => {
-          navigate(location.pathname, { replace: true });
-        }, 50);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
       }
     };
 
-    window.addEventListener('popstate', handleNavigationError);
-    
-    // Clean up scroll restoration to prevent conflicts
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
-    }
-
-    // Clean up
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      window.removeEventListener('popstate', handleNavigationError);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [location.pathname, navigate]);
+  }, []);
 
-  // Fix for navigation links that stop working
-  const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    // If we're already on the same page, force a reload
-    if (location.pathname === path) {
-      e.preventDefault();
-      window.location.href = path;
-      return;
-    }
-    
-    // For builder page specifically, always do fresh navigation
-    if (path === '/builder' && location.pathname.includes('/blog')) {
-      e.preventDefault();
-      navigate(path, { replace: true });
-      // Force a small delay to ensure clean state
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-      }, 10);
-    }
+  // Close dropdown when route changes
+  useEffect(() => {
+    setIsDropdownOpen(false);
+  }, [location]);
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
   };
 
-  // Reset scroll on location change
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [location.pathname]);
-
-  // Add a navigation debug log (only in console, not visible to users)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`📍 Navigation: ${location.pathname}`);
-    }
-  }, [location.pathname]);
+  const closeDropdown = () => {
+    setIsDropdownOpen(false);
+  };
 
   return (
     <>
       <Helmet>
         <title>CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform</title>
         <meta name="title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
-        <meta name="description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India. Free resume builder with premium templates." />
+        <meta name="description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India. Free resume builder with ATS templates." />
         <meta name="keywords" content="resume builder India, ATS resume maker, job portal India, Indian job search, engineering jobs India, IT jobs India, fresher jobs India, free resume maker, CV builder India, career platform India, government exams, walk-in drives" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <meta name="author" content="CareerCraft India" />
         <link rel="canonical" href="https://careercraft.in/" />
         
-        {/* Google Analytics */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-JW2bS0D8YB"></script>
+        {/* Google Analytics - CORRECT MEASUREMENT ID */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5"></script>
         <script>
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-JW2bS0D8YB');
-            
-            // Enhanced navigation tracking
-            window.addEventListener('popstate', function() {
-              gtag('event', 'page_view', {
-                page_path: window.location.pathname,
-                page_title: document.title
-              });
-            });
+            gtag('config', 'G-SW5M9YN8L5');
           `}
         </script>
 
@@ -105,7 +66,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://careercraft.in/" />
         <meta property="og:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
-        <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India. Free resume builder with premium templates." />
+        <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India. Free resume builder with ATS templates." />
         <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-main.png" />
         <meta property="og:site_name" content="CareerCraft.in" />
         <meta property="og:locale" content="en_IN" />
@@ -150,11 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="container mx-auto px-3 md:px-4 py-3 w-full max-w-7xl">
             <nav className="flex justify-between items-center w-full">
               {/* Logo Removed - Only Text Brand */}
-              <Link 
-                to="/" 
-                className="flex items-center"
-                onClick={(e) => handleNavigation(e, '/')}
-              >
+              <Link to="/" className="flex items-center" onClick={closeDropdown}>
                 <span className="text-xl md:text-2xl font-bold text-blue-600">
                   CareerCraft.in
                 </span>
@@ -164,82 +121,116 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="hidden md:flex space-x-4 lg:space-x-6">
                 <Link 
                   to="/government-exams" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/government-exams') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
-                  onClick={(e) => handleNavigation(e, '/government-exams')}
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname.includes('/government-exams') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                  onClick={closeDropdown}
                 >
                   Government Exams
                 </Link>
                 <Link 
                   to="/job-disciplines" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/job-disciplines') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
-                  onClick={(e) => handleNavigation(e, '/job-disciplines')}
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname.includes('/job-disciplines') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                  onClick={closeDropdown}
                 >
                   Job Disciplines
                 </Link>
                 <Link 
                   to="/job-applications" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/job-applications') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
-                  onClick={(e) => handleNavigation(e, '/job-applications')}
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname.includes('/job-applications') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                  onClick={closeDropdown}
                 >
                   Job Applications
                 </Link>
                 <Link 
                   to="/job-drives" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/job-drives') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
-                  onClick={(e) => handleNavigation(e, '/job-drives')}
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname.includes('/job-drives') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                  onClick={closeDropdown}
                 >
                   Walk-in Drives
                 </Link>
                 
-                {/* Resume Templates Dropdown */}
-                <div className="relative group">
-                  <button className="font-medium transition-colors text-sm lg:text-base text-gray-700 hover:text-blue-600 flex items-center gap-1">
+                {/* Resume Templates Dropdown - UPDATED WITH FIXED CLICK HANDLING */}
+                <div className="relative group" ref={dropdownRef}>
+                  <button 
+                    className="font-medium transition-colors text-sm lg:text-base text-gray-700 hover:text-blue-600 flex items-center gap-1"
+                    onClick={toggleDropdown}
+                    aria-expanded={isDropdownOpen}
+                    aria-haspopup="true"
+                  >
                     Resume Templates
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className={`absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200 z-50 ${
+                    isDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+                  }`}>
                     <Link 
                       to="/builder" 
                       className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-100"
-                      onClick={(e) => handleNavigation(e, '/builder')}
+                      onClick={closeDropdown}
                     >
-                      <div className="font-medium">ATS Templates</div>
-                      <div className="text-xs text-gray-500">Free & ATS-optimized</div>
+                      <div className="font-medium">Free ATS Templates</div>
+                      <div className="text-xs text-gray-500">Optimized for Indian job market</div>
                     </Link>
                     <Link 
-                      to="/premium" 
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
-                      onClick={(e) => handleNavigation(e, '/premium')}
+                      to="/edit" 
+                      className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                      onClick={closeDropdown}
                     >
                       <div className="font-medium flex items-center gap-2">
-                        <span>Premium Templates</span>
-                        <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-0.5 rounded-full">New</span>
+                        <span>Edit Resume</span>
                       </div>
-                      <div className="text-xs text-gray-500">Beautiful designs</div>
+                      <div className="text-xs text-gray-500">Update your information</div>
                     </Link>
                   </div>
                 </div>
 
                 <Link 
                   to="/blog" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname.includes('/blog') ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
-                  onClick={(e) => handleNavigation(e, '/blog')}
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname.includes('/blog') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                  onClick={closeDropdown}
                 >
                   Blog
                 </Link>
                 <Link 
                   to="/about" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname === '/about' ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
-                  onClick={(e) => handleNavigation(e, '/about')}
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname === '/about' 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                  onClick={closeDropdown}
                 >
                   About
                 </Link>
                 <Link 
                   to="/contact" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${location.pathname === '/contact' ? 'text-blue-600' : 'text-gray-700 hover:text-blue-600'}`}
-                  onClick={(e) => handleNavigation(e, '/contact')}
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname === '/contact' 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                  onClick={closeDropdown}
                 >
                   Contact
                 </Link>
@@ -248,27 +239,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {/* CTA Buttons */}
               <div className="flex items-center gap-2 md:gap-3">
                 <Link 
-                  to="/premium" 
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-colors hidden md:block text-sm"
-                  onClick={(e) => handleNavigation(e, '/premium')}
-                >
-                  🎨 Premium
-                </Link>
-                <Link 
                   to="/builder" 
                   className="bg-blue-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm md:text-base"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Force clean navigation to builder
-                    if (location.pathname === '/builder') {
-                      window.location.href = '/builder';
-                    } else {
-                      navigate('/builder', { replace: true });
-                      setTimeout(() => {
-                        window.scrollTo(0, 0);
-                      }, 10);
-                    }
-                  }}
+                  onClick={closeDropdown}
                 >
                   Build Resume
                 </Link>
@@ -289,9 +262,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div>
                 {/* Footer Logo Removed - Only Text */}
                 <div className="mb-3 md:mb-4">
-                  <span className="text-xl md:text-2xl font-bold text-white">
-                    CareerCraft.in
-                  </span>
+                  <Link to="/" onClick={closeDropdown}>
+                    <span className="text-xl md:text-2xl font-bold text-white">
+                      CareerCraft.in
+                    </span>
+                  </Link>
                 </div>
                 <p className="text-gray-400 mb-3 md:mb-4 text-sm md:text-base">
                   Bright Resumes, Brighter Careers - Create ATS-friendly resumes and find your dream job.
@@ -318,39 +293,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Quick Links</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/')}>Home</Link></li>
-                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/government-exams')}>Government Exams</Link></li>
-                  <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/job-disciplines')}>Job Disciplines</Link></li>
-                  <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/job-applications')}>Job Applications</Link></li>
-                  <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/job-drives')}>Walk-in Drives</Link></li>
+                  <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Home</Link></li>
+                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Government Exams</Link></li>
+                  <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Job Disciplines</Link></li>
+                  <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Job Applications</Link></li>
+                  <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Walk-in Drives</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resume Tools</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/builder')}>ATS Resume Builder</Link></li>
-                  <li><Link to="/premium" className="text-purple-400 hover:text-purple-300 transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/premium')}>Premium Templates</Link></li>
-                  <li><Link to="/edit" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/edit')}>Edit Resume</Link></li>
-                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/fresh-graduate-guide')}>Fresh Graduate Guide</Link></li>
+                  <li><Link to="/builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>ATS Resume Builder</Link></li>
+                  <li><Link to="/edit" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Edit Resume</Link></li>
+                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Fresh Graduate Guide</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resources</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/blog')}>Blog</Link></li>
-                  <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/about')}>About Us</Link></li>
-                  <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/contact')}>Contact</Link></li>
+                  <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Blog</Link></li>
+                  <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>About Us</Link></li>
+                  <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Contact</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Legal</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/privacy')}>Privacy Policy</Link></li>
-                  <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/terms')}>Terms of Service</Link></li>
-                  <li><Link to="/cookies" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={(e) => handleNavigation(e, '/cookies')}>Cookie Policy</Link></li>
+                  <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Privacy Policy</Link></li>
+                  <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Terms of Service</Link></li>
+                  <li><Link to="/cookies" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Cookie Policy</Link></li>
                 </ul>
               </div>
             </div>

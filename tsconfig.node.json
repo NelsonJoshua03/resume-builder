@@ -1,48 +1,29 @@
 {
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.node.tsbuildinfo",
-    "target": "ES2022",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "ES2023",
     "lib": ["ES2023"],
     "module": "ESNext",
     "skipLibCheck": true,
-    
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "moduleDetection": "force",
-    
-    /* Type Checking */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-    
+
     /* Required for project references */
     "composite": true,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "outDir": "./dist-types",
-    
-    /* Interop */
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    
-    /* Advanced */
-    "resolveJsonModule": true,
-    "verbatimModuleSyntax": false,
-    "preserveWatchOutput": true
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
   },
-  "include": [
-    "vite.config.ts",
-    "package.json",
-    "*.config.js",
-    "*.config.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "src/**/*"
-  ]
+  "include": ["vite.config.ts"]
 }

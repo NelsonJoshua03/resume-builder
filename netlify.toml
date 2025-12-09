@@ -1,27 +1,19 @@
 [build]
-  command = "npm run build:netlify"
+  command = "npm run build"
   publish = "dist"
 
 [dev]
   targetPort = 3001
   framework = "vite"
 
+# Environment variables
 [build.environment]
-  NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
+  NODE_VERSION = "18"
 
 [context.production.environment]
-  NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
+  NODE_VERSION = "18"
 
-[context.deploy-preview.environment]
-  NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
-
-[context.branch-deploy.environment]
-  NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
-
+# Redirects for SEO - UPDATED FOR CAREERCRAFT.IN
 [[redirects]]
   from = "https://resumecvforge.netlify.app/*"
   to = "https://careercraft.in/:splat"
@@ -32,6 +24,7 @@
   to = "https://careercraft.in/:splat"
   status = 301
 
+# Priority redirects for SEO files
 [[redirects]]
   from = "/sitemap.xml"
   to = "/sitemap.xml"
@@ -44,17 +37,14 @@
   status = 200
   force = true
 
+# Redirect for Google verification file
 [[redirects]]
   from = "/google213349ae4cc6099f.html"
   to = "/google213349ae4cc6099f.html"
   status = 200
   force = true
 
-[[redirects]]
-  from = "/blog/*"
-  to = "/blog/:splat"
-  status = 200
-
+# SPA fallback for all other routes (must come last)
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -17,7 +17,7 @@ export const cleanMarkdownContent = (content: string): string => {
     .replace(/\*\s+/g, '- ')
     
     // Ensure proper spacing around headings
-    .replace(/#{1,6}\s+([^\n]+)/g, (match) => {
+    .replace(/#{1,6}\s+([^\n]+)/g, (match, heading) => {
       return match.trim();
     })
     

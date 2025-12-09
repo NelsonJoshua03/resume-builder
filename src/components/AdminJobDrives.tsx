@@ -1,8 +1,9 @@
-// src/components/AdminJobDrives.tsx - LOCAL STORAGE VERSION
+// src/components/AdminJobDrives.tsx - UPDATED WITH AUTO-CLEANUP
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Trash2, Upload, Image as ImageIcon, AlertCircle, Clock, RefreshCw, Save } from 'lucide-react';
+import { Plus, Trash2, Upload, Image as ImageIcon, AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 interface JobDrive {
   id: string;
@@ -22,57 +23,9 @@ interface JobDrive {
   driveType?: string;
   experience?: string;
   salary?: string;
-  expectedCandidates?: number | null;
+  expectedCandidates?: number;
+  isNew?: boolean;
 }
-
-// Function to compress image before uploading
-const compressImageBeforeUpload = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Set maximum dimensions
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 600;
-        let width = img.width;
-        let height = img.height;
-
-        // Calculate new dimensions
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          // Compress to JPEG with 80% quality
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(compressedDataUrl);
-        } else {
-          reject(new Error('Could not get canvas context'));
-        }
-      };
-      img.onerror = reject;
-    };
-    reader.onerror = reject;
-  });
-};
 
 const AdminJobDrives: React.FC = () => {
   const [drive, setDrive] = useState<Omit<JobDrive, 'id' | 'addedTimestamp'>>({
@@ -91,7 +44,8 @@ const AdminJobDrives: React.FC = () => {
     driveType: 'Walk-in Interview',
     experience: '',
     salary: '',
-    expectedCandidates: null,
+    expectedCandidates: undefined,
+    isNew: true
   });
 
   const [eligibilityInput, setEligibilityInput] = useState('');
@@ -105,66 +59,70 @@ const AdminJobDrives: React.FC = () => {
     after: number;
     removed: number;
   } | null>(null);
-  const [syncMessage, setSyncMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { trackButtonClick, trackEvent } = useGoogleAnalytics();
 
-  // Load drives from localStorage
-  const loadDrives = () => {
-    try {
-      const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
-      
-      // Clean old drives (older than 30 days)
-      const now = Date.now();
-      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-      
-      const beforeCount = savedDrives.length;
-      const recentDrives = savedDrives.filter((drive: JobDrive) => {
-        const driveTimestamp = drive.addedTimestamp || new Date(drive.date).getTime();
-        return driveTimestamp >= thirtyDaysAgo;
+  // Cleanup old drives (older than 3 months) and load drives
+  const loadAndCleanDrives = (auto: boolean = false) => {
+    const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
+    
+    // Filter out drives older than 90 days (3 months)
+    const now = Date.now();
+    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+    
+    const beforeCount = savedDrives.length;
+    const recentDrives = savedDrives.filter((drive: JobDrive) => {
+      const driveTimestamp = drive.addedTimestamp || new Date(drive.date).getTime();
+      return driveTimestamp >= ninetyDaysAgo;
+    });
+    const afterCount = recentDrives.length;
+    const removedCount = beforeCount - afterCount;
+    
+    // Sort by addedTimestamp (newest first)
+    const sortedDrives = recentDrives.sort((a: JobDrive, b: JobDrive) => {
+      const timeA = a.addedTimestamp || new Date(a.date).getTime();
+      const timeB = b.addedTimestamp || new Date(b.date).getTime();
+      return timeB - timeA; // Descending order (newest first)
+    });
+    
+    // Update localStorage with only recent drives
+    if (recentDrives.length !== savedDrives.length) {
+      localStorage.setItem('jobDrives', JSON.stringify(recentDrives));
+    }
+    
+    setDrives(sortedDrives);
+    
+    // Save cleanup time
+    const cleanupTime = new Date().toLocaleString('en-IN');
+    localStorage.setItem('last_drive_cleanup', cleanupTime);
+    setLastCleanup(cleanupTime);
+    
+    // Set cleanup stats
+    setCleanupStats({
+      before: beforeCount,
+      after: afterCount,
+      removed: removedCount
+    });
+    
+    // Track cleanup event
+    if (removedCount > 0) {
+      trackEvent('drive_cleanup', {
+        auto_cleanup: auto,
+        drives_before: beforeCount,
+        drives_after: afterCount,
+        drives_removed: removedCount
       });
-      const afterCount = recentDrives.length;
-      const removedCount = beforeCount - afterCount;
       
-      // Sort by addedTimestamp (newest first)
-      const sortedDrives = recentDrives.sort((a: JobDrive, b: JobDrive) => {
-        const timeA = a.addedTimestamp || new Date(a.date).getTime();
-        const timeB = b.addedTimestamp || new Date(b.date).getTime();
-        return timeB - timeA;
-      });
-      
-      // Update localStorage and state
-      localStorage.setItem('jobDrives', JSON.stringify(sortedDrives));
-      setDrives(sortedDrives);
-      
-      // Save cleanup time
-      const cleanupTime = new Date().toLocaleString('en-IN');
-      localStorage.setItem('last_drive_cleanup', cleanupTime);
-      
-      setLastCleanup(cleanupTime);
-      setCleanupStats({
-        before: beforeCount,
-        after: afterCount,
-        removed: removedCount
-      });
-      
-      if (removedCount > 0) {
-        setSyncMessage({
-          type: 'success',
-          text: `Auto-cleaned ${removedCount} drives older than 30 days. ${afterCount} drives remain.`
-        });
-        setTimeout(() => setSyncMessage(null), 3000);
+      if (!auto) {
+        alert(`Cleaned up ${removedCount} drives older than 90 days.`);
       }
-    } catch (error) {
-      console.error('Error loading drives:', error);
-      setDrives([]);
     }
   };
 
-  // Initialize on mount
+  // Load drives on component mount
   useEffect(() => {
-    loadDrives();
+    loadAndCleanDrives(true);
     
     // Load last cleanup time
     const savedCleanup = localStorage.getItem('last_drive_cleanup');
@@ -175,85 +133,41 @@ const AdminJobDrives: React.FC = () => {
 
   // Manual cleanup trigger
   const handleCleanup = () => {
-    if (window.confirm('Are you sure you want to remove all drives older than 30 days? This action cannot be undone.')) {
-      loadDrives();
+    if (window.confirm('Are you sure you want to remove all drives older than 90 days? This action cannot be undone.')) {
+      loadAndCleanDrives(false);
     }
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setSyncMessage({ 
-        type: 'error', 
-        text: 'Image is too large! Please select an image smaller than 5MB.' 
-      });
-      setTimeout(() => setSyncMessage(null), 3000);
-      return;
-    }
-
-    setIsUploadingImage(true);
-    
-    try {
-      // Compress image before displaying
-      const compressedDataUrl = await compressImageBeforeUpload(file);
-      setDrive({ ...drive, image: compressedDataUrl });
-      setImagePreview(compressedDataUrl);
-      setSyncMessage({ 
-        type: 'success', 
-        text: 'Image uploaded and compressed successfully!' 
-      });
-      setTimeout(() => setSyncMessage(null), 2000);
-    } catch (error) {
-      console.error('Error compressing image:', error);
-      // Fallback to regular FileReader
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        setDrive({ ...drive, image: dataUrl });
-        setImagePreview(dataUrl);
-      };
-      reader.readAsDataURL(file);
-    } finally {
-      setIsUploadingImage(false);
-    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setDrive({ ...drive, image: dataUrl });
+      setImagePreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!drive.title || !drive.company || !drive.location || !drive.date || !drive.time || !drive.description) {
-      setSyncMessage({ 
-        type: 'error', 
-        text: 'Please fill in all required fields (Title, Company, Location, Date, Time, Description)' 
-      });
-      setTimeout(() => setSyncMessage(null), 3000);
-      return;
-    }
-
     const newDrive: JobDrive = {
       ...drive,
       id: `drive-${Date.now()}`,
       addedTimestamp: Date.now(),
       eligibility: eligibilityInput.split('\n').filter(item => item.trim() !== '').map(item => item.trim()),
       documents: documentsInput.split('\n').filter(item => item.trim() !== '').map(item => item.trim()),
+      isNew: true
     };
 
-    // Update local state
-    const updatedDrives = [newDrive, ...drives];
+    const updatedDrives = [newDrive, ...drives]; // Add to beginning for latest first
     setDrives(updatedDrives);
     localStorage.setItem('jobDrives', JSON.stringify(updatedDrives));
     
-    // Show success message
     setShowSuccess(true);
-    setSyncMessage({ 
-      type: 'success', 
-      text: 'Drive posted successfully!' 
-    });
-    
     // Reset form
     setDrive({
       title: '',
@@ -271,35 +185,26 @@ const AdminJobDrives: React.FC = () => {
       driveType: 'Walk-in Interview',
       experience: '',
       salary: '',
-      expectedCandidates: null,
+      expectedCandidates: undefined,
+      isNew: true
     });
     setEligibilityInput('');
     setDocumentsInput('');
     setImagePreview('');
 
-    setTimeout(() => {
-      setShowSuccess(false);
-      setSyncMessage(null);
-    }, 3000);
+    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   const deleteDrive = (driveId: string) => {
-    if (window.confirm('Are you sure you want to delete this drive?')) {
-      const updatedDrives = drives.filter(drive => drive.id !== driveId);
-      setDrives(updatedDrives);
-      localStorage.setItem('jobDrives', JSON.stringify(updatedDrives));
-      
-      setSyncMessage({ type: 'success', text: 'Drive deleted successfully!' });
-      setTimeout(() => setSyncMessage(null), 2000);
-    }
+    const updatedDrives = drives.filter(drive => drive.id !== driveId);
+    setDrives(updatedDrives);
+    localStorage.setItem('jobDrives', JSON.stringify(updatedDrives));
   };
 
   const clearAllDrives = () => {
-    if (window.confirm('Are you sure you want to delete all drives? This action cannot be undone.')) {
+    if (window.confirm('Are you sure you want to delete all job drives? This action cannot be undone.')) {
       setDrives([]);
       localStorage.setItem('jobDrives', '[]');
-      setSyncMessage({ type: 'success', text: 'All drives cleared!' });
-      setTimeout(() => setSyncMessage(null), 2000);
     }
   };
 
@@ -323,7 +228,7 @@ const AdminJobDrives: React.FC = () => {
     <>
       <Helmet>
         <title>Admin - Latest Job Drives | CareerCraft.in</title>
-        <meta name="description" content="Manage latest walk-in drives and job fairs for CareerCraft.in - India's premier career platform." />
+        <meta name="description" content="Manage latest walk-in drives and job fairs for CareerCraft.in - India's premier career platform. Auto-cleaned every 90 days." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
@@ -335,26 +240,12 @@ const AdminJobDrives: React.FC = () => {
               ← Back to Latest Job Drives
             </Link>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Drives - CareerCraft.in</h1>
-            <p className="text-gray-600">Add latest walk-in drives and job fairs for Indian job seekers. Auto-cleaned every 30 days.</p>
+            <p className="text-gray-600">Add latest walk-in drives and job fairs for Indian job seekers. Auto-cleaned every 90 days.</p>
           </div>
 
           {showSuccess && (
             <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
               Latest drive posted successfully on CareerCraft!
-            </div>
-          )}
-
-          {/* Sync Message */}
-          {syncMessage && (
-            <div className={`${syncMessage.type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 'bg-red-100 border-red-400 text-red-700'} border px-4 py-3 rounded mb-6`}>
-              <div className="flex items-center">
-                {syncMessage.type === 'success' ? (
-                  <span className="mr-2">✅</span>
-                ) : (
-                  <AlertCircle size={16} className="mr-2" />
-                )}
-                {syncMessage.text}
-              </div>
             </div>
           )}
 
@@ -364,7 +255,7 @@ const AdminJobDrives: React.FC = () => {
               <div>
                 <h3 className="font-semibold text-yellow-800 mb-1">🔄 Auto-Cleanup System Active</h3>
                 <p className="text-yellow-700 text-sm">
-                  Drives older than 30 days are automatically removed to keep listings fresh.
+                  Drives older than 90 days are automatically removed to keep listings fresh.
                 </p>
                 <p className="text-yellow-700 text-sm">
                   Latest Drives: {drives.length} • Last Cleanup: {lastCleanup || 'Never'}
@@ -379,7 +270,7 @@ const AdminJobDrives: React.FC = () => {
                   Clean Old Drives
                 </button>
                 <button
-                  onClick={loadDrives}
+                  onClick={() => loadAndCleanDrives(false)}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors flex items-center"
                 >
                   <RefreshCw size={16} className="mr-2" />
@@ -391,7 +282,7 @@ const AdminJobDrives: React.FC = () => {
               <div className="mt-2 bg-red-50 border border-red-200 rounded p-2">
                 <p className="text-red-700 text-sm">
                   <AlertCircle size={14} className="inline mr-1" />
-                  Auto-cleaned: {cleanupStats.removed} old drives removed (30+ days old)
+                  Auto-cleaned: {cleanupStats.removed} old drives removed
                 </p>
               </div>
             )}
@@ -403,11 +294,9 @@ const AdminJobDrives: React.FC = () => {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-2xl font-bold text-gray-800">Add Latest Drive to CareerCraft</h2>
-                  <div className="flex gap-2">
-                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                      Shows as LATEST
-                    </span>
-                  </div>
+                  <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                    Shows as LATEST
+                  </span>
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -422,10 +311,7 @@ const AdminJobDrives: React.FC = () => {
                           <img 
                             src={imagePreview} 
                             alt="Preview" 
-                            className="max-h-48 mx-auto rounded object-contain"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x200/10B981/FFFFFF?text=Drive+Poster';
-                            }}
+                            className="max-h-48 mx-auto rounded"
                           />
                           <button
                             type="button"
@@ -445,20 +331,10 @@ const AdminJobDrives: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => fileInputRef.current?.click()}
-                              disabled={isUploadingImage}
-                              className={`bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center gap-2 mx-auto ${isUploadingImage ? 'opacity-70 cursor-not-allowed' : ''}`}
+                              className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
                             >
-                              {isUploadingImage ? (
-                                <>
-                                  <RefreshCw size={16} className="animate-spin" />
-                                  Compressing...
-                                </>
-                              ) : (
-                                <>
-                                  <Upload size={16} />
-                                  Upload Drive Poster
-                                </>
-                              )}
+                              <Upload size={16} className="inline mr-2" />
+                              Upload Drive Poster
                             </button>
                             <input
                               type="file"
@@ -469,7 +345,7 @@ const AdminJobDrives: React.FC = () => {
                             />
                           </div>
                           <p className="text-sm text-gray-500 mt-2">
-                            PNG, JPG up to 5MB • Recommended: 800x600px
+                            PNG, JPG, GIF up to 10MB
                           </p>
                         </div>
                       )}
@@ -610,10 +486,7 @@ const AdminJobDrives: React.FC = () => {
                       <input
                         type="number"
                         value={drive.expectedCandidates || ''}
-                        onChange={e => setDrive({
-                          ...drive, 
-                          expectedCandidates: e.target.value ? parseInt(e.target.value) : null
-                        })}
+                        onChange={e => setDrive({...drive, expectedCandidates: parseInt(e.target.value) || undefined})}
                         placeholder="e.g., 500"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
@@ -715,13 +588,13 @@ Educational certificates..."
                   <div className="pt-4">
                     <button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
                     >
-                      <Save size={18} />
-                      Post Drive
+                      <Plus size={20} className="inline mr-2" />
+                      Add Latest Job Drive to CareerCraft
                     </button>
                     <p className="text-xs text-gray-500 text-center mt-2">
-                      <span className="text-red-500">* Drives auto-delete after 30 days</span>
+                      Drive will appear as "Latest" and auto-clean after 90 days
                     </p>
                   </div>
                 </form>
@@ -730,6 +603,44 @@ Educational certificates..."
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {/* Auto-Cleanup Section */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle size={18} className="text-red-600" />
+                  <h4 className="font-semibold text-red-800">🔄 Auto-Cleanup System</h4>
+                </div>
+                <p className="text-red-700 text-sm mb-3">
+                  Drives older than 90 days are automatically removed to keep listings fresh.
+                </p>
+                <div className="space-y-2 text-sm text-red-700 mb-4">
+                  <div className="flex justify-between">
+                    <span>Last Cleanup:</span>
+                    <span className="font-medium">{lastCleanup || 'Never'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Drives before:</span>
+                    <span className="font-medium">{cleanupStats?.before || drives.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Drives after:</span>
+                    <span className="font-medium">{cleanupStats?.after || drives.length}</span>
+                  </div>
+                  {cleanupStats && cleanupStats.removed > 0 && (
+                    <div className="flex justify-between">
+                      <span>Removed:</span>
+                      <span className="font-medium bg-red-100 px-2 py-0.5 rounded">{cleanupStats.removed} old drives</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={handleCleanup}
+                  className="w-full bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors flex items-center justify-center"
+                >
+                  <Trash2 size={16} className="mr-2" />
+                  Clean Old Drives Now
+                </button>
+              </div>
+
               {/* Existing Drives */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -748,39 +659,30 @@ Educational certificates..."
                 </div>
                 <div className="text-xs text-gray-500 mb-3 flex items-center gap-2">
                   <Clock size={12} />
-                  Showing newest first • Auto-cleaned every 30 days
+                  Showing newest first • Auto-cleaned every 90 days
                 </div>
                 {drives.length === 0 ? (
                   <p className="text-gray-500 text-sm">No latest drives added yet to CareerCraft</p>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {drives.map(driveItem => {
-                      const isOld = driveItem.addedTimestamp && (Date.now() - driveItem.addedTimestamp) > 15 * 24 * 60 * 60 * 1000; // 15+ days
+                      const isOld = driveItem.addedTimestamp && (Date.now() - driveItem.addedTimestamp) > 60 * 24 * 60 * 60 * 1000; // 60+ days
                       
                       return (
                         <div key={driveItem.id} className={`border rounded-lg p-3 ${isOld ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <div className="flex items-start gap-2">
-                                {driveItem.image && (
-                                  <img 
-                                    src={driveItem.image} 
-                                    alt={driveItem.title}
-                                    className="w-12 h-12 object-cover rounded"
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/48/10B981/FFFFFF?text=Drive';
-                                    }}
-                                  />
-                                )}
-                                <div className="flex-1">
-                                  <h4 className="font-semibold text-gray-800 text-sm line-clamp-1">
-                                    {driveItem.title}
-                                  </h4>
-                                  <p className="text-xs text-gray-600">{driveItem.company}</p>
-                                  <p className="text-xs text-gray-500">{driveItem.location}</p>
-                                </div>
-                              </div>
+                              <h4 className="font-semibold text-gray-800 text-sm line-clamp-1">
+                                {driveItem.title}
+                              </h4>
+                              <p className="text-xs text-gray-600">{driveItem.company}</p>
+                              <p className="text-xs text-gray-500">{driveItem.location}</p>
                               <div className="flex flex-wrap gap-1 mt-1">
+                                {driveItem.isNew && (
+                                  <span className="inline-block bg-red-100 text-red-800 text-xs px-1 py-0.5 rounded">
+                                    NEW
+                                  </span>
+                                )}
                                 {isOld && (
                                   <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-1 py-0.5 rounded">
                                     OLD (Will auto-clean)
@@ -792,12 +694,11 @@ Educational certificates..."
                                   </span>
                                 )}
                                 <span className="inline-block bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">
-                                  {new Date(driveItem.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                  {new Date(driveItem.date).toLocaleDateString()}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-400 mt-1">
                                 Added: {driveItem.addedTimestamp ? new Date(driveItem.addedTimestamp).toLocaleDateString('en-IN') : 'Recently'}
-                                {driveItem.image && ' • 📷'}
                               </p>
                             </div>
                             <button
@@ -835,8 +736,16 @@ Educational certificates..."
                     <span className="font-bold">{drives.filter(d => d.image).length}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span>This Month:</span>
+                    <span className="font-bold">{drives.filter(d => {
+                      const driveDate = new Date(d.date);
+                      const now = new Date();
+                      return driveDate.getMonth() === now.getMonth() && driveDate.getFullYear() === now.getFullYear();
+                    }).length}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span>Auto-clean in:</span>
-                    <span className="font-bold">30 days</span>
+                    <span className="font-bold">90 days</span>
                   </div>
                 </div>
               </div>
@@ -845,13 +754,13 @@ Educational certificates..."
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-800 mb-2">Tips for Latest Indian Job Drives</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Use high-quality drive posters (800x600px recommended)</li>
+                  <li>• Use high-quality drive posters</li>
                   <li>• Include all eligibility criteria for Indian graduates</li>
                   <li>• Provide clear contact information with Indian phone numbers</li>
                   <li>• Mark important drives as featured</li>
                   <li>• Set realistic dates and times for Indian locations</li>
                   <li>• Mention specific Indian educational requirements</li>
-                  <li>• <span className="font-bold text-red-600">Drives auto-clean after 30 days</span></li>
+                  <li>• Drives auto-clean after 90 days</li>
                 </ul>
               </div>
             </div>

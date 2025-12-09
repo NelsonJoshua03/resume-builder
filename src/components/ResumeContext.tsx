@@ -1,6 +1,6 @@
 // ResumeContext.tsx
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { ResumeData, PersonalInfoData, Skill, SectionItem } from './types';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { ResumeData, PersonalInfoData, Skill, SectionItem, Experience, Education, Project, Award, CustomField } from './types';
 
 interface ResumeContextType {
   resumeData: ResumeData;
@@ -141,7 +141,7 @@ export const ResumeProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   ]);
 
   // Save to localStorage whenever resumeData changes
-  useEffect(() => {
+  React.useEffect(() => {
     localStorage.setItem('resumeData', JSON.stringify(resumeData));
   }, [resumeData]);
 

@@ -1,5 +1,5 @@
-// src/components/HomePage.tsx - UPDATED WITH FIXED TRACKING
-import { useEffect } from 'react';
+// src/components/HomePage.tsx - REMOVED PREMIUM TEMPLATES
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileText, 
@@ -9,9 +9,7 @@ import {
   ArrowRight,
   Star,
   Download,
-  Shield,
-  Crown,
-  Sparkles
+  Shield
 } from 'lucide-react';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import SEO from './SEO';
@@ -61,9 +59,8 @@ const HomePage = () => {
     trackUserFlow(from, to, action);
   };
 
-  const handleExternalLinkClick = (linkText: string) => {
-    // Fixed: Removed unused 'destination' parameter
-    trackExternalLink(linkText);
+  const handleExternalLinkClick = (linkText: string, destination: string) => {
+    trackExternalLink(linkText, destination, 'homepage');
     trackButtonClick(`external_${linkText.toLowerCase()}`, 'contact_section', 'homepage');
   };
 
@@ -92,7 +89,7 @@ const HomePage = () => {
                 India's premier career platform helping job seekers create professional resumes that pass through 
                 Applicant Tracking Systems and connect with top employers across India. Built for the Indian job market.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-center w-full">
+              <div className="flex justify-center w-full">
                 <Link 
                   to="/builder" 
                   onClick={() => {
@@ -103,21 +100,10 @@ const HomePage = () => {
                     const conversions = parseInt(localStorage.getItem('home_to_builder') || '0');
                     localStorage.setItem('home_to_builder', (conversions + 1).toString());
                   }}
-                  className="bg-white text-blue-600 px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto"
+                  className="bg-white text-blue-600 px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto max-w-sm"
                 >
                   <FileText size={20} />
                   Build Your Resume - Free
-                </Link>
-                <Link 
-                  to="/premium" 
-                  onClick={() => {
-                    handleCTAClick('premium_templates', 'hero_section');
-                    handleNavigation('homepage', 'premium', 'hero_cta');
-                  }}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto"
-                >
-                  <Crown size={20} />
-                  Premium Templates
                 </Link>
               </div>
               
@@ -199,98 +185,6 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* Premium Templates Section */}
-        <section className="py-12 md:py-16 bg-gradient-to-br from-purple-50 to-pink-50 w-full">
-          <div className="container mx-auto px-4 w-full max-w-7xl">
-            <div className="text-center mb-8 md:mb-12">
-              <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm px-3 md:px-4 py-1 md:py-2 rounded-full mb-3 md:mb-4">
-                <Crown className="text-purple-600" size={18} />
-                <span className="text-purple-600 font-semibold text-sm md:text-base">New Feature</span>
-              </div>
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
-                Premium Resume Templates
-              </h2>
-              <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
-                Stand out from the crowd with beautifully designed, icon-rich templates
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto w-full">
-              {/* Modern Icons Template */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 w-full">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 md:p-6 text-white">
-                  <h3 className="text-xl md:text-2xl font-bold mb-1 md:mb-2">Modern Icons</h3>
-                  <p className="text-blue-100 text-sm md:text-base">Beautiful icons and gradient designs</p>
-                </div>
-                <div className="p-4 md:p-6">
-                  <div className="flex flex-wrap gap-1 md:gap-2 mb-3 md:mb-4">
-                    <span className="bg-blue-100 text-blue-800 text-xs px-2 md:px-3 py-1 rounded-full">Icons</span>
-                    <span className="bg-purple-100 text-purple-800 text-xs px-2 md:px-3 py-1 rounded-full">Gradients</span>
-                    <span className="bg-green-100 text-green-800 text-xs px-2 md:px-3 py-1 rounded-full">Modern</span>
-                  </div>
-                  <p className="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">
-                    Clean, modern design with beautiful icons and professional gradient accents. Perfect for tech and creative roles.
-                  </p>
-                  <Link 
-                    to="/premium"
-                    onClick={() => {
-                      handleCTAClick('modern_icons_template', 'premium_section');
-                      handleNavigation('homepage', 'premium', 'modern_icons_click');
-                    }}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 md:py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center gap-2 text-sm md:text-base"
-                  >
-                    <Sparkles size={16} />
-                    Try Modern Icons
-                  </Link>
-                </div>
-              </div>
-
-              {/* Creative Portfolio Template */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 w-full">
-                <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 md:p-6 text-white">
-                  <h3 className="text-xl md:text-2xl font-bold mb-1 md:mb-2">Creative Portfolio</h3>
-                  <p className="text-purple-100 text-sm md:text-base">Timeline layout with progress bars</p>
-                </div>
-                <div className="p-4 md:p-6">
-                  <div className="flex flex-wrap gap-1 md:gap-2 mb-3 md:mb-4">
-                    <span className="bg-purple-100 text-purple-800 text-xs px-2 md:px-3 py-1 rounded-full">Timeline</span>
-                    <span className="bg-pink-100 text-pink-800 text-xs px-2 md:px-3 py-1 rounded-full">Progress Bars</span>
-                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 md:px-3 py-1 rounded-full">Creative</span>
-                  </div>
-                  <p className="text-gray-600 mb-4 md:mb-6 text-sm md:text-base">
-                    Creative portfolio-style layout with timeline design and skill progress bars. Ideal for designers and creative professionals.
-                  </p>
-                  <Link 
-                    to="/premium"
-                    onClick={() => {
-                      handleCTAClick('creative_portfolio_template', 'premium_section');
-                      handleNavigation('homepage', 'premium', 'creative_portfolio_click');
-                    }}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 md:py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center gap-2 text-sm md:text-base"
-                  >
-                    <Sparkles size={16} />
-                    Try Creative Portfolio
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            <div className="text-center mt-6 md:mt-8">
-              <Link 
-                to="/premium"
-                onClick={() => {
-                  handleCTAClick('view_all_premium', 'premium_section');
-                  handleNavigation('homepage', 'premium', 'view_all_templates');
-                }}
-                className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 font-semibold text-sm md:text-base"
-              >
-                View All Premium Templates
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {/* Stats Section */}
         <section className="py-12 md:py-16 bg-gray-50 w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
@@ -313,8 +207,8 @@ const HomePage = () => {
                 className="transform hover:scale-105 transition-transform duration-300 p-2 md:p-4 cursor-pointer"
                 onClick={() => trackButtonClick('stats_templates', 'stats_section', 'homepage')}
               >
-                <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-purple-600 mb-1 md:mb-2">3 New</div>
-                <div className="text-gray-600 text-sm md:text-base">Premium Templates</div>
+                <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-purple-600 mb-1 md:mb-2">10+</div>
+                <div className="text-gray-600 text-sm md:text-base">Free Templates</div>
               </div>
               <div 
                 className="transform hover:scale-105 transition-transform duration-300 p-2 md:p-4 cursor-pointer"
@@ -355,7 +249,7 @@ const HomePage = () => {
                   className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExternalLinkClick('contact_email');
+                    handleExternalLinkClick('contact_email', 'mailto:contact@careercraft.in');
                   }}
                 >
                   contact@careercraft.in
@@ -379,7 +273,7 @@ const HomePage = () => {
                   className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExternalLinkClick('contact_linkedin');
+                    handleExternalLinkClick('contact_linkedin', 'https://linkedin.com');
                   }}
                 >
                   Connect with us
@@ -403,7 +297,7 @@ const HomePage = () => {
                   className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleExternalLinkClick('contact_instagram');
+                    handleExternalLinkClick('contact_instagram', 'https://instagram.com');
                   }}
                 >
                   Follow us
@@ -437,17 +331,6 @@ const HomePage = () => {
               >
                 Create Your Resume
                 <ArrowRight size={18} />
-              </Link>
-              <Link 
-                to="/premium" 
-                onClick={() => {
-                  handleCTAClick('final_premium_templates', 'final_cta');
-                  handleNavigation('homepage', 'premium', 'final_cta');
-                }}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto"
-              >
-                <Crown size={18} />
-                Premium Templates
               </Link>
               <Link 
                 to="/job-applications" 

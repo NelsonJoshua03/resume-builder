@@ -308,6 +308,7 @@ const ResumeBuilder = () => {
     updateSelectedTemplate,
     updateCustomColors
   } = useResume();
+  const [formKey, setFormKey] = useState(0);
   const resumeRef = useRef<HTMLDivElement>(null);
   const [isMobilePreview, setIsMobilePreview] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'preview'>('grid');
@@ -318,6 +319,7 @@ const ResumeBuilder = () => {
   const { 
     trackResumeGeneration, 
     trackButtonClick, 
+    trackTemplateChange,
     trackCTAClick,
     trackUserFlow,
     trackPageView,
@@ -362,7 +364,7 @@ const ResumeBuilder = () => {
 
   const selectTemplate = (template: string) => {
     updateSelectedTemplate(template);
-    trackEvent('template_change', { template_name: template });
+    trackTemplateChange(template);
     trackButtonClick('template_select', 'template_selector', 'resume_builder');
     
     // Track funnel step
@@ -403,6 +405,7 @@ const ResumeBuilder = () => {
       
       // Show success message
       setTimeout(() => {
+        const currentTemplate = TEMPLATES[resumeData.selectedTemplate as keyof typeof TEMPLATES] || TEMPLATES.creative;
         setShowDownloadPrompt(true);
       }, 500);
     }

@@ -1,11 +1,32 @@
+import { useState } from 'react';
 import { CustomFieldsProps, CustomFieldType } from './types';
 
 const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, template, onFieldInteraction }: CustomFieldsProps) => {
+  const [newFieldLabel, setNewFieldLabel] = useState('');
+
   const formStyle = template?.formStyle || {
     sectionBg: 'bg-white shadow-md rounded-lg',
     headerColor: 'text-gray-800',
     borderColor: 'border-gray-200',
     accentColor: 'text-gray-700'
+  };
+
+  const handleAddField = () => {
+    if (newFieldLabel.trim()) {
+      onAdd();
+      if (customFields.length > 0) {
+        const newFieldId = customFields[customFields.length - 1].id + 1;
+        onUpdate(newFieldId, 'label', newFieldLabel.trim());
+        onFieldInteraction?.(`label_${newFieldId}`, 'change');
+      }
+      setNewFieldLabel('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAddField();
+    }
   };
 
   const handleTypeChange = (id: number, value: string) => {

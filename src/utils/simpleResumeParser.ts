@@ -657,6 +657,14 @@ export class SimpleResumeParser {
     return yearMatch ? yearMatch[0] : '';
   }
 
+  private looksLikeYear(text: string): boolean {
+    return /^(19|20)\d{2}$/.test(text.trim());
+  }
+
+  private looksLikePercentage(text: string): boolean {
+    return /\d+%/.test(text) || /\d+(\.\d+)?\/\d+/.test(text);
+  }
+
   private looksLikeDegree(text: string): boolean {
     const degreeWords = ['bachelor', 'master', 'phd', 'diploma', 'degree', 'engineering', 'class x', 'class xii', 'mechanical', 'computer', 'science', 'human computer', 'interaction design'];
     const lower = text.toLowerCase();
