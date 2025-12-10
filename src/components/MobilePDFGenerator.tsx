@@ -1,4 +1,4 @@
-// MobilePDFGenerator.tsx
+// MobilePDFGenerator.tsx - SIMPLIFIED WITH ONLY GOOGLE ANALYTICS
 import { useState } from 'react';
 import jsPDF from 'jspdf';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
@@ -33,22 +33,79 @@ const MobilePDFGenerator = ({
   const [error, setError] = useState<string | null>(null);
   const { trackResumeDownload, trackButtonClick } = useGoogleAnalytics();
 
-  const trackDownload = (fileName: string) => {
+  const trackDownload = async (fileName: string) => {
+    const userId = localStorage.getItem('user_id') || 'anonymous';
+    const sessionId = sessionStorage.getItem('session_id') || Date.now().toString();
+    
+    // ✅ GLOBAL TRACKING: Google Analytics (works for ALL users worldwide)
+    
+    // 1. Track as resume download
     trackResumeDownload('PDF', template.name);
+    
+    // 2. Track button click
     trackButtonClick('download_pdf', 'pdf_generator', 'resume_builder');
     
+    // 3. Enhanced GA4 event with more details
+    if (typeof window.gtag !== 'undefined') {
+      // Funnel completion
+      window.gtag('event', 'funnel_step', {
+        funnel_name: 'resume_creation',
+        step: 'resume_downloaded',
+        step_number: 4,
+        user_id: userId,
+        template_name: template.name,
+        send_to: 'G-SW5M9YN8L5'
+      });
+      
+      // Main download event
+      window.gtag('event', 'resume_downloaded', {
+        template: template.name,
+        file_name: fileName,
+        user_id: userId,
+        session_id: sessionId,
+        timestamp: new Date().toISOString(),
+        event_category: 'Resume Downloads',
+        event_label: `Downloaded ${template.name} template`,
+        value: 1, // Count as 1 download
+        send_to: 'G-SW5M9YN8L5'
+      });
+      
+      // Template-specific event
+      window.gtag('event', `download_${template.name.toLowerCase()}`, {
+        file_name: fileName,
+        template_layout: template.layout,
+        sections_count: sectionOrder?.filter(s => s.enabled)?.length || 0,
+        send_to: 'G-SW5M9YN8L5'
+      });
+    }
+    
+    // 🎯 LOCAL TRACKING: localStorage (only for current device UX)
     try {
+      // Total downloads on this device
       const currentDownloads = parseInt(localStorage.getItem('resumeDownloads') || '0');
       localStorage.setItem('resumeDownloads', (currentDownloads + 1).toString());
       
-      const templateType = localStorage.getItem('currentTemplate') || 'default';
-      const templateDownloads = parseInt(localStorage.getItem(`downloads_${templateType}`) || '0');
-      localStorage.setItem(`downloads_${templateType}`, (templateDownloads + 1).toString());
+      // Template-specific downloads on this device
+      const templateDownloads = parseInt(localStorage.getItem(`downloads_${template.name}`) || '0');
+      localStorage.setItem(`downloads_${template.name}`, (templateDownloads + 1).toString());
+      
+      // Store current template for analytics
+      localStorage.setItem('currentTemplate', template.name);
+      
+      // Session tracking (resets when browser closes)
+      const sessionDownloads = JSON.parse(sessionStorage.getItem('sessionDownloads') || '[]');
+      sessionDownloads.push({
+        template: template.name,
+        time: new Date().toLocaleTimeString(),
+        fileName
+      });
+      sessionStorage.setItem('sessionDownloads', JSON.stringify(sessionDownloads.slice(-10))); // Keep last 10
+      
     } catch (error) {
       console.log('LocalStorage tracking failed:', error);
     }
     
-    console.log(`📊 Download tracked: ${fileName}`);
+    console.log(`📊 Download tracked globally via Google Analytics: ${fileName}`);
   };
 
   const downloadPDF = async () => {
@@ -68,7 +125,6 @@ const MobilePDFGenerator = ({
       let yPosition = margin;
       
       const primaryColor = template.colors?.primary || '#374151';
-      // NEW: Get circle initials color from template or use primary color as fallback
       const circleInitialsColor = template.circleInitialsColor || primaryColor;
       
       // Helper to convert hex to RGB
@@ -100,7 +156,6 @@ const MobilePDFGenerator = ({
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         
-        // Use provided color or default to primary color for specific templates
         if (color) {
           const rgb = hexToRgb(color);
           pdf.setTextColor(rgb.r, rgb.g, rgb.b);
@@ -111,94 +166,81 @@ const MobilePDFGenerator = ({
         pdf.text(title.toUpperCase(), margin, yPosition);
         yPosition += 2;
         
-        // Thinner horizontal line across the page
         pdf.setDrawColor(100, 100, 100);
-        pdf.setLineWidth(0.3); // Thinner line
-        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Across entire content width
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition);
         yPosition += 8;
       };
 
-      // Tech template section header with primary color and full-width thin line
       const addTechSectionHeader = (title: string) => {
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
         pdf.setFont('courier', 'bold');
         
-        // Use primary color for tech template
         const rgb = hexToRgb(primaryColor);
         pdf.setTextColor(rgb.r, rgb.g, rgb.b);
         
         pdf.text(`< ${title.toUpperCase()} />`, margin, yPosition);
         yPosition += 2;
         
-        // Tech-style thin horizontal line across entire page
         pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
-        pdf.setLineWidth(0.3); // Very thin line
-        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition);
         yPosition += 8;
       };
 
-      // Creative template section header with primary color and full-width thin line
       const addCreativeSectionHeader = (title: string) => {
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         
-        // Use primary color for creative template
         const rgb = hexToRgb(primaryColor);
         pdf.setTextColor(rgb.r, rgb.g, rgb.b);
         
         pdf.text(title.toUpperCase(), margin, yPosition);
         yPosition += 2;
         
-        // Creative style thin decorative line across entire page
         pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
-        pdf.setLineWidth(0.3); // Very thin line
-        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition);
         yPosition += 8;
       };
 
-      // Professional template section header with primary color and full-width thin line
       const addProfessionalSectionHeader = (title: string) => {
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
         pdf.setFont('times', 'bold');
         
-        // Use primary color for professional template
         const rgb = hexToRgb(primaryColor);
         pdf.setTextColor(rgb.r, rgb.g, rgb.b);
         
         pdf.text(title.toUpperCase(), margin, yPosition);
         yPosition += 2;
         
-        // Professional style thin solid line across entire page
         pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
-        pdf.setLineWidth(0.4); // Thin line
-        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
+        pdf.setLineWidth(0.4);
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition);
         yPosition += 8;
       };
 
-      // Executive template section header with primary color and full-width thin line
       const addExecutiveSectionHeader = (title: string) => {
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
         pdf.setFont('times', 'bold');
         
-        // Use primary color for executive template
         const rgb = hexToRgb(primaryColor);
         pdf.setTextColor(rgb.r, rgb.g, rgb.b);
         
         pdf.text(title.toUpperCase(), margin, yPosition);
         yPosition += 2;
         
-        // Executive style thin solid line across entire page
         pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
-        pdf.setLineWidth(0.4); // Thin line
-        pdf.line(margin, yPosition, pageWidth - margin, yPosition); // Full width
+        pdf.setLineWidth(0.4);
+        pdf.line(margin, yPosition, pageWidth - margin, yPosition);
         yPosition += 8;
       };
       
@@ -210,7 +252,6 @@ const MobilePDFGenerator = ({
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(40, 40, 40);
         
-        // Simple bullet
         pdf.setFont('helvetica', 'bold');
         pdf.text('•', margin + 2, yPosition);
         pdf.setFont('helvetica', 'normal');
@@ -375,7 +416,6 @@ const MobilePDFGenerator = ({
           
           checkNewPage(15);
           
-          // Enhanced skills display with categories
           const skillsText = resumeData.skills.map((skill: any) => skill.name).join('  •  ');
           const lines = pdf.splitTextToSize(skillsText, contentWidth);
           
@@ -528,7 +568,6 @@ const MobilePDFGenerator = ({
         pdf.text(personalInfo.name.toUpperCase(), margin, yPosition);
         yPosition += 10;
         
-        // Decorative line
         pdf.setDrawColor(rgb.r, rgb.g, rgb.b);
         pdf.setLineWidth(0.8);
         pdf.line(margin, yPosition, pageWidth - margin, yPosition);
@@ -551,7 +590,6 @@ const MobilePDFGenerator = ({
         const headerHeight = 35;
         const rgb = hexToRgb(primaryColor);
         
-        // Header background
         pdf.setFillColor(rgb.r, rgb.g, rgb.b);
         pdf.rect(0, 0, pageWidth, headerHeight, 'F');
         
@@ -576,27 +614,20 @@ const MobilePDFGenerator = ({
       };
 
      const renderCreativePersonalInfo = () => {
-  // UPDATED: Creative Template Personal Info with purple and white gradient circle and WHITE border
-  const headerHeight = 32; // Increased header height to accommodate the circle
+  const headerHeight = 32;
   const rgb = hexToRgb(primaryColor);
   
-  // Add colored header section
   pdf.setFillColor(rgb.r, rgb.g, rgb.b);
   pdf.rect(0, 0, pageWidth, headerHeight, 'F');
   
-  // Circle positioned at the boundary between header and content
-  const circleY = headerHeight; // Position circle at the bottom of header
+  const circleY = headerHeight;
   const circleX = margin + 20;
   const circleRadius = 18;
   
-  // Draw circle that spans both header and content areas
-  // Outer circle with purple tint
-  const purpleTint = { r: 147, g: 112, b: 219 }; // Medium purple color
+  const purpleTint = { r: 147, g: 112, b: 219 };
   pdf.setFillColor(purpleTint.r, purpleTint.g, purpleTint.b);
   pdf.circle(circleX, circleY, circleRadius, 'F');
   
-  // Inner circle with purple and white gradient effect
-  // Create gradient effect by using a lighter purple/white mix
   const gradientPurple = { 
     r: Math.min(255, purpleTint.r + 80), 
     g: Math.min(255, purpleTint.g + 80), 
@@ -605,27 +636,22 @@ const MobilePDFGenerator = ({
   pdf.setFillColor(gradientPurple.r, gradientPurple.g, gradientPurple.b);
   pdf.circle(circleX, circleY, circleRadius - 2, 'F');
   
-  // White border for the circle
-  pdf.setDrawColor(255, 255, 255); // WHITE border
-  pdf.setLineWidth(0.8); // Slightly thicker border for better visibility
+  pdf.setDrawColor(255, 255, 255);
+  pdf.setLineWidth(0.8);
   pdf.circle(circleX, circleY, circleRadius - 2, 'S');
   
-  // UPDATED: Initials with PURPLE color (same as personal info section)
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
   
-  // Get the circle initials color (purple for creative template)
   const circleInitialsRgb = hexToRgb(circleInitialsColor);
-  pdf.setTextColor(circleInitialsRgb.r, circleInitialsRgb.g, circleInitialsRgb.b); // PURPLE color for initials
+  pdf.setTextColor(circleInitialsRgb.r, circleInitialsRgb.g, circleInitialsRgb.b);
   
   const initials = personalInfo.name.split(' ').map(n => n[0]).join('');
   const initialsWidth = pdf.getTextWidth(initials);
   pdf.text(initials, circleX - initialsWidth / 2, circleY + 2);
   
-  // Start content below the circle
   yPosition = headerHeight + circleRadius + 10;
   
-  // Name and title below header
   pdf.setFontSize(24);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(30, 30, 30);
@@ -635,7 +661,7 @@ const MobilePDFGenerator = ({
   
   pdf.setFontSize(12);
   pdf.setFont('helvetica', 'italic');
-  pdf.setTextColor(rgb.r, rgb.g, rgb.b); // Purple color for title
+  pdf.setTextColor(rgb.r, rgb.g, rgb.b);
   const titleWidth = pdf.getTextWidth(personalInfo.title);
   pdf.text(personalInfo.title, (pageWidth - titleWidth) / 2, yPosition);
   yPosition += 6;
@@ -650,7 +676,6 @@ const MobilePDFGenerator = ({
 };
 
       const renderTechPersonalInfo = () => {
-        // Header background
         const headerHeight = 35;
         const rgb = hexToRgb(primaryColor);
         pdf.setFillColor(rgb.r, rgb.g, rgb.b);
@@ -705,18 +730,15 @@ const MobilePDFGenerator = ({
         const rightColumnWidth = contentWidth - leftColumnWidth - 10;
         const sidebarColor = hexToRgb(primaryColor);
         
-        // Draw sidebar background for entire first page
         pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
         pdf.rect(0, 0, margin + leftColumnWidth, pageHeight, 'F');
         
         let leftY = yPosition + 5;
         
-        // Name and Title in sidebar with better spacing
         pdf.setFontSize(20);
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(255, 255, 255);
         
-        // Wrap name if too long
         const nameLines = pdf.splitTextToSize(personalInfo.name, leftColumnWidth - 10);
         nameLines.forEach((line: string) => {
           const lineWidth = pdf.getTextWidth(line);
@@ -735,7 +757,6 @@ const MobilePDFGenerator = ({
         });
         leftY += 8;
         
-        // Contact Info with icons
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.text('CONTACT', margin + 5, leftY);
@@ -763,10 +784,8 @@ const MobilePDFGenerator = ({
       // TEMPLATE-SPECIFIC LAYOUTS
 
       if (template.layout === 'professional') {
-        // Professional Template - Elegant serif-style with bold headers
         renderProfessionalPersonalInfo();
         
-        // Render sections for professional template with primary color headers
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -795,10 +814,8 @@ const MobilePDFGenerator = ({
       } 
       
       else if (template.layout === 'executive') {
-        // Executive Template - Premium look with elegant spacing
         renderExecutivePersonalInfo();
         
-        // Render sections for executive template with primary color headers
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -827,11 +844,8 @@ const MobilePDFGenerator = ({
       }
       
       else if (template.layout === 'creative') {
-        // UPDATED: Creative Template - Now with purple and white gradient circle and WHITE border
-        // Circle initials are now purple to match personal info section
         renderCreativePersonalInfo();
         
-        // Render sections for creative template with primary color headers
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -860,10 +874,8 @@ const MobilePDFGenerator = ({
       } 
       
       else if (template.layout === 'tech') {
-        // Tech Template - Monospace-inspired modern look
         renderTechPersonalInfo();
         
-        // Render sections for tech template with primary color headers
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -892,12 +904,10 @@ const MobilePDFGenerator = ({
       } 
       
       else if (template.layout === 'twoColumn') {
-        // Two Column Template - Modern sidebar design
         const { leftY, leftColumnWidth } = renderTwoColumnPersonalInfo();
         const rightColumnWidth = contentWidth - leftColumnWidth - 10;
         const sidebarColor = hexToRgb(primaryColor);
         
-        // Skills in left column with better formatting
         if (resumeData.skills && resumeData.skills.length > 0) {
           let currentLeftY = leftY;
           pdf.setFontSize(10);
@@ -911,7 +921,6 @@ const MobilePDFGenerator = ({
           
           resumeData.skills.forEach((skill: any) => {
             if (currentLeftY > pageHeight - 20) {
-              // Continue on next page if needed
               pdf.addPage();
               pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
               pdf.rect(0, 0, margin + leftColumnWidth, pageHeight, 'F');
@@ -919,14 +928,12 @@ const MobilePDFGenerator = ({
               currentLeftY = margin;
             }
             
-            // Skill with proficiency indicator
             const skillLine = `• ${skill.name}`;
             pdf.text(skillLine, margin + 5, currentLeftY);
             currentLeftY += 4;
           });
         }
         
-        // Education in left column
         if (resumeData.education && resumeData.education.length > 0) {
           let currentLeftY = leftY + (resumeData.skills ? resumeData.skills.length * 4 + 20 : 0);
           if (currentLeftY > pageHeight - 40) {
@@ -967,11 +974,9 @@ const MobilePDFGenerator = ({
           });
         }
         
-        // Right Column - Main Content
         let rightY = yPosition + 12;
         const rightColumnX = margin + leftColumnWidth + 10;
         
-        // Professional Summary
         if (personalInfo.summary && personalInfo.summary.length > 0 && enabledSections.find(s => s.id === 'summary')) {
           pdf.setFontSize(13);
           pdf.setFont('helvetica', 'bold');
@@ -1001,7 +1006,6 @@ const MobilePDFGenerator = ({
           rightY += 6;
         }
         
-        // Work Experience
         if (resumeData.experiences && resumeData.experiences.length > 0 && enabledSections.find(s => s.id === 'experience')) {
           pdf.setFontSize(13);
           pdf.setFont('helvetica', 'bold');
@@ -1059,7 +1063,6 @@ const MobilePDFGenerator = ({
           });
         }
         
-        // Projects
         if (resumeData.projects && resumeData.projects.length > 0 && enabledSections.find(s => s.id === 'projects')) {
           if (rightY > pageHeight - 30) {
             pdf.addPage();
@@ -1122,10 +1125,8 @@ const MobilePDFGenerator = ({
         yPosition = Math.max(leftY, rightY);
         
       } else {
-        // ATS Template - Ultra-clean professional (DEFAULT/ATS)
         renderATSPersonalInfo();
 
-        // Render ALL sections for ATS template using common functions
         enabledSections.forEach(section => {
           switch(section.id) {
             case 'summary':
@@ -1154,12 +1155,26 @@ const MobilePDFGenerator = ({
       }
 
       const fileName = `${personalInfo.name.replace(/\s+/g, '_')}_Resume.pdf`;
-      trackDownload(fileName);
+      
+      // 🔥 Track download globally via Google Analytics
+      await trackDownload(fileName);
+      
+      // Save PDF
       pdf.save(fileName);
       
     } catch (error) {
       console.error('Error generating PDF:', error);
       setError('Failed to generate PDF. Please try again.');
+      
+      // Track failed download attempt
+      if (typeof window.gtag !== 'undefined') {
+        window.gtag('event', 'resume_download_failed', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          template: template.name,
+          event_category: 'Errors',
+          send_to: 'G-SW5M9YN8L5'
+        });
+      }
     } finally {
       setIsGenerating(false);
       onDownloadEnd?.();
@@ -1189,7 +1204,7 @@ const MobilePDFGenerator = ({
             🎨 {template.name} style
           </span>
           <span className="bg-white px-2 py-1 rounded text-gray-700 flex items-center">
-            🟣 Purple initials
+            🌍 Google Analytics
           </span>
         </div>
       </div>

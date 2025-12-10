@@ -1,6 +1,6 @@
-// src/components/Layout.tsx - UPDATED WITH FIXED NAVIGATION DROPDOWN
+// src/components/Layout.tsx - COMPLETELY UPDATED WITH FIXED NAVIGATION
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
 interface LayoutProps {
@@ -9,6 +9,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -35,8 +36,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const closeDropdown = () => {
-    setIsDropdownOpen(false);
+  // Simple navigation handler
+  const handleNavigation = (path: string) => {
+    // Close dropdown if open
+    if (isDropdownOpen) {
+      setIsDropdownOpen(false);
+    }
+    
+    // Use navigate for programmatic navigation
+    navigate(path);
   };
 
   return (
@@ -111,13 +119,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="container mx-auto px-3 md:px-4 py-3 w-full max-w-7xl">
             <nav className="flex justify-between items-center w-full">
               {/* Logo Removed - Only Text Brand */}
-              <Link to="/" className="flex items-center" onClick={closeDropdown}>
+              <Link to="/" className="flex items-center">
                 <span className="text-xl md:text-2xl font-bold text-blue-600">
                   CareerCraft.in
                 </span>
               </Link>
               
-              {/* Navigation Menu */}
+              {/* Navigation Menu - UPDATED: Simplified Links */}
               <div className="hidden md:flex space-x-4 lg:space-x-6">
                 <Link 
                   to="/government-exams" 
@@ -126,7 +134,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
-                  onClick={closeDropdown}
                 >
                   Government Exams
                 </Link>
@@ -137,7 +144,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
-                  onClick={closeDropdown}
                 >
                   Job Disciplines
                 </Link>
@@ -148,7 +154,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
-                  onClick={closeDropdown}
                 >
                   Job Applications
                 </Link>
@@ -159,12 +164,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
-                  onClick={closeDropdown}
                 >
                   Walk-in Drives
                 </Link>
                 
-                {/* Resume Templates Dropdown - UPDATED WITH FIXED CLICK HANDLING */}
+                {/* Resume Templates Dropdown - UPDATED */}
                 <div className="relative group" ref={dropdownRef}>
                   <button 
                     className="font-medium transition-colors text-sm lg:text-base text-gray-700 hover:text-blue-600 flex items-center gap-1"
@@ -183,7 +187,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <Link 
                       to="/builder" 
                       className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-100"
-                      onClick={closeDropdown}
                     >
                       <div className="font-medium">Free ATS Templates</div>
                       <div className="text-xs text-gray-500">Optimized for Indian job market</div>
@@ -191,7 +194,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <Link 
                       to="/edit" 
                       className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                      onClick={closeDropdown}
                     >
                       <div className="font-medium flex items-center gap-2">
                         <span>Edit Resume</span>
@@ -208,7 +210,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
-                  onClick={closeDropdown}
                 >
                   Blog
                 </Link>
@@ -219,7 +220,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
-                  onClick={closeDropdown}
                 >
                   About
                 </Link>
@@ -230,7 +230,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
-                  onClick={closeDropdown}
                 >
                   Contact
                 </Link>
@@ -238,13 +237,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               
               {/* CTA Buttons */}
               <div className="flex items-center gap-2 md:gap-3">
-                <Link 
-                  to="/builder" 
+                <button
+                  onClick={() => handleNavigation('/builder')}
                   className="bg-blue-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm md:text-base"
-                  onClick={closeDropdown}
                 >
                   Build Resume
-                </Link>
+                </button>
               </div>
             </nav>
           </div>
@@ -255,14 +253,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </main>
 
-        {/* Footer with Logo Removed */}
+        {/* Footer with Logo Removed - UPDATED: Simplified Links */}
         <footer className="bg-gray-900 text-white py-8 md:py-12 mt-auto w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 mb-6 md:mb-8">
               <div>
                 {/* Footer Logo Removed - Only Text */}
                 <div className="mb-3 md:mb-4">
-                  <Link to="/" onClick={closeDropdown}>
+                  <Link to="/">
                     <span className="text-xl md:text-2xl font-bold text-white">
                       CareerCraft.in
                     </span>
@@ -293,38 +291,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Quick Links</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Home</Link></li>
-                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Government Exams</Link></li>
-                  <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Job Disciplines</Link></li>
-                  <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Job Applications</Link></li>
-                  <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Walk-in Drives</Link></li>
+                  <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Home</Link></li>
+                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Government Exams</Link></li>
+                  <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Disciplines</Link></li>
+                  <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Applications</Link></li>
+                  <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Walk-in Drives</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resume Tools</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>ATS Resume Builder</Link></li>
-                  <li><Link to="/edit" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Edit Resume</Link></li>
-                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Fresh Graduate Guide</Link></li>
+                  <li><Link to="/builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">ATS Resume Builder</Link></li>
+                  <li><Link to="/edit" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Edit Resume</Link></li>
+                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Fresh Graduate Guide</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resources</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Blog</Link></li>
-                  <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>About Us</Link></li>
-                  <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Contact</Link></li>
+                  <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Blog</Link></li>
+                  <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">About Us</Link></li>
+                  <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Contact</Link></li>
                 </ul>
               </div>
               
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Legal</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Privacy Policy</Link></li>
-                  <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Terms of Service</Link></li>
-                  <li><Link to="/cookies" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base" onClick={closeDropdown}>Cookie Policy</Link></li>
+                  <li><Link to="/privacy" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Privacy Policy</Link></li>
+                  <li><Link to="/terms" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Terms of Service</Link></li>
+                  <li><Link to="/cookies" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Cookie Policy</Link></li>
                 </ul>
               </div>
             </div>

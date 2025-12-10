@@ -2,18 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/logos/careercraft-favicon.png">
-    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
-    <!-- Content Security Policy - SIMPLIFIED -->
+    <!-- Content Security Policy - UPDATED & CLEANED -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
-                   script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+                   script-src 'self' 'unsafe-inline' 
                            https://www.googletagmanager.com 
-                           https://pagead2.googlesyndication.com 
+                           https://www.google-analytics.com
                            https://cdnjs.cloudflare.com;
                    style-src 'self' 'unsafe-inline' 
                            https://cdnjs.cloudflare.com 
@@ -26,12 +22,11 @@
                    connect-src 'self' 
                            https://www.google-analytics.com 
                            https://region1.google-analytics.com 
-                           https://raw.githubusercontent.com;">
+                           https://raw.githubusercontent.com
+                           https://*.googleapis.com
+                           https://*.gstatic.com;">
     
-    <!-- Google AdSense Auto Ads -->
-    <meta name="google-adsense-account" content="ca-pub-7970100235833186">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7970100235833186" crossorigin="anonymous"></script>
-    
+    <!-- REMOVED AdSense for now - causes errors -->
     <!-- Google Verification -->
     <meta name="google-site-verification" content="72ogLK0F0xw0H23swyyhs8idWOcyyv7hr1-zAMZ9v7w" />
     
@@ -98,26 +93,25 @@
     <meta property="og:url" content="https://careercraft.in/" />
     <meta property="og:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
     <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India." />
-    <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
-    <meta property="og:image:width" content="500" />
-    <meta property="og:image:height" content="500" />
-    <meta property="og:locale" content="en_IN" />
-    <meta property="og:site_name" content="CareerCraft India" />
-
+    
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:card" content="summary" />
     <meta property="twitter:url" content="https://careercraft.in/" />
     <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
     <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
-    <meta property="twitter:image" content="https://careercraft.in/logos/careercraft-logo-square.png" />
     
-    <!-- Google Analytics with CORRECT Measurement ID -->
+    <!-- Google Analytics - UPDATED without ad conflicts -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-SW5M9YN8L5');
+      
+      // Configure GA without ads
+      gtag('config', 'G-SW5M9YN8L5', {
+        'allow_google_signals': false,
+        'allow_ad_personalization_signals': false
+      });
     </script>
     
     <!-- Preload critical resources -->
@@ -134,45 +128,140 @@
     <meta name="rating" content="general">
     <meta name="revisit-after" content="7 days">
     
-    <!-- Favicon and App Icons -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/logos/careercraft-logo-square.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/logos/careercraft-favicon.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/logos/careercraft-favicon.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <!-- Basic favicon fallback -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
     
-    <!-- Critical CSS for Edge Compatibility -->
+    <!-- Preload Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Performance optimization -->
+    <link rel="preconnect" href="https://raw.githubusercontent.com">
+    <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
+    
     <style>
-      /* Edge-specific fixes */
-      @supports (-ms-ime-align: auto) {
-        body {
-          width: 100% !important;
-          overflow-x: hidden !important;
-        }
-        .container {
-          width: 100% !important;
-          max-width: 100% !important;
-        }
+      /* Ensure proper width on all browsers */
+      * {
+        box-sizing: border-box;
       }
       
-      /* Ensure proper width on all browsers */
       html, body {
         width: 100%;
+        margin: 0;
+        padding: 0;
         overflow-x: hidden;
-        position: relative;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
       
-      /* Force full width containers */
-      .w-full {
-        width: 100% !important;
+      #root {
+        width: 100%;
+        min-height: 100vh;
+        overflow-x: hidden;
       }
       
-      .max-w-7xl {
-        max-width: 80rem !important;
+      /* Improve scrolling */
+      body {
+        scroll-behavior: smooth;
+      }
+      
+      /* Loading animation */
+      .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Better focus styles for accessibility */
+      :focus {
+        outline: 2px solid #2563eb;
+        outline-offset: 2px;
+      }
+      
+      :focus:not(:focus-visible) {
+        outline: none;
+      }
+      
+      /* Responsive improvements */
+      @media (max-width: 768px) {
+        html {
+          font-size: 14px;
+        }
       }
     </style>
+    
+    <!-- Progressive Web App meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="CareerCraft">
+    
+    <!-- Apple touch icon -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
   </head>
-  <body style="margin: 0; padding: 0; width: 100%; overflow-x: hidden;">
-    <div id="root" style="width: 100%; overflow-x: hidden;"></div>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript>
+      <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NOSCRIPT" 
+              height="0" width="0" style="display:none;visibility:hidden">
+      </iframe>
+    </noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    
+    <div id="root">
+      <!-- Loading screen -->
+      <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="text-align: center; color: white; padding: 2rem;">
+          <div class="loading-spinner" style="width: 40px; height: 40px; margin: 0 auto 1rem;"></div>
+          <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">CareerCraft India</h1>
+          <p style="opacity: 0.8;">Loading your career journey...</p>
+        </div>
+      </div>
+    </div>
+    
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Performance monitoring -->
+    <script>
+      // Log performance metrics
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const perfData = window.performance.timing;
+          const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+          console.log('🚀 Page loaded in', loadTime, 'ms');
+          
+          // Track to Google Analytics if available
+          if (typeof window.gtag !== 'undefined') {
+            window.gtag('event', 'timing_complete', {
+              'name': 'page_load',
+              'value': loadTime,
+              'event_category': 'Performance'
+            });
+          }
+        }, 0);
+      });
+      
+      // Error tracking
+      window.addEventListener('error', function(e) {
+        console.error('Global error caught:', e.error);
+        
+        // Track to Google Analytics if available
+        if (typeof window.gtag !== 'undefined') {
+          window.gtag('event', 'exception', {
+            'description': e.error?.message || 'Unknown error',
+            'fatal': false
+          });
+        }
+      });
+    </script>
   </body>
 </html>

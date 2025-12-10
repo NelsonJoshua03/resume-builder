@@ -1,4 +1,4 @@
-// src/components/JobDrives.tsx - UPDATED WITH LARGER IMAGES
+// src/components/JobDrives.tsx - FIXED NAVIGATION
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -20,7 +20,8 @@ import {
   Linkedin,
   MessageCircle,
   Mail,
-  X
+  X,
+  ArrowRight
 } from 'lucide-react';
 
 interface JobDrive {
@@ -112,6 +113,11 @@ const JobDrives: React.FC = () => {
   useEffect(() => {
     trackDailyPageView('Job Drives', '/job-drives');
     loadAndCleanDrives();
+    
+    // Cleanup function
+    return () => {
+      // Any cleanup if needed
+    };
   }, [trackDailyPageView]);
 
   // Categories for filtering
@@ -182,6 +188,18 @@ const JobDrives: React.FC = () => {
   const handleRegisterClick = (drive: JobDrive) => {
     trackJobDriveRegistration(drive.id, drive.title, drive.company);
     trackButtonClick('register_drive', 'drive_card', 'job_drives');
+    
+    // Handle external links properly
+    if (drive.registrationLink || drive.applyLink) {
+      const url = drive.registrationLink || drive.applyLink;
+      if (url.startsWith('http')) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        trackExternalLink('Drive Registration', url, 'job_drives');
+      } else {
+        // If it's not a proper URL, don't navigate
+        console.warn('Invalid URL for drive:', drive.title, url);
+      }
+    }
   };
 
   const handleClearFilters = () => {
@@ -232,7 +250,7 @@ const JobDrives: React.FC = () => {
       try {
         await navigator.share({
           title: `${selectedDrive.title} - ${selectedDrive.company}`,
-          text: `Check out this job drive on CareerCraft: ${selectedDrive.title} by ${selectedDrive.company} in ${selectedDrive.location} on ${new Date(selectedDrive.date).toLocaleDateString()}`,
+          text: `Check out this job drive on CareerCraft: ${selectedDrive.title} by ${selectedDrive.company} in ${selectedDrive.location} on ${new Date(selectedDrive.date).toLocaleDateString()} at ${selectedDrive.time}`,
           url: shareUrl,
         });
         trackSocialShare('native', 'job_drive', selectedDrive.id);
@@ -246,11 +264,11 @@ const JobDrives: React.FC = () => {
     }
   };
 
-  // Platform-specific sharing functions
+  // Platform-specific sharing functions - FIXED URL encoding
   const shareOnFacebook = () => {
     if (selectedDrive) {
-      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=Check out this job drive: ${selectedDrive.title} at ${selectedDrive.company}`;
-      window.open(url, '_blank');
+      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(`Check out this job drive: ${selectedDrive.title} at ${selectedDrive.company}`)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('facebook', 'job_drive', selectedDrive.id);
       trackButtonClick('share_facebook', 'share_modal', 'job_drives');
     }
@@ -260,7 +278,7 @@ const JobDrives: React.FC = () => {
     if (selectedDrive) {
       const text = `Check out this job drive: ${selectedDrive.title} at ${selectedDrive.company} in ${selectedDrive.location}`;
       const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('twitter', 'job_drive', selectedDrive.id);
       trackButtonClick('share_twitter', 'share_modal', 'job_drives');
     }
@@ -269,7 +287,7 @@ const JobDrives: React.FC = () => {
   const shareOnLinkedIn = () => {
     if (selectedDrive) {
       const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('linkedin', 'job_drive', selectedDrive.id);
       trackButtonClick('share_linkedin', 'share_modal', 'job_drives');
     }
@@ -279,7 +297,7 @@ const JobDrives: React.FC = () => {
     if (selectedDrive) {
       const text = `Check out this job drive on CareerCraft: ${selectedDrive.title} at ${selectedDrive.company} - ${shareUrl}`;
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('whatsapp', 'job_drive', selectedDrive.id);
       trackButtonClick('share_whatsapp', 'share_modal', 'job_drives');
     }
@@ -289,7 +307,7 @@ const JobDrives: React.FC = () => {
     if (selectedDrive) {
       const subject = `Job Drive: ${selectedDrive.title} at ${selectedDrive.company}`;
       const body = `Check out this job drive on CareerCraft:\n\nDrive: ${selectedDrive.title}\nCompany: ${selectedDrive.company}\nLocation: ${selectedDrive.location}\nDate: ${new Date(selectedDrive.date).toLocaleDateString()}\nTime: ${selectedDrive.time}\n\nView details: ${shareUrl}`;
-      window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
       trackSocialShare('email', 'job_drive', selectedDrive.id);
       trackButtonClick('share_email', 'share_modal', 'job_drives');
     }
@@ -379,7 +397,13 @@ const JobDrives: React.FC = () => {
       <section className="bg-gradient-to-r from-green-600 to-emerald-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
           <div className="flex justify-between items-center mb-6">
-            <div></div>
+            <Link 
+              to="/"
+              className="flex items-center gap-2 text-green-100 hover:text-white"
+            >
+              <ArrowRight className="rotate-180" size={18} />
+              Back to Home
+            </Link>
             <button
               onClick={handleRefresh}
               className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition-colors"
@@ -526,6 +550,31 @@ const JobDrives: React.FC = () => {
       {/* Main Content */}
       <section className="py-12">
         <div className="container mx-auto px-4">
+          {/* Quick Navigation */}
+          <div className="flex flex-wrap gap-4 mb-6">
+            <Link 
+              to="/job-applications"
+              className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
+            >
+              <ArrowRight size={16} />
+              View Job Applications
+            </Link>
+            <Link 
+              to="/government-exams"
+              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+            >
+              <ArrowRight size={16} />
+              View Government Exams
+            </Link>
+            <Link 
+              to="/blog"
+              className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
+            >
+              <ArrowRight size={16} />
+              View Career Blog
+            </Link>
+          </div>
+
           {/* Quick Admin Access */}
           <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4 mb-8 shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-center">
@@ -734,75 +783,29 @@ const JobDrives: React.FC = () => {
             </div>
           </div>
 
-          {/* Analytics Info */}
-          <div className="mt-12 bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200 shadow-sm">
-            <h3 className="font-bold text-green-800 mb-4 text-lg flex items-center gap-2">
-              📊 Latest Drive Analytics
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm">
-                <div className="font-semibold text-gray-700 mb-1">Drive Views Today</div>
-                <div className="text-2xl font-bold text-green-600">
-                  {localStorage.getItem(`daily_page_views_job-drives`) || '0'}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Real-time tracking</div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm">
-                <div className="font-semibold text-gray-700 mb-1">Total Registrations</div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {localStorage.getItem('job_drive_registrations') || '0'}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Last 90 days</div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm">
-                <div className="font-semibold text-gray-700 mb-1">Auto-Cleaned Every</div>
-                <div className="text-2xl font-bold text-purple-600">
-                  90 Days
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Old drives removed</div>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-green-100 shadow-sm">
-                <div className="font-semibold text-gray-700 mb-1">Latest Update</div>
-                <div className="text-lg font-bold text-amber-600">
-                  {lastUpdated.split(',')[0]}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">{lastUpdated.split(',')[1]}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Share Stats */}
-          <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="font-bold text-blue-800 mb-4">📤 Share Drives & Help Friends</h3>
-            <p className="text-blue-700 text-sm mb-3">
-              Sharing drives helps your friends find immediate hiring opportunities and grows the CareerCraft community.
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="bg-white p-3 rounded-lg border border-blue-100 text-center">
-                <div className="font-bold text-blue-600 text-xl">
-                  {localStorage.getItem('drive_shares') || '0'}
-                </div>
-                <div className="text-gray-600">Drives Shared</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border border-blue-100 text-center">
-                <div className="font-bold text-green-600 text-xl">
-                  {drives.length}
-                </div>
-                <div className="text-gray-600">Latest Drives</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border border-blue-100 text-center">
-                <div className="font-bold text-purple-600 text-xl">
-                  {upcomingDrives.length}
-                </div>
-                <div className="text-gray-600">Upcoming</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border border-blue-100 text-center">
-                <div className="font-bold text-amber-600 text-xl">
-                  90
-                </div>
-                <div className="text-gray-600">Days Fresh</div>
-              </div>
-            </div>
+          {/* Navigation to other sections */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link 
+              to="/job-applications"
+              className="bg-blue-50 border border-blue-200 rounded-xl p-6 hover:bg-blue-100 transition-colors"
+            >
+              <h3 className="font-bold text-blue-800 mb-2">📄 Latest Job Applications</h3>
+              <p className="text-blue-700 text-sm">Browse fresh job postings from top Indian companies</p>
+            </Link>
+            <Link 
+              to="/government-exams"
+              className="bg-green-50 border border-green-200 rounded-xl p-6 hover:bg-green-100 transition-colors"
+            >
+              <h3 className="font-bold text-green-800 mb-2">🏛️ Government Exams</h3>
+              <p className="text-green-700 text-sm">Latest Sarkari Naukri exams and notifications</p>
+            </Link>
+            <Link 
+              to="/blog"
+              className="bg-purple-50 border border-purple-200 rounded-xl p-6 hover:bg-purple-100 transition-colors"
+            >
+              <h3 className="font-bold text-purple-800 mb-2">📝 Career Blog</h3>
+              <p className="text-purple-700 text-sm">Resume tips and career advice for Indian job market</p>
+            </Link>
           </div>
         </div>
       </section>
@@ -924,7 +927,12 @@ const JobDrives: React.FC = () => {
                 <button
                   onClick={() => {
                     trackButtonClick('register_from_share', 'share_modal', 'job_drives');
-                    window.open(selectedDrive.registrationLink || selectedDrive.applyLink, '_blank');
+                    if (selectedDrive.registrationLink || selectedDrive.applyLink) {
+                      const url = selectedDrive.registrationLink || selectedDrive.applyLink;
+                      if (url.startsWith('http')) {
+                        window.open(url, '_blank', 'noopener,noreferrer');
+                      }
+                    }
                     closeShareModal();
                   }}
                   className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
@@ -962,16 +970,18 @@ const DriveCard: React.FC<{
 
   const handleDetailsClick = () => {
     trackButtonClick('view_drive_details', 'drive_card', 'job_drives');
-    trackExternalLink('Drive Details', drive.applyLink, 'job_drives');
+    if (drive.applyLink.startsWith('http')) {
+      trackExternalLink('Drive Details', drive.applyLink, 'job_drives');
+    }
   };
 
   const handleRegister = () => {
     onRegister(drive);
-    window.open(drive.registrationLink || drive.applyLink, '_blank');
   };
 
   const handleShareClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault(); // Prevent any default behavior
     onShare(drive);
   };
 

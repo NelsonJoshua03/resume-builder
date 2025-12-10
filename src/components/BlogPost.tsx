@@ -1,5 +1,5 @@
-// src/components/BlogPost.tsx - UPDATED WITH ENHANCED TRACKING
-import React, { useEffect, useState } from 'react';
+// src/components/BlogPost.tsx - FIXED VERSION WITHOUT INFINITE LOOP
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
@@ -11,6 +11,25 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { SyntaxHighlighterProps } from 'react-syntax-highlighter';
 import BlogSocialSharing from './BlogSocialSharing';
 import SEO from './SEO';
+
+// Import React Icons
+import {
+  FiArrowLeft,
+  FiCalendar,
+  FiUser,
+  FiBriefcase,
+  FiCode,
+  FiCopy,
+  FiFileText,
+  FiPlus,
+  FiGrid,
+  FiCheckCircle,
+  FiClock,
+  FiBookOpen,
+  FiShare2,
+  FiMail,
+  FiArrowRight
+} from 'react-icons/fi';
 
 interface BlogPostData {
   id: number;
@@ -38,6 +57,62 @@ interface CodeProps {
   children?: React.ReactNode;
 }
 
+// Move helper functions outside component to prevent recreation
+const getBlogUrls = () => {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  if (isDevelopment) {
+    return {
+      dataUrl: '/blog-data.json',
+      contentUrl: (filename: string) => `/blog-content/${filename}`
+    };
+  } else {
+    const baseUrl = 'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main';
+    return {
+      dataUrl: `${baseUrl}/public/blog-data.json?t=${Date.now()}`,
+      contentUrl: (filename: string) => `${baseUrl}/public/blog-content/${filename}?t=${Date.now()}`
+    };
+  }
+};
+
+// Move cleanMarkdownContent outside to prevent recreation
+const cleanMarkdownContent = (content: string): string => {
+  return content
+    // Remove any image markdown syntax
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    // Remove HTML img tags
+    .replace(/<img[^>]*>/g, '')
+    // Fix tables with pipe characters
+    .replace(/(\|[^\n]+\|\n)(?=\|)/g, (match) => {
+      const rows = match.split('\n').filter(row => row.trim());
+      if (rows.length >= 2) {
+        const header = rows[0];
+        const separator = rows[1];
+        if (separator.includes('-') || separator.includes('=')) {
+          return match;
+        }
+        const columns = header.split('|').filter(col => col.trim() !== '');
+        const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`;
+        return `${header}\n${separatorRow}\n`;
+      }
+      return match;
+    })
+    // Fix code block language specifiers
+    .replace(/```(\w+)?\n/g, '```$1\n')
+    // Fix common formatting issues
+    .replace(/\n{3,}/g, '\n\n')
+    // Fix asterisk lists
+    .replace(/^\*\s+/gm, '- ')
+    // Ensure proper spacing for headings
+    .replace(/^(#{1,6})\s*([^\n]+)/gm, '$1 $2')
+    // Fix email addresses
+    .replace(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '<$1>')
+    // Convert align="center" to data-align="center" for ReactMarkdown
+    .replace(/align="center"/g, 'data-align="center"')
+    .replace(/align="left"/g, 'data-align="left"')
+    .replace(/align="right"/g, 'data-align="right"');
+};
+
 const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { trackBlogView, trackButtonClick, trackPageView, trackCTAClick, trackBlogPostEngagement } = useGoogleAnalytics();
@@ -47,14 +122,23 @@ const BlogPost: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [contentLoading, setContentLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [readStartTime, setReadStartTime] = useState<number>(0);
+  const readStartTime = useRef<number>(0);
   const [readingProgress, setReadingProgress] = useState<number>(0);
+  const rafId = useRef<number>(0);
+  
+  // Refs to prevent multiple tracking calls
+  const hasTrackedPageView = useRef(false);
+  const hasTrackedEngagement = useRef(false);
 
-  // Track reading progress
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!post) return;
-      
+  // Throttled scroll handler
+  const handleScroll = useCallback(() => {
+    if (!post) return;
+    
+    if (rafId.current) {
+      window.cancelAnimationFrame(rafId.current);
+    }
+    
+    rafId.current = window.requestAnimationFrame(() => {
       const article = document.querySelector('article');
       if (!article) return;
       
@@ -68,83 +152,43 @@ const BlogPost: React.FC = () => {
         const progress = Math.min(100, Math.round((scrollPosition / articleHeight) * 100));
         setReadingProgress(progress);
         
-        // Track progress milestones
-        if (progress >= 75) {
+        // Track progress milestones - only once each
+        if (progress >= 75 && !hasTrackedEngagement.current) {
           trackBlogPostEngagement(post.slug, post.title, '75_percent_read');
-        } else if (progress >= 50) {
-          trackBlogPostEngagement(post.slug, post.title, '50_percent_read');
-        } else if (progress >= 25) {
-          trackBlogPostEngagement(post.slug, post.title, '25_percent_read');
+          hasTrackedEngagement.current = true;
         }
       }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    });
   }, [post, trackBlogPostEngagement]);
 
-  // Helper function to get the correct URLs based on environment
-  const getBlogUrls = () => {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    
-    if (isDevelopment) {
-      return {
-        dataUrl: '/blog-data.json',
-        contentUrl: (filename: string) => `/blog-content/${filename}`
-      };
-    } else {
-      const baseUrl = 'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main';
-      return {
-        dataUrl: `${baseUrl}/public/blog-data.json?t=${Date.now()}`,
-        contentUrl: (filename: string) => `${baseUrl}/public/blog-content/${filename}?t=${Date.now()}`
-      };
-    }
-  };
-
-  // Clean markdown content function
-  const cleanMarkdownContent = (content: string): string => {
-    return content
-      // Fix tables with pipe characters
-      .replace(/(\|[^\n]+\|\n)(?=\|)/g, (match) => {
-        const rows = match.split('\n').filter(row => row.trim());
-        if (rows.length >= 2) {
-          const header = rows[0];
-          const separator = rows[1];
-          if (separator.includes('-') || separator.includes('=')) {
-            return match;
-          }
-          const columns = header.split('|').filter(col => col.trim() !== '');
-          const separatorRow = `| ${columns.map(() => '---').join(' | ')} |`;
-          return `${header}\n${separatorRow}\n`;
-        }
-        return match;
-      })
-      // Fix code block language specifiers
-      .replace(/```(\w+)?\n/g, '```$1\n')
-      // Fix common formatting issues
-      .replace(/\n{3,}/g, '\n\n')
-      // Fix asterisk lists
-      .replace(/^\*\s+/gm, '- ')
-      // Ensure proper spacing for headings
-      .replace(/^(#{1,6})\s*([^\n]+)/gm, '$1 $2')
-      // Fix email addresses
-      .replace(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '<$1>')
-      // Convert align="center" to data-align="center" for ReactMarkdown
-      .replace(/align="center"/g, 'data-align="center"')
-      .replace(/align="left"/g, 'data-align="left"')
-      .replace(/align="right"/g, 'data-align="right"');
-  };
-
+  // Track reading progress
   useEffect(() => {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId.current) {
+        window.cancelAnimationFrame(rafId.current);
+      }
+    };
+  }, [handleScroll]);
+
+  // Main effect for fetching blog data - FIXED
+  useEffect(() => {
+    let isMounted = true;
+    
     const fetchPostData = async () => {
+      if (!slug) return;
+      
       try {
         setLoading(true);
         setError('');
+        setPost(null);
+        setContent('');
         
         const urls = getBlogUrls();
         
         // Fetch post metadata
-        console.log('📡 Fetching blog data from:', urls.dataUrl);
+        console.log('📡 Fetching blog data for:', slug);
         const response = await fetch(urls.dataUrl);
         
         if (!response.ok) {
@@ -154,101 +198,99 @@ const BlogPost: React.FC = () => {
         const data = await response.json();
         const currentPost = data.posts.find((p: BlogPostData) => p.slug === slug);
         
-        if (currentPost) {
-          setPost(currentPost);
-          
-          // Track page view with enhanced analytics
+        if (!currentPost) {
+          throw new Error('Blog post not found');
+        }
+        
+        if (!isMounted) return;
+        
+        setPost(currentPost);
+        
+        // Track page view - only once
+        if (!hasTrackedPageView.current) {
           trackDailyPageView(currentPost.title, `/blog/${slug}`);
-          trackBlogView(slug || 'unknown', currentPost.title, currentPost.category);
+          trackBlogView(slug, currentPost.title, currentPost.category);
           trackPageView(currentPost.title, `/blog/${slug}`);
+          hasTrackedPageView.current = true;
+        }
+        
+        // Start tracking read time
+        readStartTime.current = Date.now();
+        
+        // Fetch markdown content
+        setContentLoading(true);
+        try {
+          const contentUrl = urls.contentUrl(currentPost.contentFile);
+          console.log('📄 Fetching blog content from:', contentUrl);
+          const contentResponse = await fetch(contentUrl);
           
-          // Start tracking read time
-          setReadStartTime(Date.now());
-          
-          // Track blog post loaded
-          if (typeof window.gtag !== 'undefined') {
-            window.gtag('event', 'blog_post_loaded', {
-              post_slug: slug,
-              post_title: currentPost.title,
-              category: currentPost.category,
-              event_category: 'Blog',
-              event_label: 'blog_post_view'
-            });
-          }
-
-          // Track engagement
-          trackBlogPostEngagement(currentPost.slug, currentPost.title, 'post_opened');
-
-          // Fetch markdown content
-          setContentLoading(true);
-          try {
-            const contentUrl = urls.contentUrl(currentPost.contentFile);
-            console.log('📄 Fetching blog content from:', contentUrl);
-            const contentResponse = await fetch(contentUrl);
+          if (contentResponse.ok) {
+            let markdownContent = await contentResponse.text();
             
-            if (contentResponse.ok) {
-              let markdownContent = await contentResponse.text();
-              
-              // Clean up the markdown content
-              markdownContent = cleanMarkdownContent(markdownContent);
-              
-              // Log first few lines for debugging
-              console.log('📝 Cleaned markdown preview:', markdownContent.substring(0, 500));
-              
+            // Clean up the markdown content
+            markdownContent = cleanMarkdownContent(markdownContent);
+            
+            // Log first few lines for debugging
+            console.log('📝 Cleaned markdown preview:', markdownContent.substring(0, 500));
+            
+            if (isMounted) {
               setContent(markdownContent);
-            } else {
-              console.error('Content response not OK:', contentResponse.status);
+            }
+          } else {
+            console.error('Content response not OK:', contentResponse.status);
+            if (isMounted) {
               setContent('# Content Loading Error\n\n*Blog content is being updated. Please check back soon!*');
             }
-          } catch (contentError) {
-            console.error('Error loading blog content:', contentError);
+          }
+        } catch (contentError) {
+          console.error('Error loading blog content:', contentError);
+          if (isMounted) {
             setContent('# Content Loading Error\n\n*Failed to load blog content. Please try again later.*');
-          } finally {
+          }
+        } finally {
+          if (isMounted) {
             setContentLoading(false);
           }
-        } else {
-          setError('Blog post not found');
-          console.error('Blog post not found for slug:', slug);
         }
-      } catch (error) {
-        console.error('Error loading blog post:', error);
-        setError('Failed to load blog post. Please try again later.');
         
-        // Track error
-        if (typeof window.gtag !== 'undefined') {
-          window.gtag('event', 'exception', {
-            description: 'Blog post load error',
-            fatal: false
-          });
+      } catch (err) {
+        console.error('Error loading blog post:', err);
+        if (isMounted) {
+          setError('Failed to load blog post. Please try again later.');
         }
       } finally {
-        setLoading(false);
-      }
-    };
-
-    if (slug) {
-      fetchPostData();
-    }
-  }, [slug, trackBlogView, trackPageView, trackBlogPostEngagement, trackDailyPageView]);
-
-  // Track read time when user leaves the page
-  useEffect(() => {
-    return () => {
-      if (readStartTime > 0 && post) {
-        const readDuration = Math.round((Date.now() - readStartTime) / 1000); // in seconds
-        
-        // Only track if user spent reasonable time
-        if (readDuration > 10) {
-          trackBlogPostReadEnhanced(post.slug, post.title, readDuration);
-          
-          // Track to Google Analytics
-          trackBlogPostEngagement(post.slug, post.title, 'post_closed', readDuration);
-          
-          console.log(`📊 Tracked read time for "${post.title}": ${readDuration} seconds`);
+        if (isMounted) {
+          setLoading(false);
         }
       }
     };
-  }, [readStartTime, post, trackBlogPostReadEnhanced, trackBlogPostEngagement]);
+
+    // Reset tracking flags when slug changes
+    hasTrackedPageView.current = false;
+    hasTrackedEngagement.current = false;
+    
+    fetchPostData();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [slug]); // Only depend on slug - remove tracking functions from dependencies
+
+  // Track read time when component unmounts
+  useEffect(() => {
+    return () => {
+      if (readStartTime.current > 0 && post) {
+        const readDuration = Math.round((Date.now() - readStartTime.current) / 1000);
+        
+        // Only track if user spent reasonable time
+        if (readDuration > 5) {
+          trackBlogPostReadEnhanced(post.slug, post.title, readDuration);
+          trackBlogPostEngagement(post.slug, post.title, 'post_closed', readDuration);
+        }
+      }
+    };
+  }, [post, trackBlogPostReadEnhanced, trackBlogPostEngagement]);
 
   const handleCTAClick = () => {
     trackButtonClick('build_resume_from_blog', 'blog_post_cta', 'blog');
@@ -269,7 +311,10 @@ const BlogPost: React.FC = () => {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="animate-pulse text-gray-600">Loading blog post...</div>
+          <div className="animate-pulse text-gray-600">
+            <FiBookOpen className="w-8 h-8 mx-auto mb-4 text-blue-500" />
+            Loading blog post...
+          </div>
         </div>
       </div>
     );
@@ -283,10 +328,11 @@ const BlogPost: React.FC = () => {
           <p className="text-gray-600 mb-4">{error}</p>
           <Link 
             to="/blog" 
-            className="text-blue-600 hover:text-blue-700"
+            className="text-blue-600 hover:text-blue-700 flex items-center justify-center gap-2"
             onClick={handleBackToBlog}
           >
-            ← Back to Blog
+            <FiArrowLeft className="w-4 h-4" />
+            Back to Blog
           </Link>
         </div>
       </div>
@@ -298,7 +344,8 @@ const BlogPost: React.FC = () => {
     'career-advice': 'Career Advice',
     'industry-specific': 'Industry Specific Guides', 
     'ats-optimization': 'ATS Optimization',
-    'fresh-graduate': 'Fresh Graduate Guide'
+    'fresh-graduate': 'Fresh Graduate Guide',
+    'job-drives': 'Job Drives & Opportunities'
   };
 
   const currentUrl = `${window.location.origin}/blog/${post.slug}`;
@@ -314,13 +361,11 @@ const BlogPost: React.FC = () => {
         type="article"
         publishedTime={publishedTime}
         author={post.author}
-        ogImage="https://careercraft.in/logos/careercraft-logo-square.png"
         structuredData={{
           "@context": "https://schema.org",
           "@type": "BlogPosting",
           "headline": post.title,
           "description": post.excerpt,
-          "image": "https://careercraft.in/logos/careercraft-logo-square.png",
           "datePublished": publishedTime,
           "dateModified": publishedTime,
           "author": {
@@ -329,11 +374,7 @@ const BlogPost: React.FC = () => {
           },
           "publisher": {
             "@type": "Organization",
-            "name": "CareerCraft India",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://careercraft.in/logos/careercraft-logo-square.png"
-            }
+            "name": "CareerCraft India"
           },
           "mainEntityOfPage": {
             "@type": "WebPage",
@@ -359,9 +400,7 @@ const BlogPost: React.FC = () => {
             className="text-blue-600 hover:text-blue-700 mb-6 inline-flex items-center gap-2"
             onClick={handleBackToBlog}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <FiArrowLeft className="w-5 h-5" />
             Back to CareerCraft Blog
           </Link>
           
@@ -371,15 +410,15 @@ const BlogPost: React.FC = () => {
               <span className="bg-blue-100 text-blue-800 text-sm font-medium px-4 py-1.5 rounded-full">
                 {blogCategories[post.category as keyof typeof blogCategories] || post.category}
               </span>
-              <div className="text-sm text-gray-500 flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              <div className="text-sm text-gray-500 flex items-center gap-2">
+                <FiCalendar className="w-4 h-4" />
                 {new Date(post.date).toLocaleDateString('en-IN', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric'
-                })} • {post.readTime}
+                })} • 
+                <FiClock className="w-4 h-4 ml-2" />
+                {post.readTime}
               </div>
             </div>
             
@@ -391,22 +430,18 @@ const BlogPost: React.FC = () => {
             {/* Author Info */}
             <div className="flex items-center mb-10 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
               <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center text-white font-bold text-xl mr-5">
-                {post.author.charAt(0)}
+                <FiUser className="w-7 h-7" />
               </div>
               <div>
                 <p className="font-bold text-gray-900 text-lg">{post.author}</p>
                 <p className="text-gray-600 mt-1">{post.authorBio}</p>
                 <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
                   <span className="flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
+                    <FiUser className="w-4 h-4" />
                     Indian Career Expert
                   </span>
                   <span className="flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                    </svg>
+                    <FiBriefcase className="w-4 h-4" />
                     10+ Years Experience
                   </span>
                 </div>
@@ -522,9 +557,7 @@ const BlogPost: React.FC = () => {
                         <div className="my-8 rounded-xl overflow-hidden border border-gray-800 shadow-lg">
                           <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-5 py-3 flex justify-between items-center">
                             <span className="text-xs text-gray-300 font-mono flex items-center gap-2">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                              </svg>
+                              <FiCode className="w-4 h-4" />
                               {language.toUpperCase()}
                             </span>
                             <button 
@@ -534,9 +567,7 @@ const BlogPost: React.FC = () => {
                               }}
                               className="text-xs text-gray-400 hover:text-white flex items-center gap-1"
                             >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
+                              <FiCopy className="w-3 h-3" />
                               Copy
                             </button>
                           </div>
@@ -560,17 +591,24 @@ const BlogPost: React.FC = () => {
                       <hr className="my-12 border-t-2 border-gray-200" {...props} />
                     ),
                     
-                    // Images
+                    // Image replacement - Show content boxes instead
                     img: ({node, ...props}) => {
-                      const handleImageLoad = () => {
-                        trackBlogPostEngagement(post.slug, post.title, 'image_viewed');
-                      };
+                      const altText = props.alt || "Content box";
                       return (
-                        <img 
-                          className="max-w-full h-auto rounded-xl my-8 shadow-md" 
-                          onLoad={handleImageLoad}
-                          {...props} 
-                        />
+                        <div className="my-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                          <div className="flex items-center mb-3">
+                            <FiCheckCircle className="w-5 h-5 text-blue-600 mr-2" />
+                            <span className="font-semibold text-blue-800">Key Insight</span>
+                          </div>
+                          <p className="text-gray-700 italic">
+                            {altText === "Blog content" 
+                              ? "This section contains important career advice or resume tip."
+                              : altText}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-2">
+                            📝 CareerCraft Expert Tip
+                          </p>
+                        </div>
                       );
                     },
                     
@@ -635,9 +673,7 @@ const BlogPost: React.FC = () => {
               <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-2xl p-8 md:p-10 text-white">
                 <div className="max-w-2xl mx-auto text-center">
                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                    <FiFileText className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-2xl md:text-3xl font-bold mb-4">Ready to Create Your Perfect Indian Resume?</h3>
                   <p className="text-blue-100 mb-8 text-lg">
@@ -649,18 +685,14 @@ const BlogPost: React.FC = () => {
                       onClick={handleCTAClick}
                       className="bg-white text-blue-700 px-8 py-4 rounded-xl font-bold hover:bg-gray-100 inline-flex items-center justify-center gap-3 transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-xl"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                      </svg>
+                      <FiPlus className="w-5 h-5" />
                       Build Free ATS Resume
                     </Link>
                     <Link 
                       to="/templates" 
                       className="bg-transparent border-2 border-white/50 text-white px-8 py-4 rounded-xl font-bold hover:bg-white/10 inline-flex items-center justify-center gap-3 transition-all duration-200"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                      </svg>
+                      <FiGrid className="w-5 h-5" />
                       View Templates
                     </Link>
                   </div>
@@ -673,19 +705,18 @@ const BlogPost: React.FC = () => {
             
             {/* Related Posts or Navigation */}
             <div className="mt-12 pt-8 border-t border-gray-200">
-              <div className="flex justify-between">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <Link 
                   to="/blog" 
                   className="text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-2"
                   onClick={handleBackToBlog}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <FiArrowLeft className="w-4 h-4" />
                   View All Blog Posts
                 </Link>
-                <div className="text-gray-500 text-sm">
-                  Need help? <a href="mailto:contact@careercraft.in" className="text-blue-600 hover:text-blue-700">Contact us</a>
+                <div className="text-gray-500 text-sm flex items-center gap-1">
+                  <FiMail className="w-4 h-4" />
+                  Need help? <a href="mailto:contact@careercraft.in" className="text-blue-600 hover:text-blue-700 ml-1">Contact us</a>
                 </div>
               </div>
             </div>

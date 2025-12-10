@@ -1,10 +1,10 @@
-// src/components/JobApplications.tsx - COMPLETE WITH ENHANCED TRACKING
+// src/components/JobApplications.tsx - COMPLETE WITH ENHANCED TRACKING & FIXED NAVIGATION
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
-import { usePageTimeTracker } from '../hooks/usePageTimeTracker'; // NEW
+import { usePageTimeTracker } from '../hooks/usePageTimeTracker';
 import { 
   Share2, 
   ExternalLink, 
@@ -21,7 +21,9 @@ import {
   TrendingUp,
   Eye,
   Briefcase,
-  Search
+  Search,
+  ArrowRight,
+  Home
 } from 'lucide-react';
 
 interface Job {
@@ -153,6 +155,11 @@ const JobApplications: React.FC = () => {
       // Track notification shown
       trackButtonClick('notification_shown_jobs', 'system', 'job_applications');
     }
+    
+    // Cleanup function
+    return () => {
+      // Any cleanup if needed
+    };
   }, [trackDailyPageView, trackFunnelStep, trackButtonClick]);
 
   // Popular Indian cities for quick filters
@@ -296,8 +303,8 @@ const JobApplications: React.FC = () => {
 
   const shareOnFacebook = () => {
     if (selectedJob) {
-      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=Check out this job: ${selectedJob.title} at ${selectedJob.company}`;
-      window.open(url, '_blank');
+      const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(`Check out this job: ${selectedJob.title} at ${selectedJob.company}`)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('facebook', 'job', selectedJob.id);
       trackButtonClick('share_facebook', 'share_modal', 'job_applications');
       incrementShares();
@@ -308,7 +315,7 @@ const JobApplications: React.FC = () => {
     if (selectedJob) {
       const text = `Check out this job opportunity: ${selectedJob.title} at ${selectedJob.company} in ${selectedJob.location}`;
       const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('twitter', 'job', selectedJob.id);
       trackButtonClick('share_twitter', 'share_modal', 'job_applications');
       incrementShares();
@@ -318,7 +325,7 @@ const JobApplications: React.FC = () => {
   const shareOnLinkedIn = () => {
     if (selectedJob) {
       const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`;
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('linkedin', 'job', selectedJob.id);
       trackButtonClick('share_linkedin', 'share_modal', 'job_applications');
       incrementShares();
@@ -329,7 +336,7 @@ const JobApplications: React.FC = () => {
     if (selectedJob) {
       const text = `Check out this job opportunity on CareerCraft: ${selectedJob.title} at ${selectedJob.company} - ${window.location.href}`;
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
       trackSocialShare('whatsapp', 'job', selectedJob.id);
       trackButtonClick('share_whatsapp', 'share_modal', 'job_applications');
       incrementShares();
@@ -340,7 +347,7 @@ const JobApplications: React.FC = () => {
     if (selectedJob) {
       const subject = `Job Opportunity: ${selectedJob.title} at ${selectedJob.company}`;
       const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\n\nView details: ${window.location.href}`;
-      window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
       trackSocialShare('email', 'job', selectedJob.id);
       trackButtonClick('share_email', 'share_modal', 'job_applications');
       incrementShares();
@@ -535,11 +542,49 @@ const JobApplications: React.FC = () => {
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-16">
         <div className="container mx-auto px-4 text-center">
+          <div className="flex justify-between items-center mb-6">
+            <Link 
+              to="/"
+              className="flex items-center gap-2 text-blue-100 hover:text-white"
+            >
+              <Home size={18} />
+              Back to Home
+            </Link>
+            <div className="flex items-center gap-2">
+              <span className="text-blue-100 text-sm">Last Updated: {new Date().toLocaleDateString('en-IN')}</span>
+            </div>
+          </div>
+          
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Latest Job Opportunities in India</h1>
           <p className="text-xl max-w-2xl mx-auto mb-8">
             Freshly updated job postings from top Indian companies. Updated daily.
             <span className="block text-sm text-blue-200 mt-2">Share jobs to help friends & grow community</span>
           </p>
+          
+          {/* Quick Navigation */}
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            <Link 
+              to="/job-drives"
+              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+            >
+              <ArrowRight size={16} />
+              View Job Drives
+            </Link>
+            <Link 
+              to="/government-exams"
+              className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg hover:bg-emerald-200 transition-colors flex items-center gap-2"
+            >
+              <ArrowRight size={16} />
+              View Government Exams
+            </Link>
+            <Link 
+              to="/blog"
+              className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
+            >
+              <ArrowRight size={16} />
+              View Career Blog
+            </Link>
+          </div>
           
           {/* Real-time Stats */}
           <div className="flex flex-wrap justify-center items-center gap-4 mb-8">
@@ -618,7 +663,7 @@ const JobApplications: React.FC = () => {
           <div className="mt-6 flex flex-wrap justify-center items-center gap-4">
             <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
               <span className="text-blue-100">Latest Jobs: {totalJobsCount}</span>
-              <span className="text-green-300 text-sm">(Updated: {new Date().toLocaleDateString('en-IN')})</span>
+              <span className="text-green-300 text-sm">(Auto-cleaned every 90 days)</span>
             </div>
             <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
               <Share2 size={16} />
@@ -782,6 +827,38 @@ const JobApplications: React.FC = () => {
                 >
                   Download CSV
                 </button>
+              </div>
+
+              {/* Navigation to Other Sections */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-6">
+                <h3 className="font-bold text-gray-800 mb-3">Quick Navigation</h3>
+                <div className="space-y-2">
+                  <Link 
+                    to="/job-drives"
+                    className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded transition-colors"
+                  >
+                    → Job Drives & Walk-ins
+                  </Link>
+                  <Link 
+                    to="/government-exams"
+                    className="block text-gray-700 hover:text-green-600 hover:bg-green-50 px-3 py-2 rounded transition-colors"
+                  >
+                    → Government Exams
+                  </Link>
+                  <Link 
+                    to="/blog"
+                    className="block text-gray-700 hover:text-purple-600 hover:bg-purple-50 px-3 py-2 rounded transition-colors"
+                  >
+                    → Career Blog
+                  </Link>
+                  <Link 
+                    to="/builder"
+                    onClick={() => trackButtonClick('sidebar_build_resume', 'sidebar_nav', 'job_applications')}
+                    className="block text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded transition-colors"
+                  >
+                    → Resume Builder
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -970,6 +1047,31 @@ const JobApplications: React.FC = () => {
                   Every share helps a friend find their dream job. Keep sharing!
                 </p>
               </div>
+
+              {/* Navigation to Other Sections */}
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link 
+                  to="/job-drives"
+                  className="bg-green-50 border border-green-200 rounded-xl p-6 hover:bg-green-100 transition-colors"
+                >
+                  <h3 className="font-bold text-green-800 mb-2">🚀 Job Drives & Walk-ins</h3>
+                  <p className="text-green-700 text-sm">Immediate hiring with direct company interviews</p>
+                </Link>
+                <Link 
+                  to="/government-exams"
+                  className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 hover:bg-emerald-100 transition-colors"
+                >
+                  <h3 className="font-bold text-emerald-800 mb-2">🏛️ Government Exams</h3>
+                  <p className="text-emerald-700 text-sm">Latest Sarkari Naukri exams and notifications</p>
+                </Link>
+                <Link 
+                  to="/blog"
+                  className="bg-purple-50 border border-purple-200 rounded-xl p-6 hover:bg-purple-100 transition-colors"
+                >
+                  <h3 className="font-bold text-purple-800 mb-2">📝 Career Blog</h3>
+                  <p className="text-purple-700 text-sm">Resume tips and career advice for Indian job market</p>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -1092,7 +1194,11 @@ const JobApplications: React.FC = () => {
                   onClick={() => {
                     trackButtonClick('apply_from_share', 'share_modal', 'job_applications');
                     trackFunnelStep('job_search', 'application_started_from_share', 2, localStorage.getItem('user_id') || 'anonymous');
-                    window.open(selectedJob.applyLink, '_blank');
+                    
+                    // FIXED: Proper external link handling
+                    if (selectedJob.applyLink && selectedJob.applyLink.startsWith('http')) {
+                      window.open(selectedJob.applyLink, '_blank', 'noopener,noreferrer');
+                    }
                     closeShareModal();
                   }}
                   className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
@@ -1152,11 +1258,13 @@ const JobCard: React.FC<{
     
     trackButtonClick('apply_job', 'job_card', 'job_applications');
     
-    // Open apply link
-    window.open(job.applyLink, '_blank');
-    
-    // Track external link
-    trackExternalLink('Apply Now', job.applyLink, 'job_applications');
+    // Open apply link with proper validation
+    if (job.applyLink && job.applyLink.startsWith('http')) {
+      window.open(job.applyLink, '_blank', 'noopener,noreferrer');
+      trackExternalLink('Apply Now', job.applyLink, 'job_applications');
+    } else {
+      console.warn('Invalid apply link for job:', job.title);
+    }
   };
 
   const handleBuildResumeClick = () => {
@@ -1166,6 +1274,7 @@ const JobCard: React.FC<{
 
   const handleShareClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     onShare(job);
   };
 

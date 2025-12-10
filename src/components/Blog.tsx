@@ -1,9 +1,18 @@
-// src/components/Blog.tsx - UPDATED WITH GOOGLE ANALYTICS & SEO
+// src/components/Blog.tsx - UPDATED WITH FIXED ICONS
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import SEO from './SEO';
+import { 
+  FiCalendar, 
+  FiClock, 
+  FiUser, 
+  FiArrowRight,
+  FiRefreshCw,
+  FiCheckCircle,
+  FiBookOpen
+} from 'react-icons/fi';
 
 interface BlogPost {
   id: number;
@@ -104,7 +113,10 @@ const Blog: React.FC = () => {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="animate-pulse text-gray-600">Loading latest blog posts...</div>
+          <div className="animate-pulse text-gray-600">
+            <FiBookOpen className="w-8 h-8 mx-auto mb-4 text-blue-500" />
+            Loading latest blog posts...
+          </div>
         </div>
       </div>
     );
@@ -117,8 +129,9 @@ const Blog: React.FC = () => {
           <div className="text-red-600 mb-4">{error}</div>
           <button 
             onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 mx-auto"
           >
+            <FiRefreshCw className="w-4 h-4" />
             Try Again
           </button>
         </div>
@@ -145,7 +158,7 @@ const Blog: React.FC = () => {
             "name": "CareerCraft India",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://careercraft.in/logos/careercraft-logo-square.png"
+              "url": "https://careercraft.in/favicon.ico"
             }
           },
           "blogPost": blogPosts.map(post => ({
@@ -181,15 +194,15 @@ const Blog: React.FC = () => {
             {/* E-E-A-T Trust Signals */}
             <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
               <div className="flex items-center text-gray-600 bg-green-50 px-4 py-2 rounded-full">
-                <span className="text-green-600 mr-2">✓</span>
+                <FiCheckCircle className="text-green-600 mr-2" />
                 Written by Indian Career Experts
               </div>
               <div className="flex items-center text-gray-600 bg-blue-50 px-4 py-2 rounded-full">
-                <span className="text-blue-600 mr-2">✓</span>
+                <FiCheckCircle className="text-blue-600 mr-2" />
                 ATS-Optimized for Indian Companies
               </div>
               <div className="flex items-center text-gray-600 bg-purple-50 px-4 py-2 rounded-full">
-                <span className="text-purple-600 mr-2">✓</span>
+                <FiCheckCircle className="text-purple-600 mr-2" />
                 Updated Weekly with Indian Market Insights
               </div>
             </div>
@@ -214,12 +227,15 @@ const Blog: React.FC = () => {
                     >
                       {blogCategories[post.category as keyof typeof blogCategories] || post.category}
                     </span>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 flex items-center gap-2">
+                      <FiCalendar className="w-4 h-4" />
                       {new Date(post.date).toLocaleDateString('en-US', { 
                         year: 'numeric', 
                         month: 'long', 
                         day: 'numeric' 
-                      })} • {post.readTime}
+                      })} • 
+                      <FiClock className="w-4 h-4 ml-2" />
+                      {post.readTime}
                     </div>
                   </div>
                   
@@ -238,7 +254,10 @@ const Blog: React.FC = () => {
                   {/* Author Info */}
                   <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-900">{post.author}</p>
+                      <div className="flex items-center gap-2">
+                        <FiUser className="w-4 h-4 text-gray-500" />
+                        <p className="text-sm font-semibold text-gray-900">{post.author}</p>
+                      </div>
                       <p className="text-xs text-gray-500 mt-1">{post.authorBio}</p>
                     </div>
                     <Link 
@@ -247,7 +266,7 @@ const Blog: React.FC = () => {
                       onClick={() => handleBlogPostClick(post)}
                     >
                       Read more 
-                      <span className="ml-1">→</span>
+                      <FiArrowRight className="ml-1 w-4 h-4" />
                     </Link>
                   </div>
                 </div>

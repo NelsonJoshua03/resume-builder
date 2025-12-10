@@ -1,4 +1,4 @@
-// src/components/HomePage.tsx - REMOVED PREMIUM TEMPLATES
+// src/components/HomePage.tsx - COMPLETE WITH ENHANCED TRACKING
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -9,9 +9,14 @@ import {
   ArrowRight,
   Star,
   Download,
-  Shield
+  Shield,
+  TrendingUp,
+  Award,
+  Target,
+  Zap
 } from 'lucide-react';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
+import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import SEO from './SEO';
 
 const HomePage = () => {
@@ -23,18 +28,12 @@ const HomePage = () => {
     trackPageView 
   } = useGoogleAnalytics();
 
+  const { trackDailyPageView } = useEnhancedAnalytics();
+
   // Track page view on mount
   useEffect(() => {
-    trackPageView('Home Page', '/');
-    
-    // Track daily visits in localStorage
-    const today = new Date().toISOString().split('T')[0];
-    const pageViews = parseInt(localStorage.getItem('page_views_home') || '0');
-    localStorage.setItem('page_views_home', (pageViews + 1).toString());
-    
-    const dailyKey = `daily_${today}`;
-    const dailyVisits = parseInt(localStorage.getItem(dailyKey) || '0');
-    localStorage.setItem(dailyKey, (dailyVisits + 1).toString());
+    trackPageView('CareerCraft Home Page', '/');
+    trackDailyPageView('Home Page', '/');
     
     // Track unique user
     if (!localStorage.getItem('user_id')) {
@@ -44,11 +43,45 @@ const HomePage = () => {
       const totalUsers = parseInt(localStorage.getItem('total_users') || '0');
       localStorage.setItem('total_users', (totalUsers + 1).toString());
     }
-  }, [trackPageView]);
+    
+    // Track funnel entry
+    const userId = localStorage.getItem('user_id') || 'anonymous';
+    if (typeof window.gtag !== 'undefined') {
+      window.gtag('event', 'funnel_step', {
+        funnel_name: 'website_visit',
+        step: 'homepage_visited',
+        step_number: 1,
+        user_id: userId,
+        send_to: 'G-SW5M9YN8L5'
+      });
+    }
+    
+    // Increment total visits
+    const totalVisits = parseInt(localStorage.getItem('total_home_visits') || '0');
+    localStorage.setItem('total_home_visits', (totalVisits + 1).toString());
+  }, [trackPageView, trackDailyPageView]);
 
   const handleCTAClick = (buttonName: string, section: string) => {
     trackCTAClick(buttonName, section, 'homepage');
     trackButtonClick(buttonName, section, 'homepage');
+    
+    // Track specific funnel steps
+    if (buttonName.includes('builder') || buttonName.includes('build_resume')) {
+      const userId = localStorage.getItem('user_id') || 'anonymous';
+      if (typeof window.gtag !== 'undefined') {
+        window.gtag('event', 'funnel_step', {
+          funnel_name: 'resume_creation',
+          step: 'builder_button_clicked',
+          step_number: 1,
+          user_id: userId,
+          send_to: 'G-SW5M9YN8L5'
+        });
+      }
+      
+      // Track conversions
+      const conversions = parseInt(localStorage.getItem('home_to_builder_conversions') || '0');
+      localStorage.setItem('home_to_builder_conversions', (conversions + 1).toString());
+    }
   };
 
   const handleFeatureClick = (featureName: string) => {
@@ -64,10 +97,25 @@ const HomePage = () => {
     trackButtonClick(`external_${linkText.toLowerCase()}`, 'contact_section', 'homepage');
   };
 
+  // Get live stats from localStorage
+  const getLiveStats = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return {
+      resumesCreated: parseInt(localStorage.getItem('resumeDownloads') || '0'),
+      jobApplications: parseInt(localStorage.getItem('total_job_applications') || '0'),
+      driveRegistrations: parseInt(localStorage.getItem('job_drive_registrations') || '0'),
+      todayVisitors: JSON.parse(localStorage.getItem(`daily_user_${today}`) || '[]').length,
+      totalUsers: parseInt(localStorage.getItem('total_users') || '0'),
+      blogReads: parseInt(localStorage.getItem('blog_reads') || '0')
+    };
+  };
+
+  const stats = getLiveStats();
+
   return (
     <>
       <SEO
-        title="Free ATS Resume Builder & Job Portal for Indian Job Seekers"
+        title="Free ATS Resume Builder & Job Portal for Indian Job Seekers | CareerCraft.in"
         description="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India. Free resume templates for freshers and experienced professionals."
         keywords="resume builder India, ATS resume maker, job portal India, Indian job search, engineering jobs India, IT jobs India, fresher jobs India, free resume maker, CV builder India, career platform India"
         canonicalUrl="https://careercraft.in/"
@@ -79,31 +127,48 @@ const HomePage = () => {
         <section className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-12 md:py-20 w-full">
           <div className="container mx-auto px-4 text-center w-full max-w-7xl">
             <div className="max-w-4xl mx-auto w-full">
+              <div className="mb-6 flex justify-center">
+                <span className="bg-white/20 px-4 py-1 rounded-full text-sm font-medium">
+                  🚀 {stats.todayVisitors.toLocaleString()}+ Users Today
+                </span>
+              </div>
+              
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 md:mb-6 leading-tight">
-                Your Career Journey Starts at CareerCraft.in
+                Build ATS-Friendly Resumes That Get You Hired
               </h1>
               <p className="text-lg md:text-xl lg:text-2xl mb-6 md:mb-8 text-blue-100">
-                Create ATS-Friendly Resumes & Find Your Dream Job in India
+                India's #1 Free Resume Builder for Indian Job Market
               </p>
               <p className="text-base md:text-lg mb-8 md:mb-12 text-blue-200 max-w-3xl mx-auto leading-relaxed">
-                India's premier career platform helping job seekers create professional resumes that pass through 
-                Applicant Tracking Systems and connect with top employers across India. Built for the Indian job market.
+                Create professional resumes optimized for Indian recruiters and ATS systems. 
+                Used by {stats.totalUsers.toLocaleString()}+ job seekers across India.
               </p>
-              <div className="flex justify-center w-full">
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
                 <Link 
                   to="/builder" 
                   onClick={() => {
-                    handleCTAClick('build_resume', 'hero_section');
+                    handleCTAClick('build_resume_hero', 'hero_section');
                     handleNavigation('homepage', 'builder', 'hero_cta');
-                    
-                    // Track conversion from home to builder
-                    const conversions = parseInt(localStorage.getItem('home_to_builder') || '0');
-                    localStorage.setItem('home_to_builder', (conversions + 1).toString());
                   }}
                   className="bg-white text-blue-600 px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto max-w-sm"
                 >
                   <FileText size={20} />
-                  Build Your Resume - Free
+                  Build Free Resume
+                </Link>
+                
+                <Link 
+                  to="/edit" 
+                  onClick={() => {
+                    handleCTAClick('edit_resume_hero', 'hero_section');
+                    handleNavigation('homepage', 'edit', 'hero_cta');
+                  }}
+                  className="bg-blue-500/20 text-white border-2 border-white/30 px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 w-full sm:w-auto max-w-sm"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit My Resume
                 </Link>
               </div>
               
@@ -130,6 +195,38 @@ const HomePage = () => {
           </div>
         </section>
 
+        {/* Live Stats */}
+        <section className="py-8 bg-white/50 w-full">
+          <div className="container mx-auto px-4 w-full max-w-7xl">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
+                <div className="text-2xl md:text-3xl font-bold text-blue-600 mb-2">
+                  {stats.resumesCreated.toLocaleString()}+
+                </div>
+                <div className="text-gray-600 text-sm md:text-base">Resumes Created</div>
+              </div>
+              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
+                <div className="text-2xl md:text-3xl font-bold text-green-600 mb-2">
+                  {stats.jobApplications.toLocaleString()}+
+                </div>
+                <div className="text-gray-600 text-sm md:text-base">Job Applications</div>
+              </div>
+              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
+                <div className="text-2xl md:text-3xl font-bold text-purple-600 mb-2">
+                  {stats.driveRegistrations.toLocaleString()}+
+                </div>
+                <div className="text-gray-600 text-sm md:text-base">Drive Registrations</div>
+              </div>
+              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
+                <div className="text-2xl md:text-3xl font-bold text-orange-600 mb-2">
+                  {stats.totalUsers.toLocaleString()}+
+                </div>
+                <div className="text-gray-600 text-sm md:text-base">Users</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
         <section id="features" className="py-12 md:py-16 bg-white w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
@@ -144,208 +241,138 @@ const HomePage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 w-full">
               <div 
-                className="text-center p-4 md:p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer bg-white rounded-lg shadow-sm hover:shadow-md"
+                className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100"
                 onClick={() => handleFeatureClick('ATS_Resumes')}
               >
-                <div className="bg-blue-100 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                  <FileText className="text-blue-600" size={28} />
+                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Target className="text-blue-600" size={28} />
                 </div>
-                <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">ATS-Optimized Resumes</h3>
-                <p className="text-gray-600 text-sm md:text-base">
-                  Templates designed to pass through Applicant Tracking Systems used by Indian companies like TCS, Infosys, Wipro
+                <h3 className="text-xl font-bold mb-3">ATS Optimized</h3>
+                <p className="text-gray-600">
+                  Templates designed to pass through Applicant Tracking Systems used by Indian companies
                 </p>
               </div>
 
               <div 
-                className="text-center p-4 md:p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer bg-white rounded-lg shadow-sm hover:shadow-md"
+                className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100"
                 onClick={() => handleFeatureClick('India_Jobs')}
               >
-                <div className="bg-green-100 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Briefcase className="text-green-600" size={28} />
                 </div>
-                <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">India-Focused Job Listings</h3>
-                <p className="text-gray-600 text-sm md:text-base">
-                  Curated job opportunities from top Indian companies, startups, and MNCs across all major cities
+                <h3 className="text-xl font-bold mb-3">Job Portal</h3>
+                <p className="text-gray-600">
+                  Curated job opportunities from top Indian companies, startups, and MNCs
                 </p>
               </div>
 
               <div 
-                className="text-center p-4 md:p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer bg-white rounded-lg shadow-sm hover:shadow-md"
-                onClick={() => handleFeatureClick('Career_Guidance')}
+                className="text-center p-6 hover:transform hover:-translate-y-2 transition-all duration-300 cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-lg border border-gray-100"
+                onClick={() => handleFeatureClick('Free_Templates')}
               >
-                <div className="bg-purple-100 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
-                  <Users className="text-purple-600" size={28} />
+                <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Award className="text-purple-600" size={28} />
                 </div>
-                <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">Career Guidance for India</h3>
-                <p className="text-gray-600 text-sm md:text-base">
-                  Expert advice tailored for Indian job market, industry trends, and regional opportunities
+                <h3 className="text-xl font-bold mb-3">Free Templates</h3>
+                <p className="text-gray-600">
+                  6+ professional templates completely free, no hidden costs
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Stats Section */}
+        {/* How It Works */}
         <section className="py-12 md:py-16 bg-gray-50 w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 text-center">
-              <div 
-                className="transform hover:scale-105 transition-transform duration-300 p-2 md:p-4 cursor-pointer"
-                onClick={() => trackButtonClick('stats_resumes', 'stats_section', 'homepage')}
-              >
-                <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-blue-600 mb-1 md:mb-2">50,000+</div>
-                <div className="text-gray-600 text-sm md:text-base">Resumes Created</div>
-              </div>
-              <div 
-                className="transform hover:scale-105 transition-transform duration-300 p-2 md:p-4 cursor-pointer"
-                onClick={() => trackButtonClick('stats_jobs', 'stats_section', 'homepage')}
-              >
-                <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-green-600 mb-1 md:mb-2">10,000+</div>
-                <div className="text-gray-600 text-sm md:text-base">Jobs Listed</div>
-              </div>
-              <div 
-                className="transform hover:scale-105 transition-transform duration-300 p-2 md:p-4 cursor-pointer"
-                onClick={() => trackButtonClick('stats_templates', 'stats_section', 'homepage')}
-              >
-                <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-purple-600 mb-1 md:mb-2">10+</div>
-                <div className="text-gray-600 text-sm md:text-base">Free Templates</div>
-              </div>
-              <div 
-                className="transform hover:scale-105 transition-transform duration-300 p-2 md:p-4 cursor-pointer"
-                onClick={() => trackButtonClick('stats_industries', 'stats_section', 'homepage')}
-              >
-                <div className="text-2xl md:text-3xl lg:text-4xl font-bold text-orange-600 mb-1 md:mb-2">15+</div>
-                <div className="text-gray-600 text-sm md:text-base">Job Industries</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Information Section */}
-        <section className="py-12 md:py-16 bg-gray-900 text-white w-full">
-          <div className="container mx-auto px-4 w-full max-w-7xl">
-            <div className="text-center mb-8 md:mb-12">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-4">
-                Get In Touch
+            <div className="text-center mb-12">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                Create Your Resume in 3 Simple Steps
               </h2>
-              <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
-                Have questions? We're here to help you with your career journey
-              </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-4xl mx-auto">
-              <div 
-                className="text-center p-6 bg-gray-800 rounded-lg hover:bg-gray-700 transition-all duration-300 cursor-pointer"
-                onClick={() => trackButtonClick('contact_email', 'contact_section', 'homepage')}
-              >
-                <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="text-center">
+                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 text-2xl font-bold">
+                  1
                 </div>
-                <h3 className="text-xl font-bold mb-2">Email Us</h3>
-                <a 
-                  href="mailto:contact@careercraft.in" 
-                  className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleExternalLinkClick('contact_email', 'mailto:contact@careercraft.in');
-                  }}
-                >
-                  contact@careercraft.in
-                </a>
+                <h3 className="text-xl font-bold mb-3">Go to Builder</h3>
+                <p className="text-gray-600">Click "Build Free Resume" button</p>
               </div>
-
-              <div 
-                className="text-center p-6 bg-gray-800 rounded-lg hover:bg-gray-700 transition-all duration-300 cursor-pointer"
-                onClick={() => trackButtonClick('contact_linkedin', 'contact_section', 'homepage')}
-              >
-                <div className="bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                  </svg>
+              
+              <div className="text-center">
+                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600 text-2xl font-bold">
+                  2
                 </div>
-                <h3 className="text-xl font-bold mb-2">LinkedIn</h3>
-                <a 
-                  href="https://www.linkedin.com/in/career-coach-expert-2a47a0399" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleExternalLinkClick('contact_linkedin', 'https://linkedin.com');
-                  }}
-                >
-                  Connect with us
-                </a>
+                <h3 className="text-xl font-bold mb-3">Edit Your Info</h3>
+                <p className="text-gray-600">Fill in your details or edit existing</p>
               </div>
-
-              <div 
-                className="text-center p-6 bg-gray-800 rounded-lg hover:bg-gray-700 transition-all duration-300 cursor-pointer"
-                onClick={() => trackButtonClick('contact_instagram', 'contact_section', 'homepage')}
-              >
-                <div className="bg-pink-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.042-3.441.219-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24.009c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001.012.017 12.017 0z"/>
-                  </svg>
+              
+              <div className="text-center">
+                <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-600 text-2xl font-bold">
+                  3
                 </div>
-                <h3 className="text-xl font-bold mb-2">Instagram</h3>
-                <a 
-                  href="https://www.instagram.com/career_craft_india/?hl=en" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-blue-400 hover:text-blue-300 transition-colors text-lg"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleExternalLinkClick('contact_instagram', 'https://instagram.com');
-                  }}
-                >
-                  Follow us
-                </a>
+                <h3 className="text-xl font-bold mb-3">Download PDF</h3>
+                <p className="text-gray-600">Get your professional resume instantly</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* Final CTA */}
-        <section className="bg-blue-600 py-12 md:py-16 text-white w-full">
+        <section className="bg-gradient-to-r from-blue-600 to-purple-600 py-16 md:py-20 text-white w-full">
           <div className="container mx-auto px-4 text-center w-full max-w-7xl">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-6">
-              Ready to Advance Your Career in India?
+              Ready to Create Your Professional Resume?
             </h2>
-            <p className="text-lg md:text-xl mb-6 md:mb-8 text-blue-100 max-w-2xl mx-auto">
-              Join thousands of Indian professionals who found their dream jobs through CareerCraft.in
+            <p className="text-lg md:text-xl mb-8 md:mb-10 text-blue-100 max-w-2xl mx-auto">
+              Join {stats.totalUsers.toLocaleString()}+ Indian professionals who found success with CareerCraft.in
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center items-center w-full">
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
               <Link 
                 to="/builder" 
                 onClick={() => {
                   handleCTAClick('final_build_resume', 'final_cta');
                   handleNavigation('homepage', 'builder', 'final_cta');
-                  
-                  // Track final conversion
-                  const finalConversions = parseInt(localStorage.getItem('final_home_to_builder') || '0');
-                  localStorage.setItem('final_home_to_builder', (finalConversions + 1).toString());
                 }}
-                className="bg-white text-blue-600 px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full sm:w-auto"
+                className="bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:bg-blue-50 transition-all duration-300 flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transform hover:-translate-y-1 w-full sm:w-auto"
               >
-                Create Your Resume
-                <ArrowRight size={18} />
+                <Zap size={20} />
+                Start Building Now - Free
+                <ArrowRight size={20} />
               </Link>
+              
               <Link 
                 to="/job-applications" 
                 onClick={() => {
-                  handleCTAClick('final_find_jobs', 'final_cta');
+                  handleCTAClick('find_jobs', 'final_cta');
                   handleNavigation('homepage', 'job-applications', 'final_cta');
                 }}
-                className="border-2 border-white text-white px-6 md:px-8 py-3 md:py-4 rounded-lg font-bold text-base md:text-lg hover:bg-white hover:text-blue-600 transition-all duration-300 transform hover:-translate-y-1 w-full sm:w-auto"
+                className="border-2 border-white text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-white/10 transition-all duration-300 transform hover:-translate-y-1 w-full sm:w-auto"
               >
-                Browse Indian Jobs
+                Browse Jobs in India
               </Link>
             </div>
-            <p className="text-blue-200 mt-4 md:mt-6 text-xs md:text-sm">
-              🚀 Free • No Sign Up • Instant Download • Made for India
-            </p>
+            
+            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+              <div className="text-center p-3 bg-white/10 rounded-lg">
+                <div className="text-lg font-bold">100% Free</div>
+                <div className="text-sm text-blue-200">No charges</div>
+              </div>
+              <div className="text-center p-3 bg-white/10 rounded-lg">
+                <div className="text-lg font-bold">No Sign Up</div>
+                <div className="text-sm text-blue-200">Start instantly</div>
+              </div>
+              <div className="text-center p-3 bg-white/10 rounded-lg">
+                <div className="text-lg font-bold">ATS Friendly</div>
+                <div className="text-sm text-blue-200">Optimized</div>
+              </div>
+              <div className="text-center p-3 bg-white/10 rounded-lg">
+                <div className="text-lg font-bold">Made in India</div>
+                <div className="text-sm text-blue-200">For Indian Jobs</div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
