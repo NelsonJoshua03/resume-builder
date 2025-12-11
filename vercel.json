@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "careercraft.in",
+      "destination": "https://www.careercraft.in",
+      "permanent": true
+    },
+    {
+      "source": "http://careercraft.in",
+      "destination": "https://www.careercraft.in",
+      "permanent": true
+    }
+  ]
+}

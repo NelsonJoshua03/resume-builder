@@ -29,16 +29,22 @@ export default defineConfig({
           utils: ['html2canvas', 'jspdf']
         }
       }
-    }
+    },
+    // IMPORTANT: This ensures SPA fallback works
+    outDir: 'dist',
   },
   publicDir: 'public',
   server: {
     port: 3001,
     host: true,
     open: true,
+    // IMPORTANT: Enable SPA routing in development
+    historyApiFallback: true,
   },
   preview: {
     port: 3001,
     host: true,
+    // IMPORTANT: Enable SPA routing in preview mode
+    historyApiFallback: true,
   }
 })

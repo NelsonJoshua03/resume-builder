@@ -1,1 +1,2 @@
-/*    /index.html   200
+# Single Page Application Routes
+/* /index.html 200
