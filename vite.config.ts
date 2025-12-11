@@ -32,6 +32,7 @@ export default defineConfig({
     },
     // IMPORTANT: This ensures SPA fallback works
     outDir: 'dist',
+    emptyOutDir: true,
   },
   publicDir: 'public',
   server: {

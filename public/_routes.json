@@ -7,6 +7,6 @@
     "/favicon.ico",
     "/robots.txt",
     "/sitemap.xml",
-    "/_redirects"
+    "/manifest.json"
   ]
 }
