@@ -1,4 +1,4 @@
-// src/components/Blog.tsx - UPDATED WITH FIXED ICONS
+// src/components/Blog.tsx - UPDATED WITH FIXED DUAL TRACKING
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -33,6 +33,23 @@ const blogCategories = {
   'industry-specific': 'Industry Specific Guides',
   'ats-optimization': 'ATS Optimization',
   'fresh-graduate': 'Fresh Graduate Guide'
+};
+
+// Helper function to send events to both GA4 properties
+const sendToBothGA = (eventName: string, params: any = {}) => {
+  if (typeof window.gtag !== 'undefined') {
+    // Send to first property (careercraft.in)
+    window.gtag('event', eventName, {
+      ...params,
+      send_to: 'G-SW5M9YN8L5'
+    });
+    
+    // Send to second property (www.careercraft.in)
+    window.gtag('event', eventName, {
+      ...params,
+      send_to: 'G-WSKZJDJW77'
+    });
+  }
 };
 
 const Blog: React.FC = () => {
@@ -74,26 +91,26 @@ const Blog: React.FC = () => {
         setBlogPosts(data.posts);
         setLoading(false);
         
-        // Track blog loaded event
-        if (typeof window.gtag !== 'undefined') {
-          window.gtag('event', 'blog_loaded', {
-            post_count: data.posts.length,
-            event_category: 'Blog',
-            event_label: 'blog_page_loaded'
-          });
-        }
+        // Track blog loaded event - SEND TO BOTH PROPERTIES
+        sendToBothGA('blog_loaded', {
+          post_count: data.posts.length,
+          event_category: 'Blog',
+          event_label: 'blog_page_loaded'
+        });
+        
       } catch (err) {
         console.error('Error loading blog posts:', err);
         setError('Failed to load blog posts. Please try again later.');
         setLoading(false);
         
-        // Track error event
-        if (typeof window.gtag !== 'undefined') {
-          window.gtag('event', 'exception', {
-            description: 'Blog load error',
-            fatal: false
-          });
-        }
+        // Track error event - SEND TO BOTH PROPERTIES
+        sendToBothGA('exception', {
+          description: 'Blog load error',
+          fatal: false
+        });
+        
+        // Also track via hook (which also sends to both)
+        trackButtonClick('blog_load_error', 'error', 'blog');
       }
     };
 
@@ -103,10 +120,27 @@ const Blog: React.FC = () => {
   const handleBlogPostClick = (post: BlogPost) => {
     trackBlogView(post.slug, post.title, post.category);
     trackButtonClick(`blog_post_${post.slug}`, 'blog_grid', 'blog');
+    
+    // Additional tracking for both properties
+    sendToBothGA('blog_post_clicked', {
+      post_slug: post.slug,
+      post_title: post.title,
+      category: post.category,
+      event_category: 'Blog',
+      event_label: post.title
+    });
   };
 
   const handleCategoryFilter = (category: string) => {
     trackButtonClick(`filter_${category}`, 'blog_categories', 'blog');
+    
+    // Additional tracking for both properties
+    sendToBothGA('blog_category_filter', {
+      category: category,
+      category_name: blogCategories[category as keyof typeof blogCategories] || category,
+      event_category: 'Blog',
+      event_label: category
+    });
   };
 
   if (loading) {
@@ -191,6 +225,14 @@ const Blog: React.FC = () => {
               </div>
             )}
             
+            {/* Domain Indicator for Debugging */}
+            <div className="text-sm text-gray-500 mb-4">
+              Tracking to both GA4 properties: 
+              <span className="ml-2 bg-gray-100 px-2 py-1 rounded text-xs">
+                {window.location.hostname}
+              </span>
+            </div>
+            
             {/* E-E-A-T Trust Signals */}
             <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
               <div className="flex items-center text-gray-600 bg-green-50 px-4 py-2 rounded-full">
@@ -213,6 +255,12 @@ const Blog: React.FC = () => {
             <p className="text-gray-600">
               Showing {blogPosts.length} blog post{blogPosts.length !== 1 ? 's' : ''}
             </p>
+            {/* Debug info for GA tracking */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-400 mt-2">
+                All clicks and views tracked to both GA4 properties
+              </div>
+            )}
           </div>
 
           {/* Blog Posts Grid */}
@@ -306,11 +354,39 @@ const Blog: React.FC = () => {
             <Link 
               to="/builder" 
               className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 inline-block transition-colors duration-200 shadow-lg hover:shadow-xl"
-              onClick={() => trackCTAClick('blog_cta_builder', 'blog_footer', 'blog')}
+              onClick={() => {
+                trackCTAClick('blog_cta_builder', 'blog_footer', 'blog');
+                
+                // Additional tracking for both properties
+                sendToBothGA('blog_cta_clicked', {
+                  cta_type: 'resume_builder',
+                  cta_location: 'blog_footer',
+                  event_category: 'Conversion',
+                  event_label: 'blog_footer_cta'
+                });
+              }}
             >
               🚀 Start Building Your Indian Resume Now
             </Link>
           </div>
+
+          {/* GA Tracking Debug Info (Development Only) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h4 className="font-semibold text-gray-700 mb-2">📊 GA4 Tracking Status</h4>
+              <div className="text-sm text-gray-600 space-y-1">
+                <div>✅ Page views tracked to both properties</div>
+                <div>✅ Blog post clicks tracked to both properties</div>
+                <div>✅ Category filters tracked to both properties</div>
+                <div>✅ CTA clicks tracked to both properties</div>
+                <div>✅ Events sent to: G-SW5M9YN8L5 (careercraft.in)</div>
+                <div>✅ Events sent to: G-WSKZJDJW77 (www.careercraft.in)</div>
+                <div className="text-xs text-gray-400 mt-2">
+                  All events use send_to parameter for dual tracking
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

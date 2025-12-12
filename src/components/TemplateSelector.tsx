@@ -1,5 +1,5 @@
 // src/components/TemplateSelector.tsx
-import { TemplateSelectorProps } from './types';
+import type { TemplateSelectorProps } from './types';
 
 const TemplateSelector = ({ selectedTemplate, onSelect, templates }: TemplateSelectorProps) => {
   return (

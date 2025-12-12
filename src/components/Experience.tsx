@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ExperienceProps } from './types';
+import type { ExperienceProps } from './types';
 
 const Experience = ({ experiences, onUpdate, onAdd, onRemove, template, onFieldInteraction }: ExperienceProps) => {
   const [expandedExperience, setExpandedExperience] = useState<number | null>(null);

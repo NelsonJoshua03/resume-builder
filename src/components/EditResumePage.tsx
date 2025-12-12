@@ -13,7 +13,7 @@ import FileUpload from './FileUpload';
 import SectionOrderCustomizer from './SectionOrderCustomizer';
 import SEO from './SEO';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
-import { PersonalInfoData } from './types'; // Import the type
+import type { PersonalInfoData } from './types'; // Import the type
 
 const EditResumePage = () => {
   const {

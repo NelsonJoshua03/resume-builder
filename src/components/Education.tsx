@@ -1,4 +1,4 @@
-import { EducationProps } from './types';
+import type { EducationProps } from './types';
 
 const Education = ({ education, onUpdate, onAdd, onRemove, template, onFieldInteraction }: EducationProps) => {
   const formStyle = template?.formStyle || {

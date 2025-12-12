@@ -1,4 +1,4 @@
-import { AwardsProps } from './types';
+import type { AwardsProps } from './types';
 
 const Awards = ({ awards, onUpdate, onAdd, onRemove, template, onFieldInteraction }: AwardsProps) => {
   const formStyle = template?.formStyle || {

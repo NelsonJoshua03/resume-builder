@@ -1,8 +1,21 @@
-// src/components/AdminJobDrives.tsx - UPDATED WITH AUTO-CLEANUP
+// src/components/AdminJobDrives.tsx - UPDATED WITH JSON EXPORT/IMPORT
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Trash2, Upload, Image as ImageIcon, AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import { 
+  Plus, 
+  Trash2, 
+  Upload, 
+  Image as ImageIcon, 
+  AlertCircle, 
+  Clock, 
+  RefreshCw,
+  Download,
+  Upload as UploadIcon,
+  Database,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 
 interface JobDrive {
@@ -59,8 +72,17 @@ const AdminJobDrives: React.FC = () => {
     after: number;
     removed: number;
   } | null>(null);
+  const [importMessage, setImportMessage] = useState<{
+    type: 'success' | 'error' | 'info';
+    text: string;
+  } | null>(null);
+  const [exportMessage, setExportMessage] = useState<{
+    type: 'success' | 'error' | 'info';
+    text: string;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const { trackButtonClick, trackEvent } = useGoogleAnalytics();
 
   // Cleanup old drives (older than 3 months) and load drives
@@ -208,6 +230,295 @@ const AdminJobDrives: React.FC = () => {
     }
   };
 
+  // EXPORT JSON FUNCTIONALITY
+  const exportToJSON = () => {
+    try {
+      const drivesData = JSON.parse(localStorage.getItem('jobDrives') || '[]');
+      
+      if (drivesData.length === 0) {
+        setExportMessage({
+          type: 'error',
+          text: 'No drives to export!'
+        });
+        setTimeout(() => setExportMessage(null), 3000);
+        return;
+      }
+      
+      // Create a backup object with metadata
+      const exportData = {
+        metadata: {
+          exportDate: new Date().toISOString(),
+          version: '1.0',
+          source: 'CareerCraft.in Job Drives',
+          totalDrives: drivesData.length
+        },
+        drives: drivesData
+      };
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      
+      // Create download link
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      const fileName = `careercraft-job-drives-backup-${new Date().toISOString().split('T')[0]}.json`;
+      
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setExportMessage({
+        type: 'success',
+        text: `Successfully exported ${drivesData.length} drives!`
+      });
+      
+      trackEvent('export_drives', {
+        count: drivesData.length,
+        format: 'json'
+      });
+      
+      setTimeout(() => setExportMessage(null), 3000);
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      setExportMessage({
+        type: 'error',
+        text: 'Failed to export drives. Please try again.'
+      });
+      setTimeout(() => setExportMessage(null), 3000);
+    }
+  };
+
+  // IMPORT JSON FUNCTIONALITY
+  const handleImportClick = () => {
+    importInputRef.current?.click();
+  };
+
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importedData = JSON.parse(content);
+        
+        // Validate the imported data structure
+        let drivesToImport: JobDrive[] = [];
+        
+        if (Array.isArray(importedData)) {
+          // If it's a direct array of drives
+          drivesToImport = importedData;
+        } else if (importedData.drives && Array.isArray(importedData.drives)) {
+          // If it's an object with a drives array
+          drivesToImport = importedData.drives;
+        } else {
+          throw new Error('Invalid file format. Please use a valid JSON export file.');
+        }
+        
+        // Validate each drive has required fields
+        const validDrives = drivesToImport.filter(drive => 
+          drive.title && 
+          drive.company && 
+          drive.date &&
+          (drive.id || (drive.title && drive.company))
+        );
+        
+        if (validDrives.length === 0) {
+          throw new Error('No valid drives found in the file.');
+        }
+        
+        // Ask user for import strategy
+        if (window.confirm(`Found ${validDrives.length} valid drives. Do you want to:\n1. Replace all existing drives (Cancel)\n2. Merge with existing drives (OK)`)) {
+          // Merge strategy
+          const existingDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
+          const mergedDrives = [...existingDrives];
+          
+          validDrives.forEach(newDrive => {
+            // Check if drive already exists (by id or title+company+date)
+            const exists = mergedDrives.some(existing => 
+              existing.id === newDrive.id || 
+              (existing.title === newDrive.title && 
+               existing.company === newDrive.company && 
+               existing.date === newDrive.date)
+            );
+            
+            if (!exists) {
+              // Ensure the drive has an id
+              const driveWithId = {
+                ...newDrive,
+                id: newDrive.id || `drive-imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                addedTimestamp: newDrive.addedTimestamp || Date.now(),
+                isNew: true
+              };
+              mergedDrives.push(driveWithId);
+            }
+          });
+          
+          // Sort by timestamp (newest first)
+          const sortedMergedDrives = mergedDrives.sort((a: JobDrive, b: JobDrive) => {
+            const timeA = a.addedTimestamp || new Date(a.date).getTime();
+            const timeB = b.addedTimestamp || new Date(b.date).getTime();
+            return timeB - timeA;
+          });
+          
+          localStorage.setItem('jobDrives', JSON.stringify(sortedMergedDrives));
+          setDrives(sortedMergedDrives);
+          
+          setImportMessage({
+            type: 'success',
+            text: `Successfully imported ${validDrives.length} drives! Total: ${sortedMergedDrives.length} drives.`
+          });
+          
+          trackEvent('import_drives', {
+            imported_count: validDrives.length,
+            total_count: sortedMergedDrives.length,
+            strategy: 'merge'
+          });
+          
+        } else {
+          // Replace strategy
+          // Add timestamps to imported drives if missing
+          const drivesWithTimestamps = validDrives.map(drive => ({
+            ...drive,
+            id: drive.id || `drive-imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            addedTimestamp: drive.addedTimestamp || Date.now(),
+            isNew: true
+          }));
+          
+          // Sort by timestamp (newest first)
+          const sortedDrives = drivesWithTimestamps.sort((a: JobDrive, b: JobDrive) => {
+            const timeA = a.addedTimestamp || new Date(a.date).getTime();
+            const timeB = b.addedTimestamp || new Date(b.date).getTime();
+            return timeB - timeA;
+          });
+          
+          localStorage.setItem('jobDrives', JSON.stringify(sortedDrives));
+          setDrives(sortedDrives);
+          
+          setImportMessage({
+            type: 'success',
+            text: `Successfully imported ${validDrives.length} drives (replaced existing).`
+          });
+          
+          trackEvent('import_drives', {
+            imported_count: validDrives.length,
+            total_count: sortedDrives.length,
+            strategy: 'replace'
+          });
+        }
+        
+        // Reset file input
+        if (importInputRef.current) {
+          importInputRef.current.value = '';
+        }
+        
+        setTimeout(() => setImportMessage(null), 5000);
+        
+      } catch (error) {
+        console.error('Import error:', error);
+        setImportMessage({
+          type: 'error',
+          text: error instanceof Error ? error.message : 'Failed to import drives. Invalid JSON file.'
+        });
+        setTimeout(() => setImportMessage(null), 5000);
+      }
+    };
+    
+    reader.onerror = () => {
+      setImportMessage({
+        type: 'error',
+        text: 'Failed to read file. Please try again.'
+      });
+      setTimeout(() => setImportMessage(null), 3000);
+    };
+    
+    reader.readAsText(file);
+  };
+
+  // FIX FOR BROWSER COMPATIBILITY
+  // Add a function to fix localStorage issues
+  const fixLocalStorageIssues = () => {
+    try {
+      // Test localStorage
+      localStorage.setItem('test', 'test');
+      localStorage.removeItem('test');
+      
+      // Reload drives
+      loadAndCleanDrives(false);
+      
+      alert('LocalStorage check passed. Drives reloaded.');
+      trackEvent('fix_localstorage', { action: 'manual_check' });
+      
+    } catch (error) {
+      console.error('LocalStorage error:', error);
+      alert('LocalStorage error detected. Please check browser permissions or try clearing site data.');
+      
+      // Try to use sessionStorage as fallback
+      try {
+        const savedDrives = sessionStorage.getItem('jobDrives');
+        if (savedDrives) {
+          setDrives(JSON.parse(savedDrives));
+          alert('Loaded drives from sessionStorage fallback.');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+      }
+    }
+  };
+
+  // Download template for JSON import
+  const downloadTemplate = () => {
+    const template = {
+      metadata: {
+        note: "CareerCraft.in Job Drives Import Template",
+        version: "1.0",
+        required_fields: ["title", "company", "location", "date", "time", "description"],
+        optional_fields: ["image", "eligibility", "documents", "applyLink", "contact", "featured", "driveType", "experience", "salary", "expectedCandidates"]
+      },
+      drives: [
+        {
+          id: "drive-example-1",
+          title: "Walk-in Drive for Software Engineers",
+          company: "Tech Solutions India",
+          location: "Bangalore, Karnataka",
+          date: "2024-12-25",
+          time: "10:00",
+          image: "",
+          description: "Immediate hiring for software engineers with good communication skills.",
+          eligibility: ["Bachelor's degree in Computer Science", "0-2 years experience", "Good problem solving skills"],
+          documents: ["Updated Resume", "Photo ID proof", "Educational certificates"],
+          applyLink: "https://company.com/apply",
+          contact: "HR: 9876543210",
+          featured: true,
+          driveType: "Walk-in Interview",
+          experience: "0-2 years",
+          salary: "₹3,00,000 - ₹6,00,000 PA",
+          expectedCandidates: 200
+        }
+      ]
+    };
+    
+    const dataStr = JSON.stringify(template, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    
+    link.href = url;
+    link.download = 'careercraft-drives-template.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    trackEvent('download_template', { type: 'drives_template' });
+  };
+
   const popularLocations = [
     'Bangalore, Karnataka', 'Mumbai, Maharashtra', 'Delhi', 'Hyderabad, Telangana',
     'Chennai, Tamil Nadu', 'Pune, Maharashtra', 'Kolkata, West Bengal', 
@@ -249,6 +560,21 @@ const AdminJobDrives: React.FC = () => {
             </div>
           )}
 
+          {/* Import/Export Messages */}
+          {importMessage && (
+            <div className={`mb-6 p-4 rounded-lg flex items-center ${importMessage.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' : 'bg-red-100 border border-red-400 text-red-700'}`}>
+              {importMessage.type === 'success' ? <CheckCircle size={20} className="mr-2" /> : <XCircle size={20} className="mr-2" />}
+              {importMessage.text}
+            </div>
+          )}
+
+          {exportMessage && (
+            <div className={`mb-6 p-4 rounded-lg flex items-center ${exportMessage.type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' : 'bg-red-100 border border-red-400 text-red-700'}`}>
+              {exportMessage.type === 'success' ? <CheckCircle size={20} className="mr-2" /> : <XCircle size={20} className="mr-2" />}
+              {exportMessage.text}
+            </div>
+          )}
+
           {/* Auto-Cleanup Info */}
           <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-4 mb-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -259,6 +585,9 @@ const AdminJobDrives: React.FC = () => {
                 </p>
                 <p className="text-yellow-700 text-sm">
                   Latest Drives: {drives.length} • Last Cleanup: {lastCleanup || 'Never'}
+                </p>
+                <p className="text-yellow-700 text-sm mt-1">
+                  <span className="font-semibold">Browser Compatibility:</span> Works on Chrome, Edge, Firefox, Safari
                 </p>
               </div>
               <div className="flex gap-2 mt-2 md:mt-0">
@@ -275,6 +604,14 @@ const AdminJobDrives: React.FC = () => {
                 >
                   <RefreshCw size={16} className="mr-2" />
                   Refresh
+                </button>
+                <button
+                  onClick={fixLocalStorageIssues}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center"
+                  title="Fix browser compatibility issues"
+                >
+                  <Database size={16} className="mr-2" />
+                  Fix Storage
                 </button>
               </div>
             </div>
@@ -345,7 +682,7 @@ const AdminJobDrives: React.FC = () => {
                             />
                           </div>
                           <p className="text-sm text-gray-500 mt-2">
-                            PNG, JPG, GIF up to 10MB
+                            PNG, JPG, GIF up to 10MB • Works on all browsers
                           </p>
                         </div>
                       )}
@@ -603,6 +940,56 @@ Educational certificates..."
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {/* JSON Import/Export Section */}
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Database size={20} className="text-purple-600" />
+                  <h4 className="font-semibold text-purple-800">📁 JSON Backup & Restore</h4>
+                </div>
+                <p className="text-purple-700 text-sm mb-4">
+                  Export drives for backup or import from other devices/mobile. Compatible with all browsers.
+                </p>
+                
+                <div className="space-y-3">
+                  <button
+                    onClick={exportToJSON}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:from-purple-700 hover:to-indigo-700 transition-colors flex items-center justify-center"
+                  >
+                    <Download size={16} className="mr-2" />
+                    Export Drives to JSON
+                  </button>
+                  
+                  <button
+                    onClick={handleImportClick}
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-colors flex items-center justify-center"
+                  >
+                    <UploadIcon size={16} className="mr-2" />
+                    Import Drives from JSON
+                  </button>
+                  <input
+                    type="file"
+                    ref={importInputRef}
+                    onChange={handleImportJSON}
+                    accept=".json"
+                    className="hidden"
+                  />
+                  
+                  <button
+                    onClick={downloadTemplate}
+                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-colors flex items-center justify-center text-sm"
+                  >
+                    Download JSON Template
+                  </button>
+                </div>
+                
+                <div className="mt-4 text-xs text-purple-600 space-y-1">
+                  <p>✅ Export format includes all drive data</p>
+                  <p>✅ Import supports merge or replace</p>
+                  <p>✅ Works on mobile and desktop</p>
+                  <p>✅ Chrome, Edge, Firefox, Safari compatible</p>
+                </div>
+              </div>
+
               {/* Auto-Cleanup Section */}
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -761,9 +1148,26 @@ Educational certificates..."
                   <li>• Set realistic dates and times for Indian locations</li>
                   <li>• Mention specific Indian educational requirements</li>
                   <li>• Drives auto-clean after 90 days</li>
+                  <li>• Export JSON backups regularly</li>
                 </ul>
               </div>
             </div>
+          </div>
+
+          {/* Browser Compatibility Notice */}
+          <div className="mt-8 p-4 bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-300 rounded-lg">
+            <h4 className="font-semibold text-gray-800 mb-2">🌐 Browser Compatibility Notice</h4>
+            <p className="text-gray-700 text-sm mb-2">
+              If drives aren't appearing in Chrome but work in Edge, try these steps:
+            </p>
+            <ul className="text-sm text-gray-600 space-y-1 ml-4 list-disc">
+              <li>Clear Chrome cache and cookies for this site</li>
+              <li>Ensure Chrome is updated to latest version</li>
+              <li>Disable any ad blockers or privacy extensions</li>
+              <li>Check Chrome's site permissions (Settings → Privacy and security → Site settings)</li>
+              <li>Use the "Fix Storage" button above if issues persist</li>
+              <li>Export your data regularly as backup</li>
+            </ul>
           </div>
         </div>
       </div>

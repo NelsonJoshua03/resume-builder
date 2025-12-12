@@ -1,5 +1,5 @@
 import  { useState } from 'react';
-import { ColorCustomizerProps } from './types';
+import type { ColorCustomizerProps } from './types';
 
 const ColorCustomizer = ({ template, colors, onUpdate }: ColorCustomizerProps) => {
   const [isOpen, setIsOpen] = useState(false);

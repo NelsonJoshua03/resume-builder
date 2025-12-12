@@ -1,6 +1,6 @@
 // src/components/FileUpload.tsx
 import { useState } from 'react';
-import { FileUploadProps } from './types';
+import type { FileUploadProps } from './types';
 import { SimpleResumeParser, extractTextFromFile } from '../utils/simpleResumeParser';
 
 const FileUpload = ({ onUpload }: FileUploadProps) => {

@@ -1,6 +1,6 @@
 // ResumePreview.tsx
 import { forwardRef } from 'react';
-import { ResumePreviewProps, SectionItem } from './types';
+import type { ResumePreviewProps, SectionItem } from './types';
 
 const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({ 
   data, 

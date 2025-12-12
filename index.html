@@ -102,16 +102,33 @@
     <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
     <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
     
-    <!-- Google Analytics -->
+    <!-- Google Analytics - DUAL TRACKING FOR BOTH DOMAINS -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       
+      // Track for https://careercraft.in
       gtag('config', 'G-SW5M9YN8L5', {
         'allow_google_signals': false,
-        'allow_ad_personalization_signals': false
+        'allow_ad_personalization_signals': false,
+        'cookie_domain': 'auto',
+        'cookie_flags': 'SameSite=None;Secure',
+        'linker': {
+          'domains': ['careercraft.in', 'www.careercraft.in']
+        }
+      });
+      
+      // Track for https://www.careercraft.in
+      gtag('config', 'G-WSKZJDJW77', {
+        'allow_google_signals': false,
+        'allow_ad_personalization_signals': false,
+        'cookie_domain': 'auto',
+        'cookie_flags': 'SameSite=None;Secure',
+        'linker': {
+          'domains': ['careercraft.in', 'www.careercraft.in']
+        }
       });
     </script>
     
@@ -241,10 +258,19 @@
           console.log('🚀 Page loaded in', loadTime, 'ms');
           
           if (typeof window.gtag !== 'undefined') {
+            // Send to both GA properties
             window.gtag('event', 'timing_complete', {
               'name': 'page_load',
               'value': loadTime,
-              'event_category': 'Performance'
+              'event_category': 'Performance',
+              'send_to': 'G-SW5M9YN8L5'
+            });
+            
+            window.gtag('event', 'timing_complete', {
+              'name': 'page_load',
+              'value': loadTime,
+              'event_category': 'Performance',
+              'send_to': 'G-WSKZJDJW77'
             });
           }
         }, 0);
@@ -255,9 +281,17 @@
         console.error('Global error caught:', e.error);
         
         if (typeof window.gtag !== 'undefined') {
+          // Send to both GA properties
           window.gtag('event', 'exception', {
             'description': e.error?.message || 'Unknown error',
-            'fatal': false
+            'fatal': false,
+            'send_to': 'G-SW5M9YN8L5'
+          });
+          
+          window.gtag('event', 'exception', {
+            'description': e.error?.message || 'Unknown error',
+            'fatal': false,
+            'send_to': 'G-WSKZJDJW77'
           });
         }
       });

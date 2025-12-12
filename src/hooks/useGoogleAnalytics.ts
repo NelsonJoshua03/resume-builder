@@ -1,23 +1,37 @@
-// src/hooks/useGoogleAnalytics.ts - COMPLETE
+// src/hooks/useGoogleAnalytics.ts - COMPLETE WITH DUAL TRACKING
 import { useCallback } from 'react';
 
 export const useGoogleAnalytics = () => {
   const trackEvent = useCallback((eventName: string, parameters: Record<string, any> = {}) => {
     if (typeof window !== 'undefined' && typeof window.gtag !== 'undefined') {
+      // Send to both Measurement IDs
       window.gtag('event', eventName, {
         ...parameters,
-        send_to: 'G-SW5M9YN8L5' // CORRECT Measurement ID
+        send_to: 'G-SW5M9YN8L5'
+      });
+      
+      window.gtag('event', eventName, {
+        ...parameters,
+        send_to: 'G-WSKZJDJW77'
       });
     }
   }, []);
 
   const trackPageView = useCallback((pageTitle: string, pagePath: string) => {
     if (typeof window !== 'undefined' && typeof window.gtag !== 'undefined') {
+      // Send to both Measurement IDs
       window.gtag('event', 'page_view', {
         page_title: pageTitle,
         page_location: window.location.href,
         page_path: pagePath,
-        send_to: 'G-SW5M9YN8L5' // CORRECT Measurement ID
+        send_to: 'G-SW5M9YN8L5'
+      });
+      
+      window.gtag('event', 'page_view', {
+        page_title: pageTitle,
+        page_location: window.location.href,
+        page_path: pagePath,
+        send_to: 'G-WSKZJDJW77'
       });
     }
   }, []);

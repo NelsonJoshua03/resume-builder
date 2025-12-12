@@ -1,6 +1,7 @@
 // ResumeContext.tsx
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { ResumeData, PersonalInfoData, Skill, SectionItem, Experience, Education, Project, Award, CustomField } from './types';
+import React, { createContext, useContext, useState } from 'react';
+import type { FC, ReactNode } from 'react';
+import type { ResumeData, PersonalInfoData, Skill, SectionItem, Experience, Education, Project, Award, CustomField } from './types';
 
 interface ResumeContextType {
   resumeData: ResumeData;
@@ -124,7 +125,7 @@ const initialResumeData: ResumeData = {
   customColors: {}
 };
 
-export const ResumeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [resumeData, setResumeData] = useState<ResumeData>(() => {
     const saved = localStorage.getItem('resumeData');
     return saved ? JSON.parse(saved) : initialResumeData;

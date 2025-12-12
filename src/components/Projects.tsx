@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ProjectsProps } from './types';
+import type { ProjectsProps } from './types';
 
 const Projects = ({ projects, onUpdate, onAdd, onRemove, template, onFieldInteraction }: ProjectsProps) => {
   const [expandedProject, setExpandedProject] = useState<number | null>(null);

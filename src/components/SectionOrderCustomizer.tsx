@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SectionOrderCustomizerProps, SectionItem } from './types';
+import type { SectionOrderCustomizerProps, SectionItem } from './types';
 
 const SectionOrderCustomizer = ({ sections, onReorder }: SectionOrderCustomizerProps) => {
   const [isOpen, setIsOpen] = useState(false);

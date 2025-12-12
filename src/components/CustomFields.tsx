@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CustomFieldsProps, CustomFieldType } from './types';
+import type { CustomFieldsProps, CustomFieldType } from './types';
 
 const CustomFields = ({ customFields, onUpdate, onAdd, onRemove, onChangeType, template, onFieldInteraction }: CustomFieldsProps) => {
   const [newFieldLabel, setNewFieldLabel] = useState('');

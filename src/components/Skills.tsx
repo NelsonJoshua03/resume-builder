@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SkillsProps, Skill } from './types';
+import type { SkillsProps, Skill } from './types';
 
 const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFieldInteraction }: SkillsProps) => {
   const [newSkill, setNewSkill] = useState('');

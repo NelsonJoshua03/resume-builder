@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PersonalInfoProps } from '@/components/types';
+import type { PersonalInfoProps } from '@/components/types';
 
 const PersonalInfo = ({ data, onChange, template, onFieldInteraction }: PersonalInfoProps) => {
   const [newBullet, setNewBullet] = useState('');

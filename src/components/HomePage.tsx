@@ -54,6 +54,14 @@ const HomePage = () => {
         user_id: userId,
         send_to: 'G-SW5M9YN8L5'
       });
+
+      window.gtag('event', 'funnel_step', {
+        funnel_name: 'website_visit',
+        step: 'homepage_visited',
+        step_number: 1,
+        user_id: userId,
+        send_to: 'G-WSKZJDJW77'
+      });
     }
     
     // Increment total visits
@@ -75,6 +83,14 @@ const HomePage = () => {
           step_number: 1,
           user_id: userId,
           send_to: 'G-SW5M9YN8L5'
+        });
+
+        window.gtag('event', 'funnel_step', {
+          funnel_name: 'resume_creation',
+          step: 'builder_button_clicked',
+          step_number: 1,
+          user_id: userId,
+          send_to: 'G-WSKZJDJW77'
         });
       }
       

@@ -1,4 +1,3 @@
-// src/hooks/useFunnelTracker.ts - ENHANCED
 import { useGoogleAnalytics } from './useGoogleAnalytics';
 
 export const useFunnelTracker = (funnelName: string) => {
@@ -25,14 +24,14 @@ export const useFunnelTracker = (funnelName: string) => {
       // Calculate time to reach this step
       const startTime = new Date(funnelData.users[userId].startTime);
       const currentTime = new Date();
-      const timeToStep = Math.round((currentTime.getTime() - startTime.getTime()) / 1000); // in seconds
+      const timeToStep = Math.round((currentTime.getTime() - startTime.getTime()) / 1000);
       
       localStorage.setItem(funnelKey, JSON.stringify(funnelData));
       
-      // Track to Google Analytics
+      // Track to Google Analytics - BOTH properties
       trackFunnelStep(funnelName, stepName, stepNumber, userId);
       
-      // Send enhanced event
+      // Send enhanced event to both properties
       if (typeof window.gtag !== 'undefined') {
         window.gtag('event', 'funnel_step_enhanced', {
           funnel_name: funnelName,
@@ -43,6 +42,17 @@ export const useFunnelTracker = (funnelName: string) => {
           total_steps_completed: userSteps.length,
           ...metadata,
           send_to: 'G-SW5M9YN8L5'
+        });
+        
+        window.gtag('event', 'funnel_step_enhanced', {
+          funnel_name: funnelName,
+          step: stepName,
+          step_number: stepNumber,
+          user_id: userId,
+          time_to_step_seconds: timeToStep,
+          total_steps_completed: userSteps.length,
+          ...metadata,
+          send_to: 'G-WSKZJDJW77'
         });
       }
       
