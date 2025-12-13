@@ -1,18 +1,14 @@
-// src/components/HomePage.tsx - COMPLETE WITH ENHANCED TRACKING
+// src/components/HomePage.tsx - MODIFIED VERSION
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileText, 
   Briefcase, 
-  Users, 
   CheckCircle,
   ArrowRight,
   Star,
   Download,
   Shield,
-  TrendingUp,
-  Award,
-  Target,
   Zap
 } from 'lucide-react';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
@@ -24,7 +20,6 @@ const HomePage = () => {
     trackButtonClick, 
     trackCTAClick, 
     trackUserFlow, 
-    trackExternalLink,
     trackPageView 
   } = useGoogleAnalytics();
 
@@ -34,70 +29,11 @@ const HomePage = () => {
   useEffect(() => {
     trackPageView('CareerCraft Home Page', '/');
     trackDailyPageView('Home Page', '/');
-    
-    // Track unique user
-    if (!localStorage.getItem('user_id')) {
-      const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('user_id', userId);
-      
-      const totalUsers = parseInt(localStorage.getItem('total_users') || '0');
-      localStorage.setItem('total_users', (totalUsers + 1).toString());
-    }
-    
-    // Track funnel entry
-    const userId = localStorage.getItem('user_id') || 'anonymous';
-    if (typeof window.gtag !== 'undefined') {
-      window.gtag('event', 'funnel_step', {
-        funnel_name: 'website_visit',
-        step: 'homepage_visited',
-        step_number: 1,
-        user_id: userId,
-        send_to: 'G-SW5M9YN8L5'
-      });
-
-      window.gtag('event', 'funnel_step', {
-        funnel_name: 'website_visit',
-        step: 'homepage_visited',
-        step_number: 1,
-        user_id: userId,
-        send_to: 'G-WSKZJDJW77'
-      });
-    }
-    
-    // Increment total visits
-    const totalVisits = parseInt(localStorage.getItem('total_home_visits') || '0');
-    localStorage.setItem('total_home_visits', (totalVisits + 1).toString());
   }, [trackPageView, trackDailyPageView]);
 
   const handleCTAClick = (buttonName: string, section: string) => {
     trackCTAClick(buttonName, section, 'homepage');
     trackButtonClick(buttonName, section, 'homepage');
-    
-    // Track specific funnel steps
-    if (buttonName.includes('builder') || buttonName.includes('build_resume')) {
-      const userId = localStorage.getItem('user_id') || 'anonymous';
-      if (typeof window.gtag !== 'undefined') {
-        window.gtag('event', 'funnel_step', {
-          funnel_name: 'resume_creation',
-          step: 'builder_button_clicked',
-          step_number: 1,
-          user_id: userId,
-          send_to: 'G-SW5M9YN8L5'
-        });
-
-        window.gtag('event', 'funnel_step', {
-          funnel_name: 'resume_creation',
-          step: 'builder_button_clicked',
-          step_number: 1,
-          user_id: userId,
-          send_to: 'G-WSKZJDJW77'
-        });
-      }
-      
-      // Track conversions
-      const conversions = parseInt(localStorage.getItem('home_to_builder_conversions') || '0');
-      localStorage.setItem('home_to_builder_conversions', (conversions + 1).toString());
-    }
   };
 
   const handleFeatureClick = (featureName: string) => {
@@ -107,26 +43,6 @@ const HomePage = () => {
   const handleNavigation = (from: string, to: string, action: string) => {
     trackUserFlow(from, to, action);
   };
-
-  const handleExternalLinkClick = (linkText: string, destination: string) => {
-    trackExternalLink(linkText, destination, 'homepage');
-    trackButtonClick(`external_${linkText.toLowerCase()}`, 'contact_section', 'homepage');
-  };
-
-  // Get live stats from localStorage
-  const getLiveStats = () => {
-    const today = new Date().toISOString().split('T')[0];
-    return {
-      resumesCreated: parseInt(localStorage.getItem('resumeDownloads') || '0'),
-      jobApplications: parseInt(localStorage.getItem('total_job_applications') || '0'),
-      driveRegistrations: parseInt(localStorage.getItem('job_drive_registrations') || '0'),
-      todayVisitors: JSON.parse(localStorage.getItem(`daily_user_${today}`) || '[]').length,
-      totalUsers: parseInt(localStorage.getItem('total_users') || '0'),
-      blogReads: parseInt(localStorage.getItem('blog_reads') || '0')
-    };
-  };
-
-  const stats = getLiveStats();
 
   return (
     <>
@@ -145,7 +61,7 @@ const HomePage = () => {
             <div className="max-w-4xl mx-auto w-full">
               <div className="mb-6 flex justify-center">
                 <span className="bg-white/20 px-4 py-1 rounded-full text-sm font-medium">
-                  🚀 {stats.todayVisitors.toLocaleString()}+ Users Today
+                  🚀 Trusted by Indian Job Seekers
                 </span>
               </div>
               
@@ -156,8 +72,8 @@ const HomePage = () => {
                 India's #1 Free Resume Builder for Indian Job Market
               </p>
               <p className="text-base md:text-lg mb-8 md:mb-12 text-blue-200 max-w-3xl mx-auto leading-relaxed">
-                Create professional resumes optimized for Indian recruiters and ATS systems. 
-                Used by {stats.totalUsers.toLocaleString()}+ job seekers across India.
+                Create professional resumes optimized for Indian recruiters and ATS systems.
+                Join thousands of successful job seekers across India.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
@@ -211,38 +127,6 @@ const HomePage = () => {
           </div>
         </section>
 
-        {/* Live Stats */}
-        <section className="py-8 bg-white/50 w-full">
-          <div className="container mx-auto px-4 w-full max-w-7xl">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
-                <div className="text-2xl md:text-3xl font-bold text-blue-600 mb-2">
-                  {stats.resumesCreated.toLocaleString()}+
-                </div>
-                <div className="text-gray-600 text-sm md:text-base">Resumes Created</div>
-              </div>
-              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
-                <div className="text-2xl md:text-3xl font-bold text-green-600 mb-2">
-                  {stats.jobApplications.toLocaleString()}+
-                </div>
-                <div className="text-gray-600 text-sm md:text-base">Job Applications</div>
-              </div>
-              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
-                <div className="text-2xl md:text-3xl font-bold text-purple-600 mb-2">
-                  {stats.driveRegistrations.toLocaleString()}+
-                </div>
-                <div className="text-gray-600 text-sm md:text-base">Drive Registrations</div>
-              </div>
-              <div className="transform hover:scale-105 transition-transform duration-300 p-4">
-                <div className="text-2xl md:text-3xl font-bold text-orange-600 mb-2">
-                  {stats.totalUsers.toLocaleString()}+
-                </div>
-                <div className="text-gray-600 text-sm md:text-base">Users</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Features Section */}
         <section id="features" className="py-12 md:py-16 bg-white w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
@@ -261,7 +145,9 @@ const HomePage = () => {
                 onClick={() => handleFeatureClick('ATS_Resumes')}
               >
                 <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Target className="text-blue-600" size={28} />
+                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </div>
                 <h3 className="text-xl font-bold mb-3">ATS Optimized</h3>
                 <p className="text-gray-600">
@@ -287,9 +173,11 @@ const HomePage = () => {
                 onClick={() => handleFeatureClick('Free_Templates')}
               >
                 <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="text-purple-600" size={28} />
+                  <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
                 </div>
-                <h3 className="text-xl font-bold mb-3">Free Templates</h3>
+                <h3 className="text-xl font-bold mb-3">Free Forever</h3>
                 <p className="text-gray-600">
                   6+ professional templates completely free, no hidden costs
                 </p>
@@ -342,7 +230,7 @@ const HomePage = () => {
               Ready to Create Your Professional Resume?
             </h2>
             <p className="text-lg md:text-xl mb-8 md:mb-10 text-blue-100 max-w-2xl mx-auto">
-              Join {stats.totalUsers.toLocaleString()}+ Indian professionals who found success with CareerCraft.in
+              Join thousands of Indian professionals who found success with CareerCraft.in
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
