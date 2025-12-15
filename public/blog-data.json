@@ -1,18 +1,42 @@
 {
   "posts": [
     {
-  "id": 12,
-  "slug": "infosys-bpm-walkin-drive-banking-freshers-jaipur-december-2025",
-  "title": "Infosys BPM Mega Walk-in Drive for Banking & Finance Freshers - Jaipur | 16th December 2025",
-  "excerpt": "Exclusive walk-in drive for Banking & Finance & Accounting (F&A) freshers at Infosys BPM Jaipur. 2020-2025 graduates eligible for Process Executive roles with immediate joining.",
-  "category": "job-drives",
-  "date": "2025-12-01",
-  "readTime": "5 min read",
-  "author": "CareerCraft Team",
-  "authorBio": "Indian Career Experts with 10+ years HR experience",
-  "contentFile": "infosys-bpm-walkin-drive-banking-freshers-jaipur-december-2025.md"
-},
-{
+      "id": 14,
+      "slug": "new-labour-laws-india-2025-impact-on-indian-job-seekers",
+      "title": "India's New Labour Laws 2025: What Every Job Seeker MUST Know (And How It Affects Your Resume)",
+      "excerpt": "Historic 2025 labour reforms explained for job seekers. Learn how new wage codes, social security changes, and flexible work rights impact your resume, interviews, and career strategy.",
+      "category": "career-advice",
+      "date": "2025-12-16",
+      "readTime": "12 min read",
+      "author": "CareerCraft Legal Team",
+      "authorBio": "Indian employment law experts with 15+ years of HR and compliance experience",
+      "contentFile": "new-labour-laws-india-2025-impact-on-indian-job-seekers.md"
+    },
+    {
+      "id": 13,
+      "slug": "careercraft-development-journey-ai-powered-resume-builder",
+      "title": "From Idea to Reality: Building CareerCraft.in - A Journey of Learning, AI, and Empowering Job Seekers",
+      "excerpt": "Join me on the journey of building CareerCraft.in—a career platform with an AI-powered resume builder, job portal, and more. Discover how I built it from scratch with zero coding experience using DeepSeek AI.",
+      "category": "career-advice",
+      "date": "2025-12-15",
+      "readTime": "8 min read",
+      "author": "Nelson Joshua",
+      "authorBio": "Builder of CareerCraft.in, passionate about using AI to create tools that help job seekers.",
+      "contentFile": "careercraft-development-journey-ai-powered-resume-builder.md"
+    },
+    {
+      "id": 12,
+      "slug": "infosys-bpm-walkin-drive-banking-freshers-jaipur-december-2025",
+      "title": "Infosys BPM Mega Walk-in Drive for Banking & Finance Freshers - Jaipur | 16th December 2025",
+      "excerpt": "Exclusive walk-in drive for Banking & Finance & Accounting (F&A) freshers at Infosys BPM Jaipur. 2020-2025 graduates eligible for Process Executive roles with immediate joining.",
+      "category": "job-drives",
+      "date": "2025-12-01",
+      "readTime": "5 min read",
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "infosys-bpm-walkin-drive-banking-freshers-jaipur-december-2025.md"
+    },
+    {
       "id": 1,
       "slug": "reddit-confession-ats-resume-changed-my-life",
       "title": "I Applied to 327 Jobs in 3 Months - Got 0 Calls. Then THIS Happened...",
@@ -120,30 +144,29 @@
       "authorBio": "Indian Career Experts with 10+ years HR experience",
       "contentFile": "resume-summary-examples-indian-job-market.md"
     },
-
     {
-  "id": 10,
-  "slug": "tcs-walk-in-drive-international-hr-services-mumbai-december-2025",
-  "title": "TCS Mumbai Walk-in Drive for International HR Services | December 6, 2025 - Complete Guide",
-  "excerpt": "Direct walk-in interview opportunity at TCS Mumbai for International HR Services Specialist roles. 4-9 years experience, ₹ Competitive Package, Night Shift. Face-to-face interviews on December 6, 2025.",
-  "category": "job-drives",
-  "date": "2025-12-01",
-  "readTime": "8 min read",
-  "author": "CareerCraft Team",
-  "authorBio": "Indian Career Experts with 10+ years HR experience",
-  "contentFile": "tcs-walk-in-drive-international-hr-services-mumbai-december-2025.md"
-},
-{
-  "id": 11,
-  "slug": "infosys-bpm-walkin-drive-fresher-bcom-bba-bpharma-pune-december-2025",
-  "title": "Infosys BPM Pune Walk-in Drive for Fresher BCom/BBA/B.Pharma 2022-2025 Batch | 16 Dec 2025",
-  "excerpt": "Exclusive walk-in drive for BCom, BBA, B.Pharma 2022-2025 batch freshers at Infosys BPM Pune. Data process roles in banking/insurance/mortgage domains. Immediate joining with 24x7 shifts.",
-  "category": "job-drives",
-  "date": "2025-12-10",
-  "readTime": "7 min read",
-  "author": "CareerCraft Team",
-  "authorBio": "Indian Career Experts with 10+ years HR experience",
-  "contentFile": "infosys-bpm-walkin-drive-fresher-bcom-bba-bpharma-pune-december-2025.md"
-}
+      "id": 10,
+      "slug": "tcs-walk-in-drive-international-hr-services-mumbai-december-2025",
+      "title": "TCS Mumbai Walk-in Drive for International HR Services | December 6, 2025 - Complete Guide",
+      "excerpt": "Direct walk-in interview opportunity at TCS Mumbai for International HR Services Specialist roles. 4-9 years experience, ₹ Competitive Package, Night Shift. Face-to-face interviews on December 6, 2025.",
+      "category": "job-drives",
+      "date": "2025-12-01",
+      "readTime": "8 min read",
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "tcs-walk-in-drive-international-hr-services-mumbai-december-2025.md"
+    },
+    {
+      "id": 11,
+      "slug": "infosys-bpm-walkin-drive-fresher-bcom-bba-bpharma-pune-december-2025",
+      "title": "Infosys BPM Pune Walk-in Drive for Fresher BCom/BBA/B.Pharma 2022-2025 Batch | 16 Dec 2025",
+      "excerpt": "Exclusive walk-in drive for BCom, BBA, B.Pharma 2022-2025 batch freshers at Infosys BPM Pune. Data process roles in banking/insurance/mortgage domains. Immediate joining with 24x7 shifts.",
+      "category": "job-drives",
+      "date": "2025-12-10",
+      "readTime": "7 min read",
+      "author": "CareerCraft Team",
+      "authorBio": "Indian Career Experts with 10+ years HR experience",
+      "contentFile": "infosys-bpm-walkin-drive-fresher-bcom-bba-bpharma-pune-december-2025.md"
+    }
   ]
 }
