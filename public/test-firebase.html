@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Firebase Test</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    button { margin: 10px; padding: 10px 20px; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Firebase Integration Test</h1>
+  
+  <div id="status">Testing Firebase connection...</div>
+  
+  <button onclick="testLocalStorage()">Test LocalStorage</button>
+  <button onclick="sendTestEvent()">Send Test Event</button>
+  <button onclick="checkGDPR()">Check GDPR</button>
+  <button onclick="clearTestData()">Clear Test Data</button>
+  
+  <div id="results"></div>
+  
+  <script>
+    function testLocalStorage() {
+      const firebaseItems = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.includes('firebase') || key.includes('session') || key.includes('gdpr')) {
+          firebaseItems.push({ key, value: localStorage.getItem(key) });
+        }
+      }
+      
+      document.getElementById('results').innerHTML = `
+        <h3>LocalStorage Items (${firebaseItems.length}):</h3>
+        <pre>${JSON.stringify(firebaseItems, null, 2)}</pre>
+      `;
+    }
+    
+    function sendTestEvent() {
+      // Simulate Firebase event
+      const event = {
+        eventName: 'manual_test_event',
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href
+      };
+      
+      const key = `firebase_test_${Date.now()}`;
+      localStorage.setItem(key, JSON.stringify(event));
+      
+      // Also send to gtag if available
+      if (typeof gtag !== 'undefined') {
+        gtag('event', 'manual_test_event', {
+          event_category: 'Test',
+          event_label: 'manual_test',
+          value: 1
+        });
+      }
+      
+      document.getElementById('results').innerHTML = `
+        <h3 class="success">✅ Test event sent!</h3>
+        <p>Event stored with key: ${key}</p>
+      `;
+    }
+    
+    function checkGDPR() {
+      const consent = localStorage.getItem('gdpr_consent');
+      const consentDate = localStorage.getItem('gdpr_consent_date');
+      
+      document.getElementById('results').innerHTML = `
+        <h3>GDPR Status:</h3>
+        <p>Consent: ${consent || 'Not set'}</p>
+        <p>Date: ${consentDate || 'Not set'}</p>
+      `;
+    }
+    
+    function clearTestData() {
+      // Clear only test data, keep user ID and session
+      const keysToKeep = ['firebase_user_id', 'firebase_session_id', 'session_id'];
+      const keysToRemove = [];
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.includes('firebase_') && !keysToKeep.includes(key) && 
+            !key.includes('firebase_user_id') && !key.includes('firebase_session_id')) {
+          keysToRemove.push(key);
+        }
+        if (key.includes('test') || key.includes('gdpr')) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      document.getElementById('results').innerHTML = `
+        <h3 class="success">✅ Cleared ${keysToRemove.length} test items</h3>
+      `;
+    }
+    
+    // Auto-check on load
+    window.onload = function() {
+      const hasUserID = localStorage.getItem('firebase_user_id');
+      const hasSessionID = localStorage.getItem('firebase_session_id');
+      const hasGDPR = localStorage.getItem('gdpr_consent');
+      
+      document.getElementById('status').innerHTML = `
+        <h3>Current Status:</h3>
+        <p>User ID: ${hasUserID ? '✅ Set' : '❌ Not set'}</p>
+        <p>Session ID: ${hasSessionID ? '✅ Set' : '❌ Not set'}</p>
+        <p>GDPR Consent: ${hasGDPR ? '✅ ' + hasGDPR : '❌ Not set'}</p>
+        <p>LocalStorage: ${typeof localStorage !== 'undefined' ? '✅ Available' : '❌ Unavailable'}</p>
+      `;
+    };
+  </script>
+</body>
+</html>

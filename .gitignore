@@ -1,27 +1,155 @@
-# Logs
-logs
-*.log
+# ============================================
+# CareerCraft.in .gitignore (Solo Developer)
+# ============================================
+
+# Node
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.pnp.*
+.yarn/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+dist-ssr/
+*.tsbuildinfo
+.cache/
+.vite/
+.vitest/
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+.firebase-*.json
+.firebase-emulators.json
+serviceAccountKey.json
+*.p12
+*.pem
+*.key
+*.crt
+*.cer
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Logs
+logs
+*.log
 lerna-debug.log*
+*.log.*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
 
-# Local Netlify folder
+# OS
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*~
+.directory
+
+# Testing
+coverage/
+.nyc_output/
+cypress/videos/
+cypress/screenshots/
+test-results/
+playwright-report/
+
+# Local data
+*.db
+*.sqlite
+*.sqlite3
+*.pdf
+resume-exports/
+*.resume.json
+database-dumps/
+*.sql
+*.sql.gz
+
+# Security
+*.pfx
+localhost-*
+.pem
+.key
+
+# Uploads
+uploads/
+user-content/
+screenshots/
+recordings/
+
+# Temporary
+.tmp/
+.temp/
+temp/
+*.bak
+*.backup
+.history/
+.session
+*~
+
+# Project specific
+src/data/blogs/_drafts/
+src/data/jobs/_drafts/
+src/assets/blog-images/_temp/
+firebase-test-data.json
+performance.log
+__pycache__/
+*.pyc
+
+# Misc
 .netlify
+*.sublime-*
+.vs/
+*.sln
+*.code-workspace
+.project
+.classpath
+.settings/
+*.launch
+*.iml
+*.ipr
+*.iws
+*.exe
+*.dll
+*.so
+*.dylib
+.coveralls.yml
+.codeclimate.yml
+.sonar/
+.gitattributes
+.gitmodules
+.dockerignore
+Dockerfile
+docker-compose.yml
+.terraform/
+terraform.tfstate
+*.tfvars
+__pycache__/
+*.pyc
+
+# CareerCraft specific
+src/firebase/.env.production
+src/firebase/service-account.json
+firebase-admin-key.json
+google-cloud-key.json

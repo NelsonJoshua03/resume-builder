@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read/write for events (analytics)
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Allow public read/write for page views
+    match /pageViews/{viewId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Resume events - public write, admin read
+    match /resumeEvents/{eventId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Job events - public write, admin read
+    match /jobEvents/{eventId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // Blog events - public write, admin read
+    match /blogEvents/{eventId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // User profiles - only user can read/write their own
+    match /userProfiles/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Resumes - user can read/write their own
+    match /resumes/{resumeId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

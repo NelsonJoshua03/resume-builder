@@ -8,16 +8,18 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
-    "lint": "eslint .",
     "preview": "vite preview",
-    "serve": "vite preview",
-    "dev:server": "cd server && npm run dev",
-    "dev:both": "concurrently \"npm run dev\" \"npm run dev:server\"",
+    "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
-    "new-blog": "node add-blog-post.js",
-    "blog-list": "node add-blog-post.js list",
-    "blog-delete": "node add-blog-post.js delete",
-    "blog-help": "node add-blog-post.js help"
+    "deploy": "deploy.bat",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage",
+    "deploy:all": "firebase deploy",
+    "firebase:login": "firebase login",
+    "firebase:status": "firebase projects:list",
+    "firebase:use": "firebase use careercraft-36711",
+    "clean": "rimraf dist",
+    "fresh": "npm run clean && npm install"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -25,37 +27,40 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fortawesome/fontawesome-free": "^6.7.2",
     "@tailwindcss/typography": "^0.5.19",
-    "@types/react-syntax-highlighter": "^15.5.13",
     "axios": "^1.12.2",
     "cheerio": "^1.0.0-rc.12",
+    "firebase": "^9.23.0",
     "gray-matter": "^4.0.3",
     "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.1",
+    "jspdf": "^2.5.2",
     "lucide-react": "^0.544.0",
-    "node-fetch": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-firebase-hooks": "^5.1.1",
     "react-helmet-async": "^2.0.5",
     "react-icons": "^5.5.0",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^6.30.2",
     "react-share": "^5.2.2",
     "react-syntax-highlighter": "^16.1.0",
     "react-to-print": "^3.1.1",
+    "recharts": "^2.15.4",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
-    "rss-parser": "^3.13.0"
+    "rimraf": "^6.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@types/html2canvas": "^0.5.35",
     "@types/jspdf": "^1.3.3",
-    "@types/node-fetch": "^2.6.12",
+    "@types/node": "^20.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.21",
-    "concurrently": "^7.6.0",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -64,11 +69,9 @@
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
-    "vite": "^4.5.3",
-    "vite-plugin-html": "^3.2.2"
+    "vite": "^4.5.3"
   },
   "description": "CareerCraft.in - India's premier career platform for resume building and job search",
-  "main": "eslint.config.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NelsonJoshua03/careercraft.git"
@@ -86,6 +89,7 @@
     "url": "https://github.com/NelsonJoshua03/careercraft/issues"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   }
 }

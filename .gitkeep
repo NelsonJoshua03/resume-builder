@@ -1,0 +1,15 @@
+# Create necessary directories with .gitkeep
+mkdir -p src/data/blogs/_drafts
+mkdir -p src/data/jobs/_drafts
+mkdir -p src/assets/blog-images/_temp
+mkdir -p src/assets/blog-images/_drafts
+mkdir -p resume-exports
+mkdir -p screenshots
+
+# Create .gitkeep files
+echo "# Keep this directory in Git" > src/data/blogs/_drafts/.gitkeep
+echo "# Keep this directory in Git" > src/data/jobs/_drafts/.gitkeep
+echo "# Keep this directory in Git" > src/assets/blog-images/_temp/.gitkeep
+echo "# Keep this directory in Git" > src/assets/blog-images/_drafts/.gitkeep
+echo "# Keep this directory in Git" > resume-exports/.gitkeep
+echo "# Keep this directory in Git" > screenshots/.gitkeep

@@ -1,4 +1,4 @@
-// src/App.tsx - COMPLETE WITH ALL ANALYTICS DASHBOARDS
+// src/App.tsx - FIXED VERSION WITH ROUTER OUTSIDE RESUME PROVIDER
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -30,26 +30,59 @@ import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import EditResumePage from './components/EditResumePage';
 
-import './styles/blog.css';
-// Import ALL analytics dashboards
+// Firebase Components
+import GDPRConsent from './components/GDPRConsent';
+import FirebaseTest from './components/FirebaseTest';
+import FirestoreStatus from './components/FirestoreStatus';
+import SyncButton from './components/SyncButton';
+
+// Analytics Dashboard Components
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import LocalAnalyticsDashboard from './components/LocalAnalyticsDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import DailyAnalyticsDashboard from './components/DailyAnalyticsDashboard';
-import ComprehensiveAnalyticsDashboard from './components/ComprehensiveAnalyticsDashboard'; // NEW
+import ComprehensiveAnalyticsDashboard from './components/ComprehensiveAnalyticsDashboard';
+import FirebaseAnalyticsDashboardComponent from './components/FirebaseAnalyticsDashboardComponent';
 
+import './styles/blog.css';
 // Import PDF styles globally
 import './components/PDFStyles.css';
 
+// Initialize Firebase
+import { initializeFirebase } from './firebase/config';
+import { firebaseSyncService } from './firebase/syncService';
+import { useEffect } from 'react';
+
 function App() {
+  // Initialize Firebase on app start
+  useEffect(() => {
+    try {
+      initializeFirebase();
+      console.log('Firebase initialized in App');
+      
+      // Try to sync any pending events after 2 seconds
+      setTimeout(() => {
+        firebaseSyncService.checkAndSync();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Firebase initialization error:', error);
+    }
+  }, []);
+
   return (
     <HelmetProvider>
-      <ResumeProvider>
-        <Router future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true
-        }}>
+      {/* ✅ Router MUST wrap everything that uses useLocation() */}
+      <Router future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}>
+        {/* ✅ ResumeProvider is now INSIDE Router context */}
+        <ResumeProvider>
           <GoogleAnalytics />
+          <GDPRConsent />
+          <FirestoreStatus />
+          <SyncButton />
           <Layout>
             <Routes>
               {/* Main Pages */}
@@ -61,14 +94,21 @@ function App() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
-              <Route path="/edit" element={<EditResumePage/>} />
+              <Route path="/edit" element={<EditResumePage />} />
+
+              {/* Firebase Test Route */}
+              <Route path="/firebase-test" element={<FirebaseTest />} />
 
               {/* Analytics & Admin Dashboards */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
               <Route path="/admin/daily-analytics" element={<DailyAnalyticsDashboard />} />
               <Route path="/local-analytics" element={<LocalAnalyticsDashboard />} />
-              <Route path="/admin/comprehensive-analytics" element={<ComprehensiveAnalyticsDashboard />} /> {/* NEW */}
+              <Route path="/admin/comprehensive-analytics" element={<ComprehensiveAnalyticsDashboard />} />
+              
+              {/* Firebase Analytics Dashboard */}
+              <Route path="/admin/firebase-analytics" element={<FirebaseAnalyticsDashboardComponent />} />
+              
               <Route path="/admin/job-posting" element={<AdminJobPosting />} />
               <Route path="/admin/job-drives" element={<AdminJobDrives />} />
               <Route path="/admin/government-exams" element={<AdminGovernmentExams />} />
@@ -97,8 +137,8 @@ function App() {
               <Route path="*" element={<HomePage />} />
             </Routes>
           </Layout>
-        </Router>
-      </ResumeProvider>
+        </ResumeProvider>
+      </Router>
     </HelmetProvider>
   );
 }

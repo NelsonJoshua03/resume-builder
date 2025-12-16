@@ -4,14 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Content Security Policy - FIXED FOR VITE -->
+    <!-- Content Security Policy - PRODUCTION -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
-                   script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+                   script-src 'self' 'unsafe-inline' 
                            https://www.googletagmanager.com 
                            https://www.google-analytics.com
                            https://cdnjs.cloudflare.com
-                           data: blob:;
+                           https://*.firebaseio.com
+                           https://*.googleapis.com;
                    style-src 'self' 'unsafe-inline' 
                            https://cdnjs.cloudflare.com 
                            https://fonts.googleapis.com;
@@ -24,10 +25,9 @@
                    connect-src 'self' 
                            https://www.google-analytics.com 
                            https://region1.google-analytics.com 
-                           https://raw.githubusercontent.com
                            https://*.googleapis.com
                            https://*.gstatic.com
-                           ws: wss:;">
+                           wss://*.firebaseio.com;">
     
     <!-- Google Verification -->
     <meta name="google-site-verification" content="72ogLK0F0xw0H23swyyhs8idWOcyyv7hr1-zAMZ9v7w" />
@@ -248,14 +248,13 @@
     <!-- Vite will inject the script here -->
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Performance monitoring -->
+    <!-- PRODUCTION: Minimal production-only scripts -->
     <script>
-      // Log performance metrics
+      // Performance monitoring
       window.addEventListener('load', function() {
         setTimeout(function() {
           const perfData = window.performance.timing;
           const loadTime = perfData.loadEventEnd - perfData.navigationStart;
-          console.log('🚀 Page loaded in', loadTime, 'ms');
           
           if (typeof window.gtag !== 'undefined') {
             // Send to both GA properties
@@ -278,8 +277,6 @@
       
       // Error tracking
       window.addEventListener('error', function(e) {
-        console.error('Global error caught:', e.error);
-        
         if (typeof window.gtag !== 'undefined') {
           // Send to both GA properties
           window.gtag('event', 'exception', {
