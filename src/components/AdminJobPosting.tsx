@@ -1,30 +1,20 @@
-// src/components/AdminJobPosting.tsx - UPDATED WITH AUTO-CLEANUP & LATEST JOBS
+// src/components/AdminJobPosting.tsx - UPDATED WITH FIREBASE
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
-import { Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle } from 'lucide-react';
+import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
+import { firebaseJobService, type JobData } from '../firebase/jobService';
+import { Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
-interface Job {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  type: string;
-  sector: string;
-  salary: string;
-  description: string;
-  requirements: string[];
-  postedDate: string;
-  applyLink: string;
-  featured?: boolean;
-  addedTimestamp?: number;
-  page?: number;
-  isNew?: boolean;
+interface BatchCreate {
+  baseTitle: string;
+  companies: string[];
+  locations: string[];
+  count: number;
 }
 
 const AdminJobPosting: React.FC = () => {
-  const [job, setJob] = useState<Omit<Job, 'id' | 'postedDate' | 'addedTimestamp' | 'page'>>({
+  const [job, setJob] = useState<Omit<JobData, 'id' | 'createdAt' | 'updatedAt' | 'expiresAt'>>({
     title: '',
     company: '',
     location: '',
@@ -33,14 +23,16 @@ const AdminJobPosting: React.FC = () => {
     salary: '',
     description: '',
     requirements: [],
+    postedDate: new Date().toISOString().split('T')[0],
     applyLink: '',
     featured: false,
-    isNew: true
+    isActive: true,
+    isApproved: true
   });
 
   const [requirementsInput, setRequirementsInput] = useState<string>('');
-  const [manualJobs, setManualJobs] = useState<Job[]>([]);
-  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [jobs, setJobs] = useState<JobData[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
   const [bulkJsonInput, setBulkJsonInput] = useState<string>('');
   const [bulkUploadResults, setBulkUploadResults] = useState<{
@@ -49,7 +41,7 @@ const AdminJobPosting: React.FC = () => {
     errors: string[];
   } | null>(null);
   
-  const [batchCreate, setBatchCreate] = useState({
+  const [batchCreate, setBatchCreate] = useState<BatchCreate>({
     baseTitle: '',
     companies: [''],
     locations: [''],
@@ -57,14 +49,14 @@ const AdminJobPosting: React.FC = () => {
   });
 
   const [lastCleanup, setLastCleanup] = useState<string>('');
-  const [cleanupStats, setCleanupStats] = useState<{
-    before: number;
-    after: number;
-    removed: number;
+  const [migrationStatus, setMigrationStatus] = useState<{
+    migrated: number;
+    failed: number;
+    inProgress: boolean;
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { trackButtonClick, trackCTAClick, trackUserFlow, trackEvent } = useGoogleAnalytics();
+  const { trackButtonClick, trackFirebaseEvent } = useFirebaseAnalytics();
 
   // Quick job templates optimized for Indian market
   const quickTemplates = {
@@ -83,7 +75,8 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of database systems",
         "Bachelor's degree in Computer Science or related field"
       ],
-      applyLink: "mailto:careers@company.com"
+      applyLink: "mailto:careers@company.com",
+      featured: true
     },
     data_analyst: {
       title: "Data Analyst",
@@ -99,7 +92,8 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of data visualization tools",
         "Strong analytical and problem-solving skills"
       ],
-      applyLink: "mailto:hr@company.com"
+      applyLink: "mailto:hr@company.com",
+      featured: false
     },
     mechanical_engineer: {
       title: "Mechanical Engineer",
@@ -116,86 +110,42 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of manufacturing processes",
         "Good communication skills"
       ],
-      applyLink: "mailto:careers@engineering.com"
+      applyLink: "mailto:careers@engineering.com",
+      featured: true
     }
   };
 
-  // Load existing manual jobs on component mount and auto-cleanup
+  // Load existing jobs on component mount
   useEffect(() => {
-    const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
-    
-    // Auto-cleanup old jobs (older than 90 days)
-    const cleanupResult = cleanupOldJobs(savedJobs, true);
-    setManualJobs(cleanupResult.cleanedJobs);
-    setCleanupStats({
-      before: cleanupResult.before,
-      after: cleanupResult.after,
-      removed: cleanupResult.removed
-    });
-    setLastCleanup(new Date().toLocaleString('en-IN'));
-    
-    trackEvent('admin_page_view', { page: 'job_posting_admin' });
+    loadJobs();
     
     // Load last cleanup time
     const savedCleanup = localStorage.getItem('last_job_cleanup');
     if (savedCleanup) {
       setLastCleanup(savedCleanup);
     }
-  }, [trackEvent]);
 
-  // Cleanup old jobs function
-  const cleanupOldJobs = (jobsArray: Job[] = manualJobs, auto: boolean = false) => {
-    const now = Date.now();
-    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
-    
-    const beforeCount = jobsArray.length;
-    const cleanedJobs = jobsArray.filter(job => {
-      const jobTimestamp = job.addedTimestamp || new Date(job.postedDate).getTime();
-      return jobTimestamp >= ninetyDaysAgo;
-    });
-    const afterCount = cleanedJobs.length;
-    const removedCount = beforeCount - afterCount;
-    
-    // Update localStorage
-    localStorage.setItem('manualJobs', JSON.stringify(cleanedJobs));
-    
-    // Save cleanup time
-    const cleanupTime = new Date().toLocaleString('en-IN');
-    localStorage.setItem('last_job_cleanup', cleanupTime);
-    setLastCleanup(cleanupTime);
-    
-    // Track cleanup event
-    if (removedCount > 0) {
-      trackEvent('job_cleanup', {
-        auto_cleanup: auto,
-        jobs_before: beforeCount,
-        jobs_after: afterCount,
-        jobs_removed: removedCount
-      });
-      
-      if (!auto) {
-        alert(`Cleaned up ${removedCount} jobs older than 90 days.`);
+    trackFirebaseEvent(
+      'admin_page_view',
+      'Admin',
+      'job_posting_admin',
+      {
+        page: 'job_posting_admin',
+        timestamp: new Date().toISOString()
       }
-    }
-    
-    return {
-      cleanedJobs,
-      before: beforeCount,
-      after: afterCount,
-      removed: removedCount
-    };
-  };
+    );
+  }, []);
 
-  // Manual cleanup trigger
-  const handleCleanup = () => {
-    if (window.confirm('Are you sure you want to remove all jobs older than 90 days? This action cannot be undone.')) {
-      const result = cleanupOldJobs();
-      setManualJobs(result.cleanedJobs);
-      setCleanupStats({
-        before: result.before,
-        after: result.after,
-        removed: result.removed
-      });
+  // Load jobs from Firebase
+  const loadJobs = async () => {
+    setLoading(true);
+    try {
+      const { jobs: loadedJobs } = await firebaseJobService.getJobs({}, 1, 100);
+      setJobs(loadedJobs);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -204,138 +154,119 @@ const AdminJobPosting: React.FC = () => {
     const template = quickTemplates[templateKey];
     setJob({
       ...template,
-      featured: false,
-      isNew: true
+      postedDate: new Date().toISOString().split('T')[0],
+      isActive: true,
+      isApproved: true
     });
     setRequirementsInput(template.requirements.join('\n'));
     setActiveTab('single');
+    
     trackButtonClick(`apply_template_${templateKey}`, 'quick_templates', 'admin_job_posting');
   };
 
   // Single job submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newJob: Job = {
-      ...job,
-      id: `manual-${Date.now()}`,
-      postedDate: new Date().toISOString().split('T')[0],
-      addedTimestamp: Date.now(),
-      requirements: requirementsInput.split('\n')
-        .filter(req => req.trim() !== '')
-        .map(req => req.trim()),
-      page: Math.floor(manualJobs.length / 10) + 1,
-      isNew: true
-    };
+    try {
+      const newJobData = {
+        ...job,
+        requirements: requirementsInput.split('\n')
+          .filter(req => req.trim() !== '')
+          .map(req => req.trim())
+      };
 
-    const updatedJobs = [newJob, ...manualJobs]; // Add to beginning for latest first
-    setManualJobs(updatedJobs);
-    localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-    
-    // Track job posting
-    trackButtonClick('post_single_job', 'job_form', 'admin_job_posting');
-    trackUserFlow('admin_job_posting', 'job_posted', 'job_creation');
-    trackEvent('job_posted', {
-      job_type: 'single',
-      job_title: job.title,
-      company: job.company,
-      sector: job.sector
-    });
-    
-    setShowSuccess(true);
-    // Reset form
-    setJob({
-      title: '',
-      company: '',
-      location: '',
-      type: 'Full-time',
-      sector: 'IT/Software',
-      salary: '',
-      description: '',
-      requirements: [],
-      applyLink: '',
-      featured: false,
-      isNew: true
-    });
-    setRequirementsInput('');
-
-    setTimeout(() => setShowSuccess(false), 3000);
+      const jobId = await firebaseJobService.createJob(newJobData);
+      
+      trackButtonClick('post_single_job', 'job_form', 'admin_job_posting');
+      trackFirebaseEvent(
+        'job_posted',
+        'Job Management',
+        job.title,
+        {
+          job_type: 'single',
+          job_title: job.title,
+          company: job.company,
+          sector: job.sector
+        }
+      );
+      
+      // Reload jobs
+      await loadJobs();
+      
+      // Reset form
+      setJob({
+        title: '',
+        company: '',
+        location: '',
+        type: 'Full-time',
+        sector: 'IT/Software',
+        salary: '',
+        description: '',
+        requirements: [],
+        postedDate: new Date().toISOString().split('T')[0],
+        applyLink: '',
+        featured: false,
+        isActive: true,
+        isApproved: true
+      });
+      setRequirementsInput('');
+      
+      // Show success message
+      setBulkUploadResults({
+        success: 1,
+        failed: 0,
+        errors: []
+      });
+      
+    } catch (error) {
+      console.error('Error creating job:', error);
+      setBulkUploadResults({
+        success: 0,
+        failed: 1,
+        errors: [`Failed to create job: ${error}`]
+      });
+    }
   };
 
   // Bulk job upload from JSON
-  const handleBulkUpload = (e: React.FormEvent) => {
+  const handleBulkUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
       const jobsData = JSON.parse(bulkJsonInput);
-      trackButtonClick('bulk_upload_jobs', 'bulk_upload', 'admin_job_posting');
       
       if (!Array.isArray(jobsData)) {
         throw new Error('JSON must be an array of job objects');
       }
 
-      let successCount = 0;
-      let failedCount = 0;
-      const errors: string[] = [];
+      const validJobsData = jobsData.map(jobData => ({
+        title: jobData.title || '',
+        company: jobData.company || '',
+        location: jobData.location || '',
+        type: jobData.type || 'Full-time',
+        sector: jobData.sector || 'IT/Software',
+        salary: jobData.salary || '',
+        description: jobData.description || '',
+        requirements: Array.isArray(jobData.requirements) 
+          ? jobData.requirements 
+          : (jobData.requirements ? [jobData.requirements] : ['See job description for requirements']),
+        postedDate: jobData.postedDate || new Date().toISOString().split('T')[0],
+        applyLink: jobData.applyLink || '#',
+        featured: jobData.featured || false,
+        isActive: true,
+        isApproved: true
+      }));
 
-      const newJobs: Job[] = jobsData.map((jobData, index) => {
-        try {
-          if (!jobData.title || !jobData.company || !jobData.location) {
-            throw new Error(`Job ${index + 1}: Missing required fields (title, company, location)`);
-          }
+      const results = await firebaseJobService.bulkCreateJobs(validJobsData);
+      setBulkUploadResults(results);
 
-          const newJob: Job = {
-            id: `manual-bulk-${Date.now()}-${index}`,
-            title: jobData.title,
-            company: jobData.company,
-            location: jobData.location,
-            type: jobData.type || 'Full-time',
-            sector: jobData.sector || 'IT/Software',
-            salary: jobData.salary || '',
-            description: jobData.description || '',
-            requirements: Array.isArray(jobData.requirements) 
-              ? jobData.requirements 
-              : (jobData.requirements ? [jobData.requirements] : ['See job description for requirements']),
-            applyLink: jobData.applyLink || '#',
-            featured: jobData.featured || false,
-            postedDate: new Date().toISOString().split('T')[0],
-            addedTimestamp: Date.now(),
-            page: Math.floor((manualJobs.length + index) / 10) + 1,
-            isNew: true
-          };
-
-          successCount++;
-          return newJob;
-        } catch (error) {
-          failedCount++;
-          errors.push(error instanceof Error ? error.message : `Job ${index + 1}: Invalid format`);
-          return null;
-        }
-      }).filter((job): job is Job => job !== null);
-
-      if (newJobs.length > 0) {
-        const updatedJobs = [...newJobs, ...manualJobs]; // Add to beginning for latest first
-        setManualJobs(updatedJobs);
-        localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-        trackUserFlow('admin_job_posting', 'bulk_jobs_uploaded', 'job_creation');
-        trackEvent('bulk_jobs_uploaded', {
-          total_jobs: jobsData.length,
-          successful_uploads: successCount,
-          failed_uploads: failedCount
-        });
-      }
-
-      setBulkUploadResults({
-        success: successCount,
-        failed: failedCount,
-        errors
-      });
-
-      if (successCount > 0) {
+      if (results.success > 0) {
         setBulkJsonInput('');
+        await loadJobs();
       }
     } catch (error) {
-      trackButtonClick('bulk_upload_error', 'bulk_upload', 'admin_job_posting');
+      console.error('Error in bulk upload:', error);
       setBulkUploadResults({
         success: 0,
         failed: 0,
@@ -372,7 +303,6 @@ const AdminJobPosting: React.FC = () => {
   // Generate batch jobs
   const generateBatchJobs = () => {
     const jobs = [];
-    const now = Date.now();
     for (let i = 0; i < batchCreate.count; i++) {
       const company = batchCreate.companies[i % batchCreate.companies.length] || 'Tech Company';
       const location = batchCreate.locations[i % batchCreate.locations.length] || 'Bangalore, Karnataka';
@@ -386,12 +316,15 @@ const AdminJobPosting: React.FC = () => {
         salary: "₹6,00,000 - ₹12,00,000 PA",
         description: `We are hiring a ${batchCreate.baseTitle} to join our team at ${company}.`,
         requirements: ["2+ years experience", "Relevant skills", "Good communication"],
+        postedDate: new Date().toISOString().split('T')[0],
         applyLink: "mailto:careers@company.com",
         featured: i < 2,
-        isNew: true
+        isActive: true,
+        isApproved: true
       });
     }
     setBulkJsonInput(JSON.stringify(jobs, null, 2));
+    
     trackButtonClick('generate_batch_jobs', 'batch_creator', 'admin_job_posting');
   };
 
@@ -411,8 +344,11 @@ const AdminJobPosting: React.FC = () => {
           "Proficiency in JavaScript and modern frameworks",
           "Experience with responsive web design"
         ],
+        "postedDate": new Date().toISOString().split('T')[0],
         "applyLink": "mailto:careers@company.com",
-        "featured": true
+        "featured": true,
+        "isActive": true,
+        "isApproved": true
       },
       {
         "title": "Mechanical Engineer",
@@ -427,8 +363,11 @@ const AdminJobPosting: React.FC = () => {
           "Experience with CAD software",
           "Knowledge of manufacturing processes"
         ],
+        "postedDate": new Date().toISOString().split('T')[0],
         "applyLink": "https://company.com/careers/mechanical-engineer",
-        "featured": false
+        "featured": false,
+        "isActive": true,
+        "isApproved": true
       }
     ];
 
@@ -447,7 +386,7 @@ const AdminJobPosting: React.FC = () => {
 
   // Export current jobs
   const exportJobs = () => {
-    const blob = new Blob([JSON.stringify(manualJobs, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(jobs, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -460,18 +399,72 @@ const AdminJobPosting: React.FC = () => {
     trackButtonClick('export_jobs', 'job_management', 'admin_job_posting');
   };
 
-  const deleteJob = (jobId: string) => {
-    const updatedJobs = manualJobs.filter(job => job.id !== jobId);
-    setManualJobs(updatedJobs);
-    localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-    trackButtonClick('delete_job', 'job_management', 'admin_job_posting');
+  const deleteJob = async (jobId: string) => {
+    if (window.confirm('Are you sure you want to delete this job?')) {
+      try {
+        await firebaseJobService.deleteJob(jobId);
+        await loadJobs();
+        
+        trackButtonClick('delete_job', 'job_management', 'admin_job_posting');
+      } catch (error) {
+        console.error('Error deleting job:', error);
+        alert('Failed to delete job. Please try again.');
+      }
+    }
   };
 
-  const clearAllJobs = () => {
-    if (window.confirm('Are you sure you want to delete all manually posted jobs? This action cannot be undone.')) {
-      setManualJobs([]);
-      localStorage.setItem('manualJobs', '[]');
-      trackButtonClick('clear_all_jobs', 'job_management', 'admin_job_posting');
+  const clearAllJobs = async () => {
+    if (window.confirm('Are you sure you want to deactivate all jobs? This will mark all jobs as inactive.')) {
+      try {
+        const deactivatePromises = jobs.map(job => 
+          firebaseJobService.updateJob(job.id!, { isActive: false })
+        );
+        
+        await Promise.all(deactivatePromises);
+        await loadJobs();
+        
+        trackButtonClick('clear_all_jobs', 'job_management', 'admin_job_posting');
+        
+        alert('All jobs have been deactivated.');
+      } catch (error) {
+        console.error('Error clearing jobs:', error);
+        alert('Failed to clear jobs. Please try again.');
+      }
+    }
+  };
+
+  // Migrate localStorage jobs to Firebase
+  const migrateLocalStorageJobs = async () => {
+    if (window.confirm('This will migrate all localStorage jobs to Firebase. Continue?')) {
+      setMigrationStatus({ migrated: 0, failed: 0, inProgress: true });
+      
+      try {
+        const result = await firebaseJobService.migrateLocalStorageJobs();
+        setMigrationStatus({
+          ...result,
+          inProgress: false
+        });
+        
+        await loadJobs();
+        
+        trackFirebaseEvent(
+          'jobs_migrated',
+          'System',
+          'migration',
+          {
+            migrated: result.migrated,
+            failed: result.failed,
+            source: 'localStorage'
+          }
+        );
+      } catch (error) {
+        console.error('Migration error:', error);
+        setMigrationStatus({
+          migrated: 0,
+          failed: 0,
+          inProgress: false
+        });
+      }
     }
   };
 
@@ -486,6 +479,10 @@ const AdminJobPosting: React.FC = () => {
     'Chennai, Tamil Nadu', 'Pune, Maharashtra', 'Kolkata, West Bengal', 
     'Ahmedabad, Gujarat', 'Remote', 'Gurgaon, Haryana', 'Noida, Uttar Pradesh'
   ];
+
+  const activeJobs = jobs.filter(job => job.isActive);
+  const featuredJobs = jobs.filter(job => job.featured);
+  const recentJobs = jobs.slice(0, 5);
 
   return (
     <>
@@ -521,7 +518,7 @@ const AdminJobPosting: React.FC = () => {
             <Link 
               to="/job-applications" 
               className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
-              onClick={() => trackCTAClick('back_to_jobs', 'navigation', 'admin_job_posting')}
+              onClick={() => trackButtonClick('back_to_jobs', 'navigation', 'admin_job_posting')}
             >
               ← Back to Job Applications
             </Link>
@@ -529,35 +526,43 @@ const AdminJobPosting: React.FC = () => {
             <p className="text-gray-600">Add new job opportunities to CareerCraft.in. Jobs auto-clean after 90 days.</p>
           </div>
 
-          {showSuccess && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-              Job posted successfully! It will now appear on the Job Applications page (showing latest first).
-            </div>
-          )}
-
           {/* Storage Info */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
               <div>
                 <h3 className="font-semibold text-blue-800">CareerCraft Job Portal Status</h3>
                 <p className="text-blue-700 text-sm">
-                  Latest Jobs: {manualJobs.length} | Pages: {Math.ceil(manualJobs.length / 10)} | 
-                  Featured: {manualJobs.filter(j => j.featured).length} | 
-                  New Today: {manualJobs.filter(j => j.isNew).length}
+                  Active Jobs: {activeJobs.length} | Featured: {featuredJobs.length} | 
+                  Total Views: {jobs.reduce((sum, job) => sum + (job.views || 0), 0).toLocaleString()} | 
+                  Total Applications: {jobs.reduce((sum, job) => sum + (job.applications || 0), 0).toLocaleString()}
                 </p>
                 <p className="text-blue-700 text-sm">
                   Auto-Cleanup: Every 90 days | Last Cleanup: {lastCleanup || 'Never'}
                 </p>
               </div>
-              {cleanupStats && cleanupStats.removed > 0 && (
-                <div className="mt-2 md:mt-0 bg-red-50 border border-red-200 rounded p-2">
-                  <p className="text-red-700 text-sm">
-                    <AlertCircle size={14} className="inline mr-1" />
-                    Auto-cleaned: {cleanupStats.removed} old jobs removed
-                  </p>
-                </div>
-              )}
+              
+              <button
+                onClick={migrateLocalStorageJobs}
+                disabled={migrationStatus?.inProgress}
+                className="mt-2 md:mt-0 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-400"
+              >
+                {migrationStatus?.inProgress ? (
+                  <span className="flex items-center">
+                    <Loader2 className="animate-spin mr-2" size={16} />
+                    Migrating...
+                  </span>
+                ) : 'Migrate localStorage Jobs'}
+              </button>
             </div>
+            
+            {migrationStatus && !migrationStatus.inProgress && (
+              <div className={`mt-3 p-2 rounded ${migrationStatus.failed > 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}>
+                <p className={`text-sm ${migrationStatus.failed > 0 ? 'text-yellow-700' : 'text-green-700'}`}>
+                  <CheckCircle size={14} className="inline mr-1" />
+                  Migration complete: {migrationStatus.migrated} migrated, {migrationStatus.failed} failed
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Tab Navigation */}
@@ -779,9 +784,17 @@ Bachelor's degree in Computer Science..."
                     <div className="pt-4">
                       <button
                         type="submit"
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg disabled:bg-gray-400"
                       >
-                        Post Latest Job on CareerCraft
+                        {loading ? (
+                          <span className="flex items-center justify-center">
+                            <Loader2 className="animate-spin mr-2" size={20} />
+                            Posting Job...
+                          </span>
+                        ) : (
+                          'Post Latest Job on CareerCraft'
+                        )}
                       </button>
                       <p className="text-xs text-gray-500 text-center mt-2">
                         Job will appear as "Latest" and auto-clean after 90 days
@@ -898,7 +911,8 @@ Bachelor's degree in Computer Science..."
     "requirements": ["Requirement 1", "Requirement 2"],
     "applyLink": "mailto:careers@company.com",
     "featured": false,
-    "isNew": true
+    "isActive": true,
+    "isApproved": true
   }
 ]`}
                       rows={12}
@@ -942,11 +956,15 @@ Bachelor's degree in Computer Science..."
                     </button>
                     <button
                       onClick={handleBulkUpload}
-                      disabled={!bulkJsonInput.trim()}
+                      disabled={!bulkJsonInput.trim() || loading}
                       className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                      <Upload size={16} className="mr-2" />
-                      Upload Latest Jobs
+                      {loading ? (
+                        <Loader2 className="animate-spin mr-2" size={16} />
+                      ) : (
+                        <Upload size={16} className="mr-2" />
+                      )}
+                      {loading ? 'Uploading...' : 'Upload Latest Jobs'}
                     </button>
                     <button
                       onClick={() => setBulkJsonInput('')}
@@ -994,41 +1012,28 @@ Bachelor's degree in Computer Science..."
                   <h4 className="font-semibold text-red-800">🔄 Auto-Cleanup System</h4>
                 </div>
                 <p className="text-red-700 text-sm mb-3">
-                  Jobs older than 90 days are automatically removed to keep listings fresh.
+                  Jobs older than 90 days are automatically marked as inactive to keep listings fresh.
                 </p>
                 <div className="space-y-2 text-sm text-red-700 mb-4">
                   <div className="flex justify-between">
-                    <span>Last Cleanup:</span>
-                    <span className="font-medium">{lastCleanup || 'Never'}</span>
+                    <span>Active Jobs:</span>
+                    <span className="font-medium">{activeJobs.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Jobs before:</span>
-                    <span className="font-medium">{cleanupStats?.before || manualJobs.length}</span>
+                    <span>Inactive Jobs:</span>
+                    <span className="font-medium">{jobs.length - activeJobs.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Jobs after:</span>
-                    <span className="font-medium">{cleanupStats?.after || manualJobs.length}</span>
+                    <span>Cleanup Period:</span>
+                    <span className="font-medium">90 days</span>
                   </div>
-                  {cleanupStats && cleanupStats.removed > 0 && (
-                    <div className="flex justify-between">
-                      <span>Removed:</span>
-                      <span className="font-medium bg-red-100 px-2 py-0.5 rounded">{cleanupStats.removed} old jobs</span>
-                    </div>
-                  )}
                 </div>
-                <button
-                  onClick={handleCleanup}
-                  className="w-full bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors flex items-center justify-center"
-                >
-                  <Trash2 size={16} className="mr-2" />
-                  Clean Old Jobs Now
-                </button>
               </div>
 
               {/* Preview and Existing Jobs */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">Latest CareerCraft Jobs ({manualJobs.length})</h3>
+                  <h3 className="text-xl font-bold text-gray-800">Latest CareerCraft Jobs ({jobs.length})</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={exportJobs}
@@ -1040,7 +1045,7 @@ Bachelor's degree in Computer Science..."
                     <button
                       onClick={clearAllJobs}
                       className="text-red-600 hover:text-red-800 text-sm font-medium"
-                      title="Delete all jobs"
+                      title="Deactivate all jobs"
                     >
                       Clear All
                     </button>
@@ -1050,52 +1055,61 @@ Bachelor's degree in Computer Science..."
                   <Clock size={12} />
                   Showing newest first • Auto-cleaned every 90 days
                 </div>
-                {manualJobs.length === 0 ? (
+                
+                {loading ? (
+                  <div className="text-center py-4">
+                    <Loader2 className="animate-spin mx-auto text-blue-600" size={20} />
+                    <p className="text-gray-500 text-sm mt-2">Loading jobs...</p>
+                  </div>
+                ) : jobs.length === 0 ? (
                   <p className="text-gray-500 text-sm">No latest jobs posted yet on CareerCraft</p>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    {manualJobs.map(manualJob => {
-                      const isNew = manualJob.isNew || (manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) < 24 * 60 * 60 * 1000);
-                      const isOld = manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) > 60 * 24 * 60 * 60 * 1000; // 60+ days
+                    {recentJobs.map(job => {
+                      const isNew = job.createdAt && (Date.now() - new Date(job.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+                      const isOld = job.expiresAt && new Date(job.expiresAt) < new Date();
                       
                       return (
-                        <div key={manualJob.id} className={`border rounded-lg p-3 ${isOld ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
+                        <div key={job.id} className={`border rounded-lg p-3 ${!job.isActive ? 'border-red-200 bg-red-50' : isOld ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'}`}>
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h4 className="font-semibold text-gray-800 text-sm line-clamp-1">{manualJob.title}</h4>
-                              <p className="text-xs text-gray-600">{manualJob.company}</p>
-                              <p className="text-xs text-gray-500">{manualJob.location}</p>
+                              <h4 className="font-semibold text-gray-800 text-sm line-clamp-1">{job.title}</h4>
+                              <p className="text-xs text-gray-600">{job.company}</p>
+                              <p className="text-xs text-gray-500">{job.location}</p>
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {isNew && (
                                   <span className="inline-block bg-red-100 text-red-800 text-xs px-1 py-0.5 rounded">
                                     NEW
                                   </span>
                                 )}
-                                {isOld && (
-                                  <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-1 py-0.5 rounded">
-                                    OLD (Will auto-clean)
+                                {!job.isActive && (
+                                  <span className="inline-block bg-red-100 text-red-800 text-xs px-1 py-0.5 rounded">
+                                    INACTIVE
                                   </span>
                                 )}
-                                {manualJob.featured && (
+                                {isOld && job.isActive && (
+                                  <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-1 py-0.5 rounded">
+                                    EXPIRING SOON
+                                  </span>
+                                )}
+                                {job.featured && (
                                   <span className="inline-block bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
                                     Featured
                                   </span>
                                 )}
-                                {manualJob.id.startsWith('manual-bulk-') && (
-                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">
-                                    Bulk
-                                  </span>
-                                )}
                                 <span className="inline-block bg-gray-100 text-gray-800 text-xs px-1 py-0.5 rounded">
-                                  Page {manualJob.page || 1}
+                                  👁️ {job.views || 0}
+                                </span>
+                                <span className="inline-block bg-gray-100 text-gray-800 text-xs px-1 py-0.5 rounded">
+                                  📝 {job.applications || 0}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-400 mt-1">
-                                Added: {manualJob.addedTimestamp ? new Date(manualJob.addedTimestamp).toLocaleDateString('en-IN') : 'Recently'}
+                                {job.createdAt ? `Posted: ${new Date(job.createdAt).toLocaleDateString('en-IN')}` : 'Recently'}
                               </p>
                             </div>
                             <button
-                              onClick={() => deleteJob(manualJob.id)}
+                              onClick={() => job.id && deleteJob(job.id)}
                               className="text-red-600 hover:text-red-800 ml-2"
                               title="Delete job"
                             >
@@ -1142,24 +1156,24 @@ Bachelor's degree in Computer Science..."
                 <h4 className="font-semibold text-green-800 mb-2">CareerCraft Latest Stats</h4>
                 <div className="text-sm text-green-700 space-y-1">
                   <div className="flex justify-between">
-                    <span>Total Latest Jobs:</span>
-                    <span className="font-bold">{manualJobs.length}</span>
+                    <span>Total Jobs:</span>
+                    <span className="font-bold">{jobs.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Active Jobs:</span>
+                    <span className="font-bold">{activeJobs.length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Featured Jobs:</span>
-                    <span className="font-bold">{manualJobs.filter(j => j.featured).length}</span>
+                    <span className="font-bold">{featuredJobs.length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>IT/Software Jobs:</span>
-                    <span className="font-bold">{manualJobs.filter(j => j.sector === 'IT/Software').length}</span>
+                    <span className="font-bold">{jobs.filter(j => j.sector === 'IT/Software').length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Remote Jobs:</span>
-                    <span className="font-bold">{manualJobs.filter(j => j.type === 'Remote').length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>New Today:</span>
-                    <span className="font-bold">{manualJobs.filter(j => j.isNew).length}</span>
+                    <span className="font-bold">{jobs.filter(j => j.type === 'Remote').length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Auto-clean in:</span>
