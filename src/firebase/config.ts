@@ -1,4 +1,4 @@
-// src/firebase/config.ts - PRODUCTION READY
+// src/firebase/config.ts - PRODUCTION READY (UPDATED)
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -16,14 +16,36 @@ import {
 import { getAuth, Auth } from 'firebase/auth';
 import { getPerformance } from 'firebase/performance';
 
+// Helper to safely get environment variables
+const getEnvVar = (key: string, defaultValue: string = ''): string => {
+  // Check import.meta.env (Vite)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const value = import.meta.env[key];
+    if (value && value !== 'undefined') return value;
+  }
+  
+  // Check process.env (Node.js/SSR)
+  if (typeof process !== 'undefined' && process.env) {
+    const value = process.env[key];
+    if (value && value !== 'undefined') return value;
+  }
+  
+  // Check window._env_ (injected in production)
+  if (typeof window !== 'undefined' && window._env_ && window._env_[key]) {
+    return window._env_[key];
+  }
+  
+  return defaultValue;
+};
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnvVar('VITE_FIREBASE_APP_ID'),
+  measurementId: getEnvVar('VITE_FIREBASE_MEASUREMENT_ID')
 };
 
 // Initialize Firebase only once
@@ -36,8 +58,6 @@ let performance: any = null;
 // Type-safe GDPR consent check
 const checkGDPRConsent = (): boolean => {
   const gdprConsent = localStorage.getItem('gdpr_consent');
-  
-  // PRODUCTION: Only check GDPR consent, no localhost bypass
   return gdprConsent === 'accepted';
 };
 
@@ -47,41 +67,55 @@ export const initializeFirebase = () => {
     return { app, firestore, analytics, auth, performance };
   }
 
-  // PRODUCTION: Strict config check
-  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined') {
-    console.error('Firebase configuration missing for production');
+  // Check if any Firebase config is provided
+  const hasAnyConfig = Object.values(firebaseConfig).some(value => 
+    value && value !== 'undefined' && value.trim() !== ''
+  );
+
+  if (!hasAnyConfig) {
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Firebase configuration missing. Analytics will be disabled.');
+    }
+    
     return { app: null, firestore: null, analytics: null, auth: null, performance: null };
   }
 
+  // Validate required config
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined') {
+    console.warn('Firebase API Key missing. Analytics will be limited.');
+  }
+
   try {
-    console.log('Initializing Firebase for production...');
+    // Minimal logging in production
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Initializing Firebase...');
+    }
     
     app = initializeApp(firebaseConfig);
-    console.log('✅ Firebase App initialized');
 
     const hasConsent = checkGDPRConsent();
 
     // Initialize Firestore
     try {
       firestore = getFirestore(app);
-      console.log('✅ Firestore initialized');
       
       // Enable offline persistence for better UX
       if (typeof window !== 'undefined' && hasConsent) {
         enableIndexedDbPersistence(firestore)
-          .then(() => console.log('📱 Firestore persistence enabled'))
           .catch((err: any) => {
-            if (err.code === 'failed-precondition') {
-              console.warn('Multiple tabs open, persistence enabled in one tab only');
-            } else if (err.code === 'unimplemented') {
-              console.warn('Browser doesn\'t support persistence');
-            } else {
-              console.warn('Firestore persistence error:', err.code);
+            // Silent fail in production
+            if (process.env.NODE_ENV === 'development') {
+              if (err.code === 'failed-precondition') {
+                console.warn('Multiple tabs open, persistence enabled in one tab only');
+              } else if (err.code === 'unimplemented') {
+                console.warn('Browser doesn\'t support persistence');
+              }
             }
           });
       }
     } catch (firestoreError) {
-      console.error('Firestore initialization failed:', firestoreError);
+      // Silent fail
     }
 
     // Initialize Analytics (only with consent)
@@ -90,7 +124,6 @@ export const initializeFirebase = () => {
         if (supported && app) {
           try {
             analytics = getAnalytics(app);
-            console.log('✅ Analytics initialized');
             
             const userId = localStorage.getItem('firebase_user_id');
             if (userId && analytics) {
@@ -99,55 +132,48 @@ export const initializeFirebase = () => {
             
             // Set production user properties
             setUserProperties(analytics, {
-              environment: import.meta.env.VITE_ENV || 'production',
+              environment: getEnvVar('VITE_ENV', 'production'),
               app_version: '1.0.0',
               platform: 'web',
               domain: window.location.hostname
             });
           } catch (analyticsError) {
-            console.error('Analytics initialization failed:', analyticsError);
+            // Silent fail
           }
         }
       }).catch(() => {
-        console.warn('Analytics not supported in this environment');
+        // Silent fail
       });
       
       // Initialize Performance
       try {
         if (app) {
           performance = getPerformance(app);
-          console.log('✅ Performance initialized');
         }
       } catch (perfError) {
-        console.error('Performance initialization failed:', perfError);
+        // Silent fail
       }
-    } else if (typeof window !== 'undefined' && !hasConsent) {
-      console.log('Analytics disabled - awaiting GDPR consent');
     }
 
     // Initialize Auth
     try {
       if (app) {
         auth = getAuth(app);
-        console.log('✅ Auth initialized');
       }
     } catch (authError) {
-      console.error('Auth initialization failed:', authError);
+      // Silent fail
     }
 
-    // Log Firebase status
-    console.group('🔥 Firebase Status');
-    console.log('App:', app ? '✅' : '❌');
-    console.log('Firestore:', firestore ? '✅' : '❌');
-    console.log('Analytics:', analytics ? '✅' : '❌');
-    console.log('Auth:', auth ? '✅' : '❌');
-    console.log('Performance:', performance ? '✅' : '❌');
-    console.log('GDPR Consent:', hasConsent ? '✅ Accepted' : '❌ Not accepted');
-    console.log('Environment:', import.meta.env.VITE_ENV || 'production');
-    console.groupEnd();
+    // Minimal status log only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Firebase initialized successfully');
+    }
 
   } catch (error) {
-    console.error('Firebase initialization error:', error);
+    // Silent fail in production
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Firebase initialization error:', error);
+    }
   }
 
   return { app, firestore, analytics, auth, performance };
@@ -159,7 +185,7 @@ export const getFirestoreInstance = (): Firestore | null => {
     try {
       firestore = getFirestore(app);
     } catch (error) {
-      console.error('Failed to get Firestore instance:', error);
+      // Silent fail
     }
   }
   return firestore;
@@ -184,7 +210,7 @@ export const getAuthInstance = (): Auth | null => {
     try {
       auth = getAuth(app);
     } catch (error) {
-      console.error('Failed to get Auth instance:', error);
+      // Silent fail
     }
   }
   return auth;
@@ -207,23 +233,22 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
   if (analytics) {
     try {
       logEvent(analytics, eventName, params);
-      
-      // Production logging - minimal
-      if (import.meta.env.VITE_ENV === 'development') {
-        console.log(`📈 Analytics event: ${eventName}`, params);
-      }
     } catch (error) {
-      console.error(`Failed to log analytics event ${eventName}:`, error);
+      // Silent fail
     }
   } else {
     // Store in localStorage as fallback
-    const fallbackKey = `firebase_event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem(fallbackKey, JSON.stringify({
-      eventName,
-      params,
-      timestamp: new Date().toISOString(),
-      isFallback: true
-    }));
+    try {
+      const fallbackKey = `firebase_event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem(fallbackKey, JSON.stringify({
+        eventName,
+        params,
+        timestamp: new Date().toISOString(),
+        isFallback: true
+      }));
+    } catch (error) {
+      // Silent fail
+    }
   }
 };
 
@@ -245,7 +270,9 @@ export const syncFallbackEvents = async (): Promise<number> => {
       }
     }
 
-    console.log(`Syncing ${fallbackKeys.length} fallback events...`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Syncing ${fallbackKeys.length} fallback events...`);
+    }
     
     let successCount = 0;
     for (const key of fallbackKeys) {
@@ -264,14 +291,16 @@ export const syncFallbackEvents = async (): Promise<number> => {
           successCount++;
         }
       } catch (error) {
-        console.warn(`Failed to sync event ${key}:`, error);
+        // Silent fail
       }
     }
     
-    console.log(`Synced ${successCount} events to Firestore`);
+    if (process.env.NODE_ENV === 'development' && successCount > 0) {
+      console.log(`Synced ${successCount} events to Firestore`);
+    }
     return successCount;
   } catch (error) {
-    console.error('Sync failed:', error);
+    // Silent fail
     return 0;
   }
 };
@@ -287,17 +316,15 @@ export const getFirebaseStatus = () => {
     auth: !!auth,
     performance: !!performance,
     gdprConsent: hasConsent,
-    configPresent: !!(firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined'),
+    configPresent: Object.values(firebaseConfig).some(v => v && v !== 'undefined'),
     projectId: firebaseConfig.projectId,
-    environment: import.meta.env.VITE_ENV || 'production',
+    environment: getEnvVar('VITE_ENV', 'production'),
     measurementId: firebaseConfig.measurementId
   };
 };
 
 // Reinitialize with consent (for GDPR consent changes)
 export const reinitializeFirebaseWithConsent = () => {
-  console.log('Reinitializing Firebase with GDPR consent...');
-  
   // Don't reset app, just analytics
   analytics = null;
   
@@ -307,7 +334,6 @@ export const reinitializeFirebaseWithConsent = () => {
       isSupported().then((supported) => {
         if (supported && app) {
           analytics = getAnalytics(app);
-          console.log('Analytics reinitialized after consent');
         }
       });
     }
@@ -336,7 +362,7 @@ if (typeof window !== 'undefined') {
   }, 300000); // 5 minutes
 }
 
-// Initialize on import (optional, but recommended)
+// Initialize on import
 if (typeof window !== 'undefined') {
   // Initialize after a short delay to ensure DOM is ready
   setTimeout(() => {
@@ -349,6 +375,13 @@ if (typeof window !== 'undefined') {
       }, 5000);
     }
   }, 1000);
+}
+
+// Add global type declaration
+declare global {
+  interface Window {
+    _env_?: Record<string, string>;
+  }
 }
 
 export default {

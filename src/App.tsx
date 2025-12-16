@@ -1,4 +1,5 @@
-// src/App.tsx - FIXED VERSION WITH ROUTER OUTSIDE RESUME PROVIDER
+// [file name]: App.tsx - UPDATED (removed debug components)
+// src/App.tsx - CLEANED VERSION WITHOUT DEBUG COMPONENTS
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -32,11 +33,8 @@ import EditResumePage from './components/EditResumePage';
 
 // Firebase Components
 import GDPRConsent from './components/GDPRConsent';
-import FirebaseTest from './components/FirebaseTest';
-import FirestoreStatus from './components/FirestoreStatus';
-import SyncButton from './components/SyncButton';
 
-// Analytics Dashboard Components
+// Analytics Dashboard Components (Admin only)
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import LocalAnalyticsDashboard from './components/LocalAnalyticsDashboard';
 import AdminDashboard from './components/AdminDashboard';
@@ -58,7 +56,6 @@ function App() {
   useEffect(() => {
     try {
       initializeFirebase();
-      console.log('Firebase initialized in App');
       
       // Try to sync any pending events after 2 seconds
       setTimeout(() => {
@@ -72,17 +69,13 @@ function App() {
 
   return (
     <HelmetProvider>
-      {/* ✅ Router MUST wrap everything that uses useLocation() */}
       <Router future={{
         v7_startTransition: true,
         v7_relativeSplatPath: true
       }}>
-        {/* ✅ ResumeProvider is now INSIDE Router context */}
         <ResumeProvider>
           <GoogleAnalytics />
           <GDPRConsent />
-          <FirestoreStatus />
-          <SyncButton />
           <Layout>
             <Routes>
               {/* Main Pages */}
@@ -96,17 +89,12 @@ function App() {
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/edit" element={<EditResumePage />} />
 
-              {/* Firebase Test Route */}
-              <Route path="/firebase-test" element={<FirebaseTest />} />
-
-              {/* Analytics & Admin Dashboards */}
+              {/* Analytics & Admin Dashboards (Admin only) */}
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
               <Route path="/admin/daily-analytics" element={<DailyAnalyticsDashboard />} />
               <Route path="/local-analytics" element={<LocalAnalyticsDashboard />} />
               <Route path="/admin/comprehensive-analytics" element={<ComprehensiveAnalyticsDashboard />} />
-              
-              {/* Firebase Analytics Dashboard */}
               <Route path="/admin/firebase-analytics" element={<FirebaseAnalyticsDashboardComponent />} />
               
               <Route path="/admin/job-posting" element={<AdminJobPosting />} />

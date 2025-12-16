@@ -1,4 +1,4 @@
-// src/components/HomePage.tsx - COMPLETE WITH FIREBASE ANALYTICS
+// src/components/HomePage.tsx - UPDATED WITHOUT DEBUG SCREEN
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -677,17 +677,6 @@ const HomePage = () => {
             </div>
           </div>
         </section>
-
-        {/* Firebase Analytics Debug (Only in Development) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="fixed bottom-4 right-4 bg-black/90 text-white p-3 rounded-lg text-xs z-50 max-w-xs">
-            <div className="font-bold mb-1">🔥 Firebase Analytics Active</div>
-            <div className="text-green-400">✓ Page Views: Tracking</div>
-            <div className="text-green-400">✓ CTA Clicks: Tracking</div>
-            <div className="text-green-400">✓ User Flow: Tracking</div>
-            <div className="text-blue-400 mt-1">User ID: {localStorage.getItem('firebase_user_id')?.substring(0, 10)}...</div>
-          </div>
-        )}
       </div>
     </>
   );

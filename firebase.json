@@ -23,6 +23,15 @@
         ]
       }
     ],
-    "site": "careercraft-in"  // This should be your Firebase Hosting site name
+    "site": "careercraft-in"
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-south1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
