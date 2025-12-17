@@ -1,4 +1,4 @@
-// src/firebase/config.ts - COMPLETE UPDATED VERSION
+// src/firebase/config.ts - PRODUCTION READY VERSION
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -19,15 +19,15 @@ import {
 import { getAuth, Auth } from 'firebase/auth';
 import { getPerformance } from 'firebase/performance';
 
-// Firebase Configuration from Environment Variables
+// Firebase Configuration - Using hardcoded values for production
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+  apiKey: "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU",
+  authDomain: "careercraft-36711.firebaseapp.com",
+  projectId: "careercraft-36711",
+  storageBucket: "careercraft-36711.firebasestorage.app",
+  messagingSenderId: "455791585830",
+  appId: "1:455791585830:web:6fd2f3ee52efd8cf4514e7",
+  measurementId: "G-WSKZJDJW77"
 };
 
 // Check if config is valid
@@ -35,7 +35,7 @@ const isConfigValid = () => {
   return firebaseConfig.apiKey && 
          firebaseConfig.projectId && 
          !firebaseConfig.apiKey.includes('your-') &&
-         !firebaseConfig.apiKey.includes('AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6'); // Remove placeholder
+         firebaseConfig.apiKey.length > 20;
 };
 
 // Initialize Firebase only once
@@ -79,16 +79,20 @@ export const initializeFirebase = async (): Promise<{
     const hasValidConfig = isConfigValid();
     
     if (!hasValidConfig) {
-      console.warn('Invalid Firebase configuration. Please check your .env.local file.');
-      console.warn('Current config:', {
-        apiKey: firebaseConfig.apiKey ? 'Present' : 'Missing',
-        projectId: firebaseConfig.projectId ? 'Present' : 'Missing',
-        isPlaceholder: firebaseConfig.apiKey.includes('your-') || firebaseConfig.apiKey.includes('AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6')
+      console.error('❌ Invalid Firebase configuration:', {
+        apiKeyLength: firebaseConfig.apiKey?.length || 0,
+        projectId: firebaseConfig.projectId,
+        isValid: hasValidConfig
       });
       
       isInitializing = false;
       return { app: null, firestore: null, analytics: null, auth: null, performance: null };
     }
+
+    console.log('✅ Firebase Config:', {
+      projectId: firebaseConfig.projectId,
+      authDomain: firebaseConfig.authDomain
+    });
 
     // Initialize Firebase App
     app = initializeApp(firebaseConfig);
@@ -96,6 +100,7 @@ export const initializeFirebase = async (): Promise<{
 
     // Check GDPR consent
     const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+    console.log('📋 GDPR Consent:', hasConsent);
 
     // Initialize Firestore
     try {
@@ -109,17 +114,21 @@ export const initializeFirebase = async (): Promise<{
             console.warn('Multiple tabs open, persistence enabled in one tab only');
           } else if (err.code === 'unimplemented') {
             console.warn("Browser doesn't support persistence");
+          } else {
+            console.warn('Firestore persistence error:', err);
           }
         });
       }
-    } catch (firestoreError) {
-      console.error('Firestore initialization error:', firestoreError);
+    } catch (firestoreError: any) {
+      console.error('❌ Firestore initialization error:', firestoreError?.code, firestoreError?.message);
     }
 
     // Initialize Analytics
     if (typeof window !== 'undefined' && app && hasConsent) {
       try {
         const analyticsSupported = await isSupported();
+        console.log('📊 Analytics supported:', analyticsSupported);
+        
         if (analyticsSupported && app) {
           analytics = getAnalytics(app);
           
@@ -134,8 +143,8 @@ export const initializeFirebase = async (): Promise<{
           }
           console.log('✅ Analytics initialized');
         }
-      } catch (analyticsError) {
-        console.error('Analytics initialization error:', analyticsError);
+      } catch (analyticsError: any) {
+        console.error('❌ Analytics initialization error:', analyticsError?.code, analyticsError?.message);
       }
     }
 
@@ -145,22 +154,24 @@ export const initializeFirebase = async (): Promise<{
         auth = getAuth(app);
         console.log('✅ Auth initialized');
       }
-    } catch (authError) {
-      console.error('Auth initialization error:', authError);
+    } catch (authError: any) {
+      console.error('❌ Auth initialization error:', authError?.code, authError?.message);
     }
 
     console.log('🎉 Firebase initialization complete!');
 
   } catch (error: any) {
-    console.error('🔥 Firebase initialization failed:', error);
+    console.error('🔥 Firebase initialization failed:', error?.code, error?.message);
     
     // More specific error messages
-    if (error.code === 'auth/invalid-api-key') {
-      console.error('❌ INVALID API KEY: Please check your VITE_FIREBASE_API_KEY in .env.local');
-    } else if (error.code === 'permission-denied') {
+    if (error?.code === 'auth/invalid-api-key') {
+      console.error('❌ INVALID API KEY: Please check your Firebase API key');
+    } else if (error?.code === 'permission-denied') {
       console.error('❌ PERMISSION DENIED: Check Firestore security rules');
-    } else if (error.code === 'project/not-found') {
-      console.error('❌ PROJECT NOT FOUND: Check your VITE_FIREBASE_PROJECT_ID');
+    } else if (error?.code === 'project/not-found') {
+      console.error('❌ PROJECT NOT FOUND: Check your Firebase project ID');
+    } else if (error?.code === 'app/duplicate-app') {
+      console.error('❌ DUPLICATE APP: Firebase already initialized');
     }
     
     app = null;
@@ -201,6 +212,7 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
   if (analytics) {
     try {
       logEvent(analytics, eventName, params);
+      console.log(`📊 Analytics Event: ${eventName}`, params);
     } catch (error) {
       console.warn('Failed to log analytics event:', error);
     }
@@ -223,9 +235,9 @@ export const getFirebaseStatus = () => {
     projectId: firebaseConfig.projectId,
     environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
     configDetails: {
-      apiKey: firebaseConfig.apiKey ? '✓ Set' : '✗ Missing',
+      apiKey: firebaseConfig.apiKey ? `✓ Set (${firebaseConfig.apiKey.substring(0, 10)}...)` : '✗ Missing',
       projectId: firebaseConfig.projectId ? '✓ Set' : '✗ Missing',
-      isPlaceholder: firebaseConfig.apiKey.includes('your-') || firebaseConfig.apiKey.includes('AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6')
+      authDomain: firebaseConfig.authDomain ? '✓ Set' : '✗ Missing'
     }
   };
 };
@@ -240,7 +252,7 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
     if (!status.configValid) {
       return {
         success: false,
-        message: '❌ Firebase configuration is invalid. Please check your .env.local file.',
+        message: '❌ Firebase configuration is invalid.',
         details: status.configDetails
       };
     }
@@ -250,65 +262,84 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
     if (!app) {
       return {
         success: false,
-        message: '❌ Failed to initialize Firebase app. Check console for errors.'
+        message: '❌ Failed to initialize Firebase app.'
       };
     }
     
     if (!firestore) {
       return {
         success: false,
-        message: '❌ Failed to initialize Firestore. Check console for errors.'
+        message: '❌ Failed to initialize Firestore.'
       };
     }
     
-    // Try a simple operation
+    // Try a simple read operation (no write needed)
     try {
       const testCollection = 'connection_test';
       const testDocRef = doc(firestore, testCollection, 'test_doc');
       
+      // Try to set a test document
       await setDoc(testDocRef, {
         test: true,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        project: firebaseConfig.projectId
       });
       
-      // Clean up
+      console.log('✅ Test document written successfully');
+      
+      // Try to delete it
       await deleteDoc(testDocRef);
+      console.log('✅ Test document deleted successfully');
       
       return {
         success: true,
         message: '✅ Firebase connection successful! All services are working.',
-        details: status
+        details: {
+          projectId: firebaseConfig.projectId,
+          firestore: true,
+          analytics: !!analytics,
+          auth: !!auth
+        }
       };
     } catch (error: any) {
+      console.error('❌ Firestore operation failed:', error);
+      
       if (error.code === 'permission-denied') {
         return {
           success: false,
-          message: '❌ Permission denied. Please update Firestore security rules.',
-          details: { error: error.message }
+          message: '❌ Permission denied. Please update Firestore security rules to allow writes.',
+          details: { error: error.message, code: error.code }
         };
       }
-      throw error;
+      
+      return {
+        success: false,
+        message: `❌ Firestore operation failed: ${error.message || 'Unknown error'}`,
+        details: { error: error.message, code: error.code }
+      };
     }
     
   } catch (error: any) {
-    console.error('Firebase connection test failed:', error);
+    console.error('❌ Firebase connection test failed:', error);
     
     let errorMessage = 'Firebase connection failed. ';
     
-    if (error.code === 'auth/invalid-api-key') {
-      errorMessage = '❌ Invalid API key. Please check VITE_FIREBASE_API_KEY in .env.local';
-    } else if (error.code === 'project/not-found') {
-      errorMessage = '❌ Project not found. Check VITE_FIREBASE_PROJECT_ID';
-    } else if (error.code === 'unavailable') {
+    if (error?.code === 'auth/invalid-api-key') {
+      errorMessage = '❌ Invalid API key. Please check your Firebase API key.';
+    } else if (error?.code === 'project/not-found') {
+      errorMessage = `❌ Project not found: ${firebaseConfig.projectId}. Check your Firebase project.`;
+    } else if (error?.code === 'unavailable') {
       errorMessage = '❌ Firebase service unavailable. Check network connection.';
+    } else if (error?.message) {
+      errorMessage += `Error: ${error.message}`;
     } else {
-      errorMessage += `Error: ${error.message || 'Unknown error'}`;
+      errorMessage += 'Unknown error.';
     }
     
     return {
       success: false,
       message: errorMessage,
-      details: { error: error.message, code: error.code }
+      details: { error: error?.message, code: error?.code }
     };
   }
 };
@@ -323,6 +354,7 @@ export const reinitializeFirebaseWithConsent = async () => {
       const analyticsSupported = await isSupported();
       if (analyticsSupported && app) {
         analytics = getAnalytics(app);
+        console.log('✅ Analytics reinitialized with consent');
       }
     } catch (error) {
       console.error('Failed to reinitialize analytics:', error);
@@ -342,6 +374,7 @@ if (typeof window !== 'undefined') {
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
   if (hasConsent) {
     setTimeout(() => {
+      console.log('🔄 Auto-initializing Firebase with consent...');
       initializeFirebase();
     }, 1000);
   }
@@ -350,6 +383,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === 'gdpr_consent' && e.newValue === 'accepted') {
       setTimeout(() => {
+        console.log('🔄 Reinitializing Firebase after consent change...');
         initializeFirebase();
       }, 1000);
     }
