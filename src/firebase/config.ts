@@ -1,9 +1,12 @@
-// src/firebase/config.ts - COMPLETE PRODUCTION VERSION
+// src/firebase/config.ts - COMPLETE UPDATED VERSION
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
   Firestore,
-  enableIndexedDbPersistence
+  enableIndexedDbPersistence,
+  doc,
+  setDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { 
   getAnalytics, 
@@ -16,15 +19,23 @@ import {
 import { getAuth, Auth } from 'firebase/auth';
 import { getPerformance } from 'firebase/performance';
 
-// Production Firebase Configuration
+// Firebase Configuration from Environment Variables
 const firebaseConfig = {
-  apiKey: "AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6",
-  authDomain: "careercraft-in.firebaseapp.com",
-  projectId: "careercraft-in",
-  storageBucket: "careercraft-in.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:1234567890",
-  measurementId: "G-1234567890"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+};
+
+// Check if config is valid
+const isConfigValid = () => {
+  return firebaseConfig.apiKey && 
+         firebaseConfig.projectId && 
+         !firebaseConfig.apiKey.includes('your-') &&
+         !firebaseConfig.apiKey.includes('AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6'); // Remove placeholder
 };
 
 // Initialize Firebase only once
@@ -65,12 +76,16 @@ export const initializeFirebase = async (): Promise<{
     console.log('🚀 Initializing Firebase...');
     
     // Validate config
-    const hasValidConfig = firebaseConfig.apiKey && 
-                          firebaseConfig.projectId && 
-                          !firebaseConfig.apiKey.includes('your-');
+    const hasValidConfig = isConfigValid();
     
     if (!hasValidConfig) {
-      console.warn('Invalid Firebase configuration');
+      console.warn('Invalid Firebase configuration. Please check your .env.local file.');
+      console.warn('Current config:', {
+        apiKey: firebaseConfig.apiKey ? 'Present' : 'Missing',
+        projectId: firebaseConfig.projectId ? 'Present' : 'Missing',
+        isPlaceholder: firebaseConfig.apiKey.includes('your-') || firebaseConfig.apiKey.includes('AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6')
+      });
+      
       isInitializing = false;
       return { app: null, firestore: null, analytics: null, auth: null, performance: null };
     }
@@ -136,8 +151,18 @@ export const initializeFirebase = async (): Promise<{
 
     console.log('🎉 Firebase initialization complete!');
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('🔥 Firebase initialization failed:', error);
+    
+    // More specific error messages
+    if (error.code === 'auth/invalid-api-key') {
+      console.error('❌ INVALID API KEY: Please check your VITE_FIREBASE_API_KEY in .env.local');
+    } else if (error.code === 'permission-denied') {
+      console.error('❌ PERMISSION DENIED: Check Firestore security rules');
+    } else if (error.code === 'project/not-found') {
+      console.error('❌ PROJECT NOT FOUND: Check your VITE_FIREBASE_PROJECT_ID');
+    }
+    
     app = null;
     firestore = null;
     analytics = null;
@@ -182,9 +207,10 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
   }
 };
 
-// Get Firebase status
+// Get Firebase status with more details
 export const getFirebaseStatus = () => {
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+  const configValid = isConfigValid();
   
   return {
     app: !!app,
@@ -193,10 +219,98 @@ export const getFirebaseStatus = () => {
     auth: !!auth,
     performance: !!performance,
     gdprConsent: hasConsent,
-    configPresent: true,
+    configValid: configValid,
     projectId: firebaseConfig.projectId,
-    environment: window.location.hostname.includes('localhost') ? 'development' : 'production'
+    environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
+    configDetails: {
+      apiKey: firebaseConfig.apiKey ? '✓ Set' : '✗ Missing',
+      projectId: firebaseConfig.projectId ? '✓ Set' : '✗ Missing',
+      isPlaceholder: firebaseConfig.apiKey.includes('your-') || firebaseConfig.apiKey.includes('AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6')
+    }
   };
+};
+
+// Test Firebase connection
+export const testFirebaseConnection = async (): Promise<{ success: boolean; message: string; details?: any }> => {
+  try {
+    console.log('🔍 Testing Firebase connection...');
+    
+    const status = getFirebaseStatus();
+    
+    if (!status.configValid) {
+      return {
+        success: false,
+        message: '❌ Firebase configuration is invalid. Please check your .env.local file.',
+        details: status.configDetails
+      };
+    }
+    
+    const { app, firestore } = await initializeFirebase();
+    
+    if (!app) {
+      return {
+        success: false,
+        message: '❌ Failed to initialize Firebase app. Check console for errors.'
+      };
+    }
+    
+    if (!firestore) {
+      return {
+        success: false,
+        message: '❌ Failed to initialize Firestore. Check console for errors.'
+      };
+    }
+    
+    // Try a simple operation
+    try {
+      const testCollection = 'connection_test';
+      const testDocRef = doc(firestore, testCollection, 'test_doc');
+      
+      await setDoc(testDocRef, {
+        test: true,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Clean up
+      await deleteDoc(testDocRef);
+      
+      return {
+        success: true,
+        message: '✅ Firebase connection successful! All services are working.',
+        details: status
+      };
+    } catch (error: any) {
+      if (error.code === 'permission-denied') {
+        return {
+          success: false,
+          message: '❌ Permission denied. Please update Firestore security rules.',
+          details: { error: error.message }
+        };
+      }
+      throw error;
+    }
+    
+  } catch (error: any) {
+    console.error('Firebase connection test failed:', error);
+    
+    let errorMessage = 'Firebase connection failed. ';
+    
+    if (error.code === 'auth/invalid-api-key') {
+      errorMessage = '❌ Invalid API key. Please check VITE_FIREBASE_API_KEY in .env.local';
+    } else if (error.code === 'project/not-found') {
+      errorMessage = '❌ Project not found. Check VITE_FIREBASE_PROJECT_ID';
+    } else if (error.code === 'unavailable') {
+      errorMessage = '❌ Firebase service unavailable. Check network connection.';
+    } else {
+      errorMessage += `Error: ${error.message || 'Unknown error'}`;
+    }
+    
+    return {
+      success: false,
+      message: errorMessage,
+      details: { error: error.message, code: error.code }
+    };
+  }
 };
 
 // Reinitialize with consent
@@ -250,6 +364,7 @@ export default {
   getPerformanceInstance,
   logAnalyticsEvent,
   getFirebaseStatus,
+  testFirebaseConnection,
   reinitializeFirebaseWithConsent,
   isFirebaseReady
 };

@@ -1,4 +1,4 @@
-// src/firebase/jobService.ts - FIXED WITH PROPER ANALYTICS IMPORT
+// src/firebase/jobService.ts - COMPLETE FIXED VERSION
 import { 
   collection,
   doc,
@@ -15,8 +15,8 @@ import {
   Timestamp,
   limit
 } from 'firebase/firestore';
-import { initializeFirebase, getFirestoreInstance } from './config';
-import { firebaseAnalytics } from './analytics'; // This is already the instance
+import { initializeFirebase, getFirestoreInstance, testFirebaseConnection } from './config'; // ADD testFirebaseConnection
+import { firebaseAnalytics } from './analytics';
 
 export interface JobData {
   id?: string;
@@ -557,49 +557,14 @@ export class FirebaseJobService {
     return results;
   }
 
+  // FIXED: Use the imported testFirebaseConnection
   async testFirebaseConnection(): Promise<{ connected: boolean; message: string }> {
-    try {
-      console.log('🔍 Testing Firebase connection...');
-      
-      await this.initializeFirestore();
-      const firestore = this.getFirestore();
-      
-      if (!firestore) {
-        return {
-          connected: false,
-          message: 'Firestore not initialized. Check Firebase configuration.'
-        };
-      }
-
-      const testQuery = query(
-        collection(firestore, this.collectionName),
-        limit(1)
-      );
-      
-      await getDocs(testQuery);
-      
-      return {
-        connected: true,
-        message: '✅ Firebase connection successful! Jobs will be saved to both localStorage and Firebase.'
-      };
-    } catch (error: any) {
-      console.error('Firebase connection test failed:', error);
-      
-      let errorMessage = 'Firebase connection failed. ';
-      
-      if (error.code === 'permission-denied') {
-        errorMessage += 'Please check Firestore security rules.';
-      } else if (error.code === 'unavailable') {
-        errorMessage += 'Network error or Firebase service unavailable.';
-      } else {
-        errorMessage += `Error: ${error.message || 'Unknown error'}`;
-      }
-      
-      return {
-        connected: false,
-        message: errorMessage
-      };
-    }
+    const result = await testFirebaseConnection(); // Use the imported function
+    
+    return {
+      connected: result.success,
+      message: result.message
+    };
   }
 
   async syncAllToFirebase(): Promise<{ synced: number; failed: number }> {
