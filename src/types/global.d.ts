@@ -1,4 +1,4 @@
-// src/types/global.d.ts
+// src/types/global.d.ts - UPDATED
 export {};
 
 declare global {
@@ -7,6 +7,12 @@ declare global {
     dataLayer: any[];
     gtag: (...args: any[]) => void;
     pageLoadStart?: number;
+    
+    // Firebase initialization flag
+    firebaseInitialized?: boolean;
+    
+    // Environment variables
+    _env_?: Record<string, string>;
   }
 
   // Environment variables (for TypeScript)

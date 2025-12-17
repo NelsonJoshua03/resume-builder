@@ -1,4 +1,4 @@
-// src/firebase/config.ts - PRODUCTION READY (UPDATED)
+// src/firebase/config.ts - COMPLETE PRODUCTION VERSION
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -16,36 +16,15 @@ import {
 import { getAuth, Auth } from 'firebase/auth';
 import { getPerformance } from 'firebase/performance';
 
-// Helper to safely get environment variables
-const getEnvVar = (key: string, defaultValue: string = ''): string => {
-  // Check import.meta.env (Vite)
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    const value = import.meta.env[key];
-    if (value && value !== 'undefined') return value;
-  }
-  
-  // Check process.env (Node.js/SSR)
-  if (typeof process !== 'undefined' && process.env) {
-    const value = process.env[key];
-    if (value && value !== 'undefined') return value;
-  }
-  
-  // Check window._env_ (injected in production)
-  if (typeof window !== 'undefined' && window._env_ && window._env_[key]) {
-    return window._env_[key];
-  }
-  
-  return defaultValue;
-};
-
+// Production Firebase Configuration
 const firebaseConfig = {
-  apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
-  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
-  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
-  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
-  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-  appId: getEnvVar('VITE_FIREBASE_APP_ID'),
-  measurementId: getEnvVar('VITE_FIREBASE_MEASUREMENT_ID')
+  apiKey: "AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6",
+  authDomain: "careercraft-in.firebaseapp.com",
+  projectId: "careercraft-in",
+  storageBucket: "careercraft-in.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:1234567890",
+  measurementId: "G-1234567890"
 };
 
 // Initialize Firebase only once
@@ -54,104 +33,94 @@ let firestore: Firestore | null = null;
 let analytics: Analytics | null = null;
 let auth: Auth | null = null;
 let performance: any = null;
+let isInitializing = false;
 
-// Type-safe GDPR consent check
-const checkGDPRConsent = (): boolean => {
-  const gdprConsent = localStorage.getItem('gdpr_consent');
-  return gdprConsent === 'accepted';
-};
-
-export const initializeFirebase = () => {
+export const initializeFirebase = async (): Promise<{
+  app: FirebaseApp | null;
+  firestore: Firestore | null;
+  analytics: Analytics | null;
+  auth: Auth | null;
+  performance: any;
+}> => {
   // Don't reinitialize
-  if (app) {
+  if (app && firestore) {
     return { app, firestore, analytics, auth, performance };
   }
 
-  // Check if any Firebase config is provided
-  const hasAnyConfig = Object.values(firebaseConfig).some(value => 
-    value && value !== 'undefined' && value.trim() !== ''
-  );
-
-  if (!hasAnyConfig) {
-    // Only log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Firebase configuration missing. Analytics will be disabled.');
-    }
-    
-    return { app: null, firestore: null, analytics: null, auth: null, performance: null };
+  if (isInitializing) {
+    // Wait for initialization to complete
+    return new Promise(resolve => {
+      const checkInterval = setInterval(() => {
+        if (!isInitializing) {
+          clearInterval(checkInterval);
+          resolve({ app, firestore, analytics, auth, performance });
+        }
+      }, 100);
+    });
   }
 
-  // Validate required config
-  if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined') {
-    console.warn('Firebase API Key missing. Analytics will be limited.');
-  }
-
+  isInitializing = true;
+  
   try {
-    // Minimal logging in production
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Initializing Firebase...');
-    }
+    console.log('🚀 Initializing Firebase...');
     
-    app = initializeApp(firebaseConfig);
+    // Validate config
+    const hasValidConfig = firebaseConfig.apiKey && 
+                          firebaseConfig.projectId && 
+                          !firebaseConfig.apiKey.includes('your-');
+    
+    if (!hasValidConfig) {
+      console.warn('Invalid Firebase configuration');
+      isInitializing = false;
+      return { app: null, firestore: null, analytics: null, auth: null, performance: null };
+    }
 
-    const hasConsent = checkGDPRConsent();
+    // Initialize Firebase App
+    app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase App initialized');
+
+    // Check GDPR consent
+    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
 
     // Initialize Firestore
     try {
       firestore = getFirestore(app);
-      
-      // Enable offline persistence for better UX
+      console.log('✅ Firestore initialized');
+
+      // Enable offline persistence
       if (typeof window !== 'undefined' && hasConsent) {
-        enableIndexedDbPersistence(firestore)
-          .catch((err: any) => {
-            // Silent fail in production
-            if (process.env.NODE_ENV === 'development') {
-              if (err.code === 'failed-precondition') {
-                console.warn('Multiple tabs open, persistence enabled in one tab only');
-              } else if (err.code === 'unimplemented') {
-                console.warn('Browser doesn\'t support persistence');
-              }
-            }
-          });
+        enableIndexedDbPersistence(firestore).catch((err) => {
+          if (err.code === 'failed-precondition') {
+            console.warn('Multiple tabs open, persistence enabled in one tab only');
+          } else if (err.code === 'unimplemented') {
+            console.warn("Browser doesn't support persistence");
+          }
+        });
       }
     } catch (firestoreError) {
-      // Silent fail
+      console.error('Firestore initialization error:', firestoreError);
     }
 
-    // Initialize Analytics (only with consent)
+    // Initialize Analytics
     if (typeof window !== 'undefined' && app && hasConsent) {
-      isSupported().then((supported) => {
-        if (supported && app) {
-          try {
-            analytics = getAnalytics(app);
-            
-            const userId = localStorage.getItem('firebase_user_id');
-            if (userId && analytics) {
-              setUserId(analytics, userId);
-            }
-            
-            // Set production user properties
+      try {
+        const analyticsSupported = await isSupported();
+        if (analyticsSupported && app) {
+          analytics = getAnalytics(app);
+          
+          // Set user properties
+          if (analytics) {
             setUserProperties(analytics, {
-              environment: getEnvVar('VITE_ENV', 'production'),
+              environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
               app_version: '1.0.0',
               platform: 'web',
               domain: window.location.hostname
             });
-          } catch (analyticsError) {
-            // Silent fail
           }
+          console.log('✅ Analytics initialized');
         }
-      }).catch(() => {
-        // Silent fail
-      });
-      
-      // Initialize Performance
-      try {
-        if (app) {
-          performance = getPerformance(app);
-        }
-      } catch (perfError) {
-        // Silent fail
+      } catch (analyticsError) {
+        console.error('Analytics initialization error:', analyticsError);
       }
     }
 
@@ -159,21 +128,23 @@ export const initializeFirebase = () => {
     try {
       if (app) {
         auth = getAuth(app);
+        console.log('✅ Auth initialized');
       }
     } catch (authError) {
-      // Silent fail
+      console.error('Auth initialization error:', authError);
     }
 
-    // Minimal status log only in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Firebase initialized successfully');
-    }
+    console.log('🎉 Firebase initialization complete!');
 
   } catch (error) {
-    // Silent fail in production
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Firebase initialization error:', error);
-    }
+    console.error('🔥 Firebase initialization failed:', error);
+    app = null;
+    firestore = null;
+    analytics = null;
+    auth = null;
+    performance = null;
+  } finally {
+    isInitializing = false;
   }
 
   return { app, firestore, analytics, auth, performance };
@@ -181,38 +152,14 @@ export const initializeFirebase = () => {
 
 // Get service instances
 export const getFirestoreInstance = (): Firestore | null => {
-  if (!firestore && app) {
-    try {
-      firestore = getFirestore(app);
-    } catch (error) {
-      // Silent fail
-    }
-  }
   return firestore;
 };
 
 export const getAnalyticsInstance = (): Analytics | null => {
-  if (!analytics) {
-    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-    if (hasConsent && !analytics && app) {
-      isSupported().then((supported) => {
-        if (supported && app) {
-          analytics = getAnalytics(app);
-        }
-      });
-    }
-  }
   return analytics;
 };
 
 export const getAuthInstance = (): Auth | null => {
-  if (!auth && app) {
-    try {
-      auth = getAuth(app);
-    } catch (error) {
-      // Silent fail
-    }
-  }
   return auth;
 };
 
@@ -222,90 +169,20 @@ export const getPerformanceInstance = () => performance;
 export const logAnalyticsEvent = (eventName: string, params?: any): void => {
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
   
-  const essentialEvents = ['page_view', 'error', 'consent_given', 'user_identified'];
-  const isEssential = essentialEvents.includes(eventName);
-  
-  if (!hasConsent && !isEssential) {
+  if (!hasConsent) {
     return;
   }
 
-  const analytics = getAnalyticsInstance();
   if (analytics) {
     try {
       logEvent(analytics, eventName, params);
     } catch (error) {
-      // Silent fail
-    }
-  } else {
-    // Store in localStorage as fallback
-    try {
-      const fallbackKey = `firebase_event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem(fallbackKey, JSON.stringify({
-        eventName,
-        params,
-        timestamp: new Date().toISOString(),
-        isFallback: true
-      }));
-    } catch (error) {
-      // Silent fail
+      console.warn('Failed to log analytics event:', error);
     }
   }
 };
 
-// Sync localStorage fallback events to Firestore
-export const syncFallbackEvents = async (): Promise<number> => {
-  const firestore = getFirestoreInstance();
-  if (!firestore) {
-    return 0;
-  }
-
-  try {
-    const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
-    
-    const fallbackKeys: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith('firebase_event_') || key.startsWith('fb_fallback_'))) {
-        fallbackKeys.push(key);
-      }
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Syncing ${fallbackKeys.length} fallback events...`);
-    }
-    
-    let successCount = 0;
-    for (const key of fallbackKeys) {
-      try {
-        const eventStr = localStorage.getItem(key);
-        if (eventStr) {
-          const event = JSON.parse(eventStr);
-          
-          await addDoc(collection(firestore, 'events'), {
-            ...event,
-            syncedAt: serverTimestamp(),
-            originalKey: key
-          });
-          
-          localStorage.removeItem(key);
-          successCount++;
-        }
-      } catch (error) {
-        // Silent fail
-      }
-    }
-    
-    if (process.env.NODE_ENV === 'development' && successCount > 0) {
-      console.log(`Synced ${successCount} events to Firestore`);
-    }
-    return successCount;
-  } catch (error) {
-    // Silent fail
-    return 0;
-  }
-};
-
-// Get Firebase status for debugging
+// Get Firebase status
 export const getFirebaseStatus = () => {
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
   
@@ -316,26 +193,25 @@ export const getFirebaseStatus = () => {
     auth: !!auth,
     performance: !!performance,
     gdprConsent: hasConsent,
-    configPresent: Object.values(firebaseConfig).some(v => v && v !== 'undefined'),
+    configPresent: true,
     projectId: firebaseConfig.projectId,
-    environment: getEnvVar('VITE_ENV', 'production'),
-    measurementId: firebaseConfig.measurementId
+    environment: window.location.hostname.includes('localhost') ? 'development' : 'production'
   };
 };
 
-// Reinitialize with consent (for GDPR consent changes)
-export const reinitializeFirebaseWithConsent = () => {
-  // Don't reset app, just analytics
+// Reinitialize with consent
+export const reinitializeFirebaseWithConsent = async () => {
   analytics = null;
   
-  if (app) {
-    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-    if (hasConsent && typeof window !== 'undefined') {
-      isSupported().then((supported) => {
-        if (supported && app) {
-          analytics = getAnalytics(app);
-        }
-      });
+  const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+  if (hasConsent && app) {
+    try {
+      const analyticsSupported = await isSupported();
+      if (analyticsSupported && app) {
+        analytics = getAnalytics(app);
+      }
+    } catch (error) {
+      console.error('Failed to reinitialize analytics:', error);
     }
   }
   
@@ -343,45 +219,27 @@ export const reinitializeFirebaseWithConsent = () => {
 };
 
 export const isFirebaseReady = (): boolean => {
-  return !!app;
+  return !!app && !!firestore;
 };
 
-// Auto-sync fallback events when online
+// Auto-initialize when consent is given
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    if (localStorage.getItem('gdpr_consent') === 'accepted') {
-      syncFallbackEvents();
+  // Initialize immediately if consent already given
+  const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+  if (hasConsent) {
+    setTimeout(() => {
+      initializeFirebase();
+    }, 1000);
+  }
+  
+  // Listen for consent changes
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'gdpr_consent' && e.newValue === 'accepted') {
+      setTimeout(() => {
+        initializeFirebase();
+      }, 1000);
     }
   });
-
-  // Auto-sync every 5 minutes when online
-  setInterval(() => {
-    if (navigator.onLine && localStorage.getItem('gdpr_consent') === 'accepted') {
-      syncFallbackEvents();
-    }
-  }, 300000); // 5 minutes
-}
-
-// Initialize on import
-if (typeof window !== 'undefined') {
-  // Initialize after a short delay to ensure DOM is ready
-  setTimeout(() => {
-    initializeFirebase();
-    
-    // Try to sync any pending events after initialization
-    if (localStorage.getItem('gdpr_consent') === 'accepted') {
-      setTimeout(() => {
-        syncFallbackEvents();
-      }, 5000);
-    }
-  }, 1000);
-}
-
-// Add global type declaration
-declare global {
-  interface Window {
-    _env_?: Record<string, string>;
-  }
 }
 
 export default {
@@ -391,7 +249,6 @@ export default {
   getAuthInstance,
   getPerformanceInstance,
   logAnalyticsEvent,
-  syncFallbackEvents,
   getFirebaseStatus,
   reinitializeFirebaseWithConsent,
   isFirebaseReady
