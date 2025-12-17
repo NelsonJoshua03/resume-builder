@@ -1,4 +1,4 @@
-// src/firebase/jobService.ts - COMPLETE FIREBASE JOB STORAGE
+// src/firebase/jobService.ts - FIXED INTERFACE
 import { 
   collection,
   doc,
@@ -14,11 +14,13 @@ import {
   DocumentData,
   addDoc,
   Timestamp,
-  limit
+  limit,
+  writeBatch
 } from 'firebase/firestore';
 import { getFirestoreInstance } from './config';
 import { firebaseAnalytics } from './analytics';
 
+// UPDATED: Make postedDate optional in the interface
 export interface JobData {
   id?: string;
   title: string;
@@ -29,7 +31,7 @@ export interface JobData {
   salary: string;
   description: string;
   requirements: string[];
-  postedDate: string; // ISO string or 'YYYY-MM-DD'
+  postedDate?: string; // ISO string or 'YYYY-MM-DD' - MADE OPTIONAL
   applyLink: string;
   featured?: boolean;
   isActive?: boolean;
@@ -55,6 +57,11 @@ export interface JobData {
   dataProcessingLocation?: 'IN';
 }
 
+// UPDATED: Update the Omit type to include postedDate as optional
+export type CreateJobInput = Omit<JobData, 'id' | 'createdAt' | 'updatedAt' | 'expiresAt'> & {
+  postedDate?: string; // Make it explicitly optional
+};
+
 export interface JobFilters {
   sector?: string;
   type?: string;
@@ -65,29 +72,51 @@ export interface JobFilters {
 }
 
 export class FirebaseJobService {
-  private firestore = getFirestoreInstance();
   private collectionName = 'jobs';
   private AUTO_CLEANUP_DAYS = 90; // Jobs older than 90 days are auto-cleaned
 
   constructor() {
-    // Auto-cleanup check on initialization
-    this.checkAndCleanupOldJobs();
+    // Auto-cleanup check on initialization with delay
+    setTimeout(() => {
+      this.checkAndCleanupOldJobs();
+    }, 3000); // Wait 3 seconds for Firebase to initialize
+  }
+
+  private getFirestore() {
+    const firestore = getFirestoreInstance();
+    if (!firestore) {
+      console.warn('Firestore not initialized. Using localStorage fallback.');
+      return null;
+    }
+    return firestore;
   }
 
   private async checkAndCleanupOldJobs(): Promise<void> {
+    const firestore = this.getFirestore();
+    if (!firestore) {
+      console.log('Firestore not available, skipping auto-cleanup');
+      return;
+    }
+
     try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - this.AUTO_CLEANUP_DAYS);
       
+      // Convert to Firestore Timestamp
+      const cutoffTimestamp = Timestamp.fromDate(cutoffDate);
+      
       const jobsQuery = query(
-        collection(this.firestore!, this.collectionName),
-        where('expiresAt', '<', cutoffDate),
+        collection(firestore, this.collectionName),
+        where('expiresAt', '<', cutoffTimestamp),
         where('isActive', '==', true)
       );
 
       const snapshot = await getDocs(jobsQuery);
       const cleanupPromises = snapshot.docs.map(doc => 
-        updateDoc(doc.ref, { isActive: false })
+        updateDoc(doc.ref, { 
+          isActive: false,
+          updatedAt: serverTimestamp() 
+        })
       );
 
       await Promise.all(cleanupPromises);
@@ -96,46 +125,111 @@ export class FirebaseJobService {
         console.log(`Auto-cleaned ${snapshot.docs.length} old jobs`);
         
         // Track cleanup event
-        firebaseAnalytics.trackEvent({
-          eventName: 'jobs_auto_cleaned',
-          eventCategory: 'System',
-          eventLabel: 'auto_cleanup',
-          eventValue: snapshot.docs.length,
-          pagePath: '/system',
-          pageTitle: 'Auto Cleanup',
-          metadata: {
-            days_old: this.AUTO_CLEANUP_DAYS,
-            cleaned_count: snapshot.docs.length
-          },
-          consentGiven: true,
-          dataProcessingLocation: 'IN'
-        });
+        const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+        if (hasConsent) {
+          firebaseAnalytics.trackEvent({
+            eventName: 'jobs_auto_cleaned',
+            eventCategory: 'System',
+            eventLabel: 'auto_cleanup',
+            eventValue: snapshot.docs.length,
+            pagePath: '/system',
+            pageTitle: 'Auto Cleanup',
+            metadata: {
+              days_old: this.AUTO_CLEANUP_DAYS,
+              cleaned_count: snapshot.docs.length
+            },
+            consentGiven: hasConsent,
+            dataProcessingLocation: 'IN'
+          });
+        }
       }
     } catch (error) {
       console.error('Error in auto-cleanup:', error);
     }
   }
 
-  async createJob(jobData: Omit<JobData, 'id' | 'createdAt' | 'updatedAt' | 'expiresAt'>): Promise<string> {
-    if (!this.firestore) {
-      throw new Error('Firestore not initialized');
+  // UPDATED: Accept CreateJobInput type instead of Omit<JobData, ...>
+  async createJob(jobData: CreateJobInput): Promise<string> {
+    const firestore = this.getFirestore();
+    
+    // Always save to localStorage as primary storage
+    const jobId = await this.createJobInLocalStorage(jobData);
+    
+    // Also try to save to Firebase if available
+    if (firestore) {
+      try {
+        await this.syncJobToFirestore(jobId, jobData);
+        console.log(`Job ${jobId} synced to Firebase`);
+      } catch (firestoreError) {
+        console.warn('Failed to sync job to Firebase, using localStorage only:', firestoreError);
+      }
     }
+    
+    return jobId;
+  }
+
+  private async createJobInLocalStorage(jobData: CreateJobInput): Promise<string> {
+    const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Set expiration date (90 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.AUTO_CLEANUP_DAYS);
+    
+    // Set postedDate to current date if not provided
+    const postedDate = jobData.postedDate || new Date().toISOString().split('T')[0];
+    
+    const completeJobData: JobData = {
+      ...jobData,
+      id: jobId,
+      postedDate, // Use provided or current date
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      expiresAt: expiresAt,
+      isActive: true,
+      isApproved: true,
+      views: 0,
+      shares: 0,
+      applications: 0,
+      saves: 0,
+      dataProcessingLocation: 'IN'
+    };
+
+    // Store in localStorage
+    localStorage.setItem(`job_${jobId}`, JSON.stringify(completeJobData));
+    
+    // Also add to manualJobs array for backward compatibility
+    const manualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+    manualJobs.unshift(completeJobData);
+    localStorage.setItem('manualJobs', JSON.stringify(manualJobs));
+    
+    // Update cached jobs
+    this.updateLocalCache(completeJobData);
+    
+    console.log(`Job created in localStorage with ID: ${jobId}`);
+    return jobId;
+  }
+
+  private async syncJobToFirestore(jobId: string, jobData: CreateJobInput): Promise<void> {
+    const firestore = this.getFirestore();
+    if (!firestore) return;
 
     try {
-      // Generate job ID
-      const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-
+      const jobRef = doc(firestore, this.collectionName, jobId);
+      
       // Set expiration date (90 days from now)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + this.AUTO_CLEANUP_DAYS);
-
-      const completeJobData: JobData = {
+      
+      // Set postedDate to current date if not provided
+      const postedDate = jobData.postedDate || new Date().toISOString().split('T')[0];
+      
+      const completeJobData = {
         ...jobData,
+        postedDate, // Use provided or current date
         id: jobId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        expiresAt: expiresAt,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        expiresAt: Timestamp.fromDate(expiresAt),
         isActive: true,
         isApproved: true,
         views: 0,
@@ -145,391 +239,409 @@ export class FirebaseJobService {
         dataProcessingLocation: 'IN'
       };
 
-      await setDoc(jobRef, {
-        ...completeJobData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        expiresAt: Timestamp.fromDate(expiresAt)
-      });
-
+      await setDoc(jobRef, completeJobData);
+      
       // Track job creation
-      firebaseAnalytics.trackEvent({
-        eventName: 'job_created',
-        eventCategory: 'Job Management',
-        eventLabel: jobData.title,
-        eventValue: 1,
-        pagePath: '/admin/job-posting',
-        pageTitle: 'Admin Job Posting',
-        metadata: {
-          jobId,
-          company: jobData.company,
-          sector: jobData.sector,
-          type: jobData.type
-        },
-        consentGiven: true,
-        dataProcessingLocation: 'IN'
-      });
-
-      return jobId;
+      const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+      if (hasConsent) {
+        firebaseAnalytics.trackEvent({
+          eventName: 'job_created',
+          eventCategory: 'Job Management',
+          eventLabel: jobData.title,
+          eventValue: 1,
+          pagePath: '/admin/job-posting',
+          pageTitle: 'Admin Job Posting',
+          metadata: {
+            jobId,
+            company: jobData.company,
+            sector: jobData.sector,
+            type: jobData.type
+          },
+          consentGiven: hasConsent,
+          dataProcessingLocation: 'IN'
+        });
+      }
     } catch (error) {
-      console.error('Error creating job:', error);
+      console.error('Error syncing job to Firestore:', error);
       throw error;
     }
   }
 
   async getJob(jobId: string): Promise<JobData | null> {
-    if (!this.firestore) {
-      // Fallback to localStorage for offline
-      const localData = localStorage.getItem(`job_${jobId}`);
-      return localData ? JSON.parse(localData) : null;
-    }
+    const firestore = this.getFirestore();
+    
+    // Try Firebase first if available
+    if (firestore) {
+      try {
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        const snapshot = await getDoc(jobRef);
 
-    try {
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-      const snapshot = await getDoc(jobRef);
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          
+          // Convert Firestore timestamps to Date objects
+          const jobData: JobData = {
+            id: snapshot.id,
+            ...data,
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate(),
+            expiresAt: data.expiresAt?.toDate()
+          } as JobData;
 
-      if (!snapshot.exists()) {
-        return null;
+          // Increment view count
+          await this.incrementViewCount(jobId);
+
+          // Store in localStorage as cache
+          localStorage.setItem(`job_${jobId}`, JSON.stringify(jobData));
+
+          return jobData;
+        }
+      } catch (firestoreError) {
+        console.warn('Failed to get job from Firebase, falling back to localStorage:', firestoreError);
       }
-
-      const data = snapshot.data();
-      
-      // Convert Firestore timestamps to Date objects
-      const jobData: JobData = {
-        id: snapshot.id,
-        ...data,
-        createdAt: data.createdAt?.toDate(),
-        updatedAt: data.updatedAt?.toDate(),
-        expiresAt: data.expiresAt?.toDate()
-      } as JobData;
-
-      // Increment view count
-      await this.incrementViewCount(jobId);
-
-      // Store in localStorage as cache
-      localStorage.setItem(`job_${jobId}`, JSON.stringify(jobData));
-
-      return jobData;
-    } catch (error) {
-      console.error('Error getting job:', error);
-      
-      // Fallback to localStorage
-      const localData = localStorage.getItem(`job_${jobId}`);
-      return localData ? JSON.parse(localData) : null;
     }
+    
+    // Fallback to localStorage
+    const localData = localStorage.getItem(`job_${jobId}`);
+    if (localData) {
+      const job = JSON.parse(localData);
+      // Update view count
+      job.views = (job.views || 0) + 1;
+      localStorage.setItem(`job_${jobId}`, JSON.stringify(job));
+      return job;
+    }
+    
+    // Also check manualJobs
+    const manualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+    const manualJob = manualJobs.find((j: JobData) => j.id === jobId);
+    if (manualJob) {
+      manualJob.views = (manualJob.views || 0) + 1;
+      localStorage.setItem('manualJobs', JSON.stringify(manualJobs));
+      localStorage.setItem(`job_${jobId}`, JSON.stringify(manualJob));
+      return manualJob;
+    }
+
+    return null;
   }
 
   async getJobs(filters?: JobFilters, page: number = 1, limitPerPage: number = 10): Promise<{ jobs: JobData[], total: number }> {
-    if (!this.firestore) {
-      // Fallback to localStorage
-      const allJobs = this.getLocalJobs();
-      const filteredJobs = this.applyFilters(allJobs, filters);
-      const startIndex = (page - 1) * limitPerPage;
-      const paginatedJobs = filteredJobs.slice(startIndex, startIndex + limitPerPage);
-      
-      return {
-        jobs: paginatedJobs,
-        total: filteredJobs.length
-      };
-    }
-
-    try {
-      let jobsQuery = query(
-        collection(this.firestore, this.collectionName),
-        where('isActive', '==', true),
-        where('isApproved', '==', true),
-        orderBy('createdAt', 'desc')
-      );
-
-      // Apply filters
-      if (filters?.sector && filters.sector !== 'all') {
-        jobsQuery = query(jobsQuery, where('sector', '==', filters.sector));
-      }
-
-      if (filters?.type && filters.type !== 'all') {
-        jobsQuery = query(jobsQuery, where('type', '==', filters.type));
-      }
-
-      if (filters?.location) {
-        jobsQuery = query(jobsQuery, where('location', '==', filters.location));
-      }
-
-      if (filters?.featured) {
-        jobsQuery = query(jobsQuery, where('featured', '==', true));
-      }
-
-      const snapshot = await getDocs(jobsQuery);
-      const allJobs = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate(),
-          updatedAt: data.updatedAt?.toDate(),
-          expiresAt: data.expiresAt?.toDate()
-        } as JobData;
-      });
-
-      // Apply search filter if provided
-      let filteredJobs = allJobs;
-      if (filters?.searchTerm) {
-        filteredJobs = allJobs.filter(job =>
-          job.title.toLowerCase().includes(filters.searchTerm!.toLowerCase()) ||
-          job.company.toLowerCase().includes(filters.searchTerm!.toLowerCase()) ||
-          job.description.toLowerCase().includes(filters.searchTerm!.toLowerCase())
+    const firestore = this.getFirestore();
+    
+    // Try Firebase first if available
+    if (firestore) {
+      try {
+        let jobsQuery = query(
+          collection(firestore, this.collectionName),
+          where('isActive', '==', true),
+          where('isApproved', '==', true),
+          orderBy('createdAt', 'desc')
         );
+
+        // Apply filters
+        if (filters?.sector && filters.sector !== 'all') {
+          jobsQuery = query(jobsQuery, where('sector', '==', filters.sector));
+        }
+
+        if (filters?.type && filters.type !== 'all') {
+          jobsQuery = query(jobsQuery, where('type', '==', filters.type));
+        }
+
+        if (filters?.location) {
+          jobsQuery = query(jobsQuery, where('location', '==', filters.location));
+        }
+
+        if (filters?.featured) {
+          jobsQuery = query(jobsQuery, where('featured', '==', true));
+        }
+
+        const snapshot = await getDocs(jobsQuery);
+        const allJobs = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate(),
+            expiresAt: data.expiresAt?.toDate()
+          } as JobData;
+        });
+
+        // Apply search filter if provided
+        let filteredJobs = allJobs;
+        if (filters?.searchTerm) {
+          filteredJobs = allJobs.filter(job =>
+            job.title.toLowerCase().includes(filters.searchTerm!.toLowerCase()) ||
+            job.company.toLowerCase().includes(filters.searchTerm!.toLowerCase()) ||
+            job.description.toLowerCase().includes(filters.searchTerm!.toLowerCase())
+          );
+        }
+
+        // Apply pagination
+        const startIndex = (page - 1) * limitPerPage;
+        const paginatedJobs = filteredJobs.slice(startIndex, startIndex + limitPerPage);
+
+        // Cache in localStorage
+        localStorage.setItem('cached_jobs', JSON.stringify(filteredJobs));
+
+        return {
+          jobs: paginatedJobs,
+          total: filteredJobs.length
+        };
+      } catch (firestoreError) {
+        console.warn('Failed to get jobs from Firebase, falling back to localStorage:', firestoreError);
       }
-
-      // Apply pagination
-      const startIndex = (page - 1) * limitPerPage;
-      const paginatedJobs = filteredJobs.slice(startIndex, startIndex + limitPerPage);
-
-      // Cache in localStorage
-      localStorage.setItem('cached_jobs', JSON.stringify(filteredJobs));
-
-      return {
-        jobs: paginatedJobs,
-        total: filteredJobs.length
-      };
-    } catch (error) {
-      console.error('Error getting jobs:', error);
-      
-      // Fallback to localStorage
-      const allJobs = this.getLocalJobs();
-      const filteredJobs = this.applyFilters(allJobs, filters);
-      const startIndex = (page - 1) * limitPerPage;
-      const paginatedJobs = filteredJobs.slice(startIndex, startIndex + limitPerPage);
-      
-      return {
-        jobs: paginatedJobs,
-        total: filteredJobs.length
-      };
     }
+    
+    // Fallback to localStorage
+    const allJobs = this.getLocalJobs();
+    const filteredJobs = this.applyFilters(allJobs, filters);
+    const startIndex = (page - 1) * limitPerPage;
+    const paginatedJobs = filteredJobs.slice(startIndex, startIndex + limitPerPage);
+    
+    return {
+      jobs: paginatedJobs,
+      total: filteredJobs.length
+    };
   }
 
   async updateJob(jobId: string, updates: Partial<JobData>): Promise<void> {
-    if (!this.firestore) {
-      // Update localStorage
-      const localData = localStorage.getItem(`job_${jobId}`);
-      if (localData) {
-        const job = JSON.parse(localData);
-        const updatedJob = {
-          ...job,
-          ...updates,
-          updatedAt: new Date()
-        };
-        localStorage.setItem(`job_${jobId}`, JSON.stringify(updatedJob));
-      }
-      return;
-    }
-
-    try {
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-      await updateDoc(jobRef, {
+    // Update localStorage
+    const localData = localStorage.getItem(`job_${jobId}`);
+    if (localData) {
+      const job = JSON.parse(localData);
+      const updatedJob = {
+        ...job,
         ...updates,
-        updatedAt: serverTimestamp()
-      });
-
-      // Update localStorage cache
-      const localData = localStorage.getItem(`job_${jobId}`);
-      if (localData) {
-        const job = JSON.parse(localData);
-        const updatedJob = {
-          ...job,
-          ...updates,
-          updatedAt: new Date()
-        };
-        localStorage.setItem(`job_${jobId}`, JSON.stringify(updatedJob));
+        updatedAt: new Date()
+      };
+      localStorage.setItem(`job_${jobId}`, JSON.stringify(updatedJob));
+      
+      // Update manualJobs array
+      const manualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+      const jobIndex = manualJobs.findIndex((j: JobData) => j.id === jobId);
+      if (jobIndex !== -1) {
+        manualJobs[jobIndex] = updatedJob;
+        localStorage.setItem('manualJobs', JSON.stringify(manualJobs));
       }
+    }
+    
+    // Also try to update Firebase
+    const firestore = this.getFirestore();
+    if (firestore) {
+      try {
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        await updateDoc(jobRef, {
+          ...updates,
+          updatedAt: serverTimestamp()
+        });
 
-      // Track update event
-      firebaseAnalytics.trackEvent({
-        eventName: 'job_updated',
-        eventCategory: 'Job Management',
-        eventLabel: updates.title || jobId,
-        pagePath: '/admin/job-posting',
-        pageTitle: 'Admin Job Posting',
-        metadata: { jobId, ...updates },
-        consentGiven: true,
-        dataProcessingLocation: 'IN'
-      });
-    } catch (error) {
-      console.error('Error updating job:', error);
-      throw error;
+        // Track update event
+        const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+        if (hasConsent) {
+          firebaseAnalytics.trackEvent({
+            eventName: 'job_updated',
+            eventCategory: 'Job Management',
+            eventLabel: updates.title || jobId,
+            pagePath: '/admin/job-posting',
+            pageTitle: 'Admin Job Posting',
+            metadata: { jobId, ...updates },
+            consentGiven: hasConsent,
+            dataProcessingLocation: 'IN'
+          });
+        }
+      } catch (firestoreError) {
+        console.warn('Failed to update job in Firebase:', firestoreError);
+      }
     }
   }
 
   async deleteJob(jobId: string): Promise<void> {
-    if (!this.firestore) {
-      localStorage.removeItem(`job_${jobId}`);
-      return;
-    }
+    // Remove from localStorage
+    localStorage.removeItem(`job_${jobId}`);
+    
+    // Remove from manualJobs array
+    const manualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+    const updatedJobs = manualJobs.filter((job: JobData) => job.id !== jobId);
+    localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+    
+    // Also try to delete from Firebase
+    const firestore = this.getFirestore();
+    if (firestore) {
+      try {
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        await updateDoc(jobRef, {
+          isActive: false,
+          updatedAt: serverTimestamp()
+        });
 
-    try {
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-      await updateDoc(jobRef, {
-        isActive: false,
-        updatedAt: serverTimestamp()
-      });
-
-      // Remove from localStorage
-      localStorage.removeItem(`job_${jobId}`);
-
-      // Track deletion event
-      firebaseAnalytics.trackEvent({
-        eventName: 'job_deleted',
-        eventCategory: 'Job Management',
-        eventLabel: jobId,
-        pagePath: '/admin/job-posting',
-        pageTitle: 'Admin Job Posting',
-        metadata: { jobId },
-        consentGiven: true,
-        dataProcessingLocation: 'IN'
-      });
-    } catch (error) {
-      console.error('Error deleting job:', error);
-      throw error;
+        // Track deletion event
+        const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+        if (hasConsent) {
+          firebaseAnalytics.trackEvent({
+            eventName: 'job_deleted',
+            eventCategory: 'Job Management',
+            eventLabel: jobId,
+            pagePath: '/admin/job-posting',
+            pageTitle: 'Admin Job Posting',
+            metadata: { jobId },
+            consentGiven: hasConsent,
+            dataProcessingLocation: 'IN'
+          });
+        }
+      } catch (firestoreError) {
+        console.warn('Failed to delete job from Firebase:', firestoreError);
+      }
     }
   }
 
   async incrementViewCount(jobId: string): Promise<void> {
-    if (!this.firestore) return;
+    const firestore = this.getFirestore();
+    
+    // Update localStorage
+    const localData = localStorage.getItem(`job_${jobId}`);
+    if (localData) {
+      const job = JSON.parse(localData);
+      job.views = (job.views || 0) + 1;
+      localStorage.setItem(`job_${jobId}`, JSON.stringify(job));
+    }
+    
+    // Update manualJobs array
+    const manualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+    const jobIndex = manualJobs.findIndex((j: JobData) => j.id === jobId);
+    if (jobIndex !== -1) {
+      manualJobs[jobIndex].views = (manualJobs[jobIndex].views || 0) + 1;
+      localStorage.setItem('manualJobs', JSON.stringify(manualJobs));
+    }
+    
+    // Also update Firebase if available
+    if (firestore) {
+      try {
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        const snapshot = await getDoc(jobRef);
 
-    try {
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-      const snapshot = await getDoc(jobRef);
-
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        const currentViews = data.views || 0;
-        
-        await updateDoc(jobRef, {
-          views: currentViews + 1,
-          updatedAt: serverTimestamp()
-        });
-
-        // Update localStorage cache
-        const localData = localStorage.getItem(`job_${jobId}`);
-        if (localData) {
-          const job = JSON.parse(localData);
-          localStorage.setItem(`job_${jobId}`, JSON.stringify({
-            ...job,
-            views: currentViews + 1
-          }));
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const currentViews = data.views || 0;
+          
+          await updateDoc(jobRef, {
+            views: currentViews + 1,
+            updatedAt: serverTimestamp()
+          });
         }
+      } catch (firestoreError) {
+        console.warn('Failed to increment view count in Firebase:', firestoreError);
       }
-    } catch (error) {
-      console.error('Error incrementing view count:', error);
     }
   }
 
   async incrementShareCount(jobId: string): Promise<void> {
-    if (!this.firestore) return;
+    const firestore = this.getFirestore();
+    
+    // Update localStorage
+    const localData = localStorage.getItem(`job_${jobId}`);
+    if (localData) {
+      const job = JSON.parse(localData);
+      job.shares = (job.shares || 0) + 1;
+      localStorage.setItem(`job_${jobId}`, JSON.stringify(job));
+    }
+    
+    // Also update Firebase if available
+    if (firestore) {
+      try {
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        const snapshot = await getDoc(jobRef);
 
-    try {
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-      const snapshot = await getDoc(jobRef);
-
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        const currentShares = data.shares || 0;
-        
-        await updateDoc(jobRef, {
-          shares: currentShares + 1,
-          updatedAt: serverTimestamp()
-        });
-
-        // Update localStorage cache
-        const localData = localStorage.getItem(`job_${jobId}`);
-        if (localData) {
-          const job = JSON.parse(localData);
-          localStorage.setItem(`job_${jobId}`, JSON.stringify({
-            ...job,
-            shares: currentShares + 1
-          }));
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const currentShares = data.shares || 0;
+          
+          await updateDoc(jobRef, {
+            shares: currentShares + 1,
+            updatedAt: serverTimestamp()
+          });
         }
+      } catch (firestoreError) {
+        console.warn('Failed to increment share count in Firebase:', firestoreError);
       }
-    } catch (error) {
-      console.error('Error incrementing share count:', error);
     }
   }
 
   async incrementApplicationCount(jobId: string): Promise<void> {
-    if (!this.firestore) return;
+    const firestore = this.getFirestore();
+    
+    // Update localStorage
+    const localData = localStorage.getItem(`job_${jobId}`);
+    if (localData) {
+      const job = JSON.parse(localData);
+      job.applications = (job.applications || 0) + 1;
+      localStorage.setItem(`job_${jobId}`, JSON.stringify(job));
+    }
+    
+    // Also update Firebase if available
+    if (firestore) {
+      try {
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        const snapshot = await getDoc(jobRef);
 
-    try {
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-      const snapshot = await getDoc(jobRef);
-
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        const currentApplications = data.applications || 0;
-        
-        await updateDoc(jobRef, {
-          applications: currentApplications + 1,
-          updatedAt: serverTimestamp()
-        });
-
-        // Update localStorage cache
-        const localData = localStorage.getItem(`job_${jobId}`);
-        if (localData) {
-          const job = JSON.parse(localData);
-          localStorage.setItem(`job_${jobId}`, JSON.stringify({
-            ...job,
-            applications: currentApplications + 1
-          }));
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const currentApplications = data.applications || 0;
+          
+          await updateDoc(jobRef, {
+            applications: currentApplications + 1,
+            updatedAt: serverTimestamp()
+          });
         }
+      } catch (firestoreError) {
+        console.warn('Failed to increment application count in Firebase:', firestoreError);
       }
-    } catch (error) {
-      console.error('Error incrementing application count:', error);
     }
   }
 
   async incrementSaveCount(jobId: string): Promise<void> {
-    if (!this.firestore) return;
+    const firestore = this.getFirestore();
+    
+    // Update localStorage
+    const localData = localStorage.getItem(`job_${jobId}`);
+    if (localData) {
+      const job = JSON.parse(localData);
+      job.saves = (job.saves || 0) + 1;
+      localStorage.setItem(`job_${jobId}`, JSON.stringify(job));
+    }
+    
+    // Also update Firebase if available
+    if (firestore) {
+      try {
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        const snapshot = await getDoc(jobRef);
 
-    try {
-      const jobRef = doc(this.firestore, this.collectionName, jobId);
-      const snapshot = await getDoc(jobRef);
-
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        const currentSaves = data.saves || 0;
-        
-        await updateDoc(jobRef, {
-          saves: currentSaves + 1,
-          updatedAt: serverTimestamp()
-        });
-
-        // Update localStorage cache
-        const localData = localStorage.getItem(`job_${jobId}`);
-        if (localData) {
-          const job = JSON.parse(localData);
-          localStorage.setItem(`job_${jobId}`, JSON.stringify({
-            ...job,
-            saves: currentSaves + 1
-          }));
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const currentSaves = data.saves || 0;
+          
+          await updateDoc(jobRef, {
+            saves: currentSaves + 1,
+            updatedAt: serverTimestamp()
+          });
         }
+      } catch (firestoreError) {
+        console.warn('Failed to increment save count in Firebase:', firestoreError);
       }
-    } catch (error) {
-      console.error('Error incrementing save count:', error);
     }
   }
 
-  async bulkCreateJobs(jobsData: Omit<JobData, 'id' | 'createdAt' | 'updatedAt' | 'expiresAt'>[]): Promise<{ success: number; failed: number; errors: string[] }> {
-    if (!this.firestore) {
-      throw new Error('Firestore not initialized');
-    }
-
+  // UPDATED: Accept CreateJobInput for bulk create
+  async bulkCreateJobs(jobsData: CreateJobInput[]): Promise<{ success: number; failed: number; errors: string[] }> {
     const results = {
       success: 0,
       failed: 0,
       errors: [] as string[]
     };
 
+    // First, create all jobs in localStorage
     for (const jobData of jobsData) {
       try {
-        await this.createJob(jobData);
+        await this.createJobInLocalStorage(jobData);
         results.success++;
       } catch (error) {
         results.failed++;
@@ -537,22 +649,47 @@ export class FirebaseJobService {
       }
     }
 
+    // Then try to sync to Firebase in background
+    const firestore = this.getFirestore();
+    if (firestore) {
+      setTimeout(async () => {
+        try {
+          console.log('Attempting to sync bulk jobs to Firebase...');
+          // We'll sync them one by one to avoid batch errors
+          for (const jobData of jobsData) {
+            try {
+              const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              await this.syncJobToFirestore(jobId, jobData);
+              console.log(`Synced job to Firebase: ${jobData.title}`);
+            } catch (syncError) {
+              console.warn(`Failed to sync job to Firebase: ${jobData.title}`, syncError);
+            }
+          }
+        } catch (batchError) {
+          console.error('Batch sync to Firebase failed:', batchError);
+        }
+      }, 1000);
+    }
+
     // Track bulk creation
-    firebaseAnalytics.trackEvent({
-      eventName: 'jobs_bulk_created',
-      eventCategory: 'Job Management',
-      eventLabel: 'bulk_upload',
-      eventValue: results.success,
-      pagePath: '/admin/job-posting',
-      pageTitle: 'Admin Job Posting',
-      metadata: {
-        total_jobs: jobsData.length,
-        successful: results.success,
-        failed: results.failed
-      },
-      consentGiven: true,
-      dataProcessingLocation: 'IN'
-    });
+    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+    if (hasConsent) {
+      firebaseAnalytics.trackEvent({
+        eventName: 'jobs_bulk_created',
+        eventCategory: 'Job Management',
+        eventLabel: 'bulk_upload',
+        eventValue: results.success,
+        pagePath: '/admin/job-posting',
+        pageTitle: 'Admin Job Posting',
+        metadata: {
+          total_jobs: jobsData.length,
+          successful: results.success,
+          failed: results.failed
+        },
+        consentGiven: hasConsent,
+        dataProcessingLocation: 'IN'
+      });
+    }
 
     return results;
   }
@@ -596,19 +733,19 @@ export class FirebaseJobService {
     jobsByType: Record<string, number>;
   }> {
     try {
-      const { jobs } = await this.getJobs({});
+      const allJobs = this.getLocalJobs();
       
       const stats = {
-        totalJobs: jobs.length,
-        totalViews: jobs.reduce((sum, job) => sum + (job.views || 0), 0),
-        totalApplications: jobs.reduce((sum, job) => sum + (job.applications || 0), 0),
-        totalShares: jobs.reduce((sum, job) => sum + (job.shares || 0), 0),
+        totalJobs: allJobs.length,
+        totalViews: allJobs.reduce((sum, job) => sum + (job.views || 0), 0),
+        totalApplications: allJobs.reduce((sum, job) => sum + (job.applications || 0), 0),
+        totalShares: allJobs.reduce((sum, job) => sum + (job.shares || 0), 0),
         jobsBySector: {} as Record<string, number>,
         jobsByType: {} as Record<string, number>
       };
 
       // Calculate sector distribution
-      jobs.forEach(job => {
+      allJobs.forEach(job => {
         stats.jobsBySector[job.sector] = (stats.jobsBySector[job.sector] || 0) + 1;
         stats.jobsByType[job.type] = (stats.jobsByType[job.type] || 0) + 1;
       });
@@ -627,22 +764,18 @@ export class FirebaseJobService {
     }
   }
 
-  // Helper methods for localStorage fallback
+  // Helper methods for localStorage
   private getLocalJobs(): JobData[] {
     try {
-      const cachedJobs = localStorage.getItem('cached_jobs');
-      if (cachedJobs) {
-        return JSON.parse(cachedJobs);
-      }
-      
-      // Fallback to old localStorage format
+      // First try manualJobs (for backward compatibility)
       const manualJobs = localStorage.getItem('manualJobs');
       if (manualJobs) {
         const jobs = JSON.parse(manualJobs);
+        // Ensure all jobs have required fields
         return jobs.map((job: any) => ({
           ...job,
-          isActive: true,
-          isApproved: true,
+          isActive: job.isActive !== undefined ? job.isActive : true,
+          isApproved: job.isApproved !== undefined ? job.isApproved : true,
           views: job.views || 0,
           shares: job.shares || 0,
           applications: job.applications || 0,
@@ -654,6 +787,23 @@ export class FirebaseJobService {
     } catch (error) {
       console.error('Error reading local jobs:', error);
       return [];
+    }
+  }
+
+  private updateLocalCache(job: JobData) {
+    try {
+      const cachedJobs = JSON.parse(localStorage.getItem('cached_jobs') || '[]');
+      const existingIndex = cachedJobs.findIndex((j: JobData) => j.id === job.id);
+      
+      if (existingIndex >= 0) {
+        cachedJobs[existingIndex] = job;
+      } else {
+        cachedJobs.unshift(job);
+      }
+      
+      localStorage.setItem('cached_jobs', JSON.stringify(cachedJobs));
+    } catch (error) {
+      console.error('Error updating local cache:', error);
     }
   }
 
@@ -690,36 +840,86 @@ export class FirebaseJobService {
     return filteredJobs;
   }
 
-  // Migration utility: Move localStorage jobs to Firebase
-  async migrateLocalStorageJobs(): Promise<{ migrated: number; failed: number }> {
+  // Test Firebase connection
+  async testFirebaseConnection(): Promise<{ connected: boolean; message: string }> {
+    const firestore = this.getFirestore();
+    
+    if (!firestore) {
+      return {
+        connected: false,
+        message: 'Firestore not initialized. Check Firebase configuration.'
+      };
+    }
+
+    try {
+      // Try a simple query to test connection
+      const testQuery = query(
+        collection(firestore, this.collectionName),
+        limit(1)
+      );
+      
+      await getDocs(testQuery);
+      
+      return {
+        connected: true,
+        message: 'Firebase connection successful!'
+      };
+    } catch (error) {
+      return {
+        connected: false,
+        message: `Firebase connection failed: ${error}`
+      };
+    }
+  }
+
+  // Sync all localStorage jobs to Firebase
+  async syncAllToFirebase(): Promise<{ synced: number; failed: number }> {
+    const firestore = this.getFirestore();
+    if (!firestore) {
+      return { synced: 0, failed: 0 };
+    }
+
     const localJobs = this.getLocalJobs();
-    const result = { migrated: 0, failed: 0 };
+    let synced = 0;
+    let failed = 0;
+
+    console.log(`Syncing ${localJobs.length} jobs to Firebase...`);
 
     for (const localJob of localJobs) {
       try {
-        // Remove id and timestamps from local job
+        // Remove id and timestamps for Firebase
         const { id, createdAt, updatedAt, expiresAt, ...jobData } = localJob;
         
-        await this.createJob(jobData);
-        result.migrated++;
+        const jobId = id || `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const jobRef = doc(firestore, this.collectionName, jobId);
         
-        // Remove from localStorage after successful migration
-        if (id) {
-          localStorage.removeItem(`job_${id}`);
-        }
+        const expiresAtDate = expiresAt ? new Date(expiresAt) : new Date();
+        expiresAtDate.setDate(expiresAtDate.getDate() + this.AUTO_CLEANUP_DAYS);
+        
+        await setDoc(jobRef, {
+          ...jobData,
+          id: jobId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          expiresAt: Timestamp.fromDate(expiresAtDate),
+          isActive: true,
+          isApproved: true,
+          views: localJob.views || 0,
+          shares: localJob.shares || 0,
+          applications: localJob.applications || 0,
+          saves: localJob.saves || 0,
+          dataProcessingLocation: 'IN'
+        });
+        
+        synced++;
       } catch (error) {
-        console.error(`Failed to migrate job: ${localJob.title}`, error);
-        result.failed++;
+        console.error(`Failed to sync job: ${localJob.title}`, error);
+        failed++;
       }
     }
 
-    // Clear old localStorage entries
-    localStorage.removeItem('manualJobs');
-    localStorage.removeItem('cached_jobs');
-
-    console.log(`Migration complete: ${result.migrated} jobs migrated, ${result.failed} failed`);
-    
-    return result;
+    console.log(`Sync complete: ${synced} synced, ${failed} failed`);
+    return { synced, failed };
   }
 }
 
