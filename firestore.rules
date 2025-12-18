@@ -1,8 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /jobs/{jobId} {
+      // Allow public read access
+      allow read: if true;
+      
+      // Allow write access (you can restrict this if needed)
+      allow write: if true;
+    }
+    
     match /{document=**} {
-      allow read, write: if true;
+      // Allow public read access for all collections
+      allow read: if true;
     }
   }
 }
