@@ -227,79 +227,87 @@ const AdminJobPosting: React.FC = () => {
   };
 
   // Test Firebase connection
-  const testFirebaseConnection = async () => {
-    setSyncStatus({ syncing: true, message: 'Testing Firebase connection...' });
-    
-    try {
-      const result = await firebaseJobService.testFirebaseConnection();
-      
-      if (result.connected) {
-        setSyncStatus({ 
-          syncing: false, 
-          message: '✅ Firebase connection successful!',
-          synced: 1,
-          failed: 0
-        });
-        alert(result.message);
-        
-        // Refresh Firebase status
-        setFirebaseStatus(getFirebaseStatus());
-      } else {
-        setSyncStatus({ 
-          syncing: false, 
-          message: '❌ Firebase connection failed',
-          synced: 0,
-          failed: 1
-        });
-        alert(result.message);
-      }
-    } catch (error) {
-      setSyncStatus({ 
-        syncing: false, 
-        message: '❌ Error testing Firebase connection',
-        synced: 0,
-        failed: 1
-      });
-      alert('Error testing Firebase connection: ' + error);
-    }
-  };
+  // In AdminJobPosting.tsx, update these functions:
 
-  // Sync all jobs to Firebase
-  const syncToFirebase = async () => {
-    if (!window.confirm('This will sync all localStorage jobs to Firebase. Continue?')) {
-      return;
-    }
+const testFirebaseConnection = async () => {
+  setSyncStatus({ syncing: true, message: 'Testing Firebase connection...' });
+  
+  try {
+    const result = await firebaseJobService.testFirebaseConnection();
     
-    setSyncStatus({ syncing: true, message: 'Syncing jobs to Firebase...' });
-    
-    try {
-      const result = await firebaseJobService.syncAllToFirebase();
-      
+    if (result.connected) {
       setSyncStatus({ 
         syncing: false, 
-        message: result.synced > 0 ? 
-          `✅ Synced ${result.synced} jobs to Firebase` : 
-          'No jobs to sync or Firebase not connected',
-        synced: result.synced,
-        failed: result.failed
+        message: '✅ Firebase connection successful!',
+        synced: 1,
+        failed: 0
       });
-      
-      if (result.synced > 0) {
-        alert(`Successfully synced ${result.synced} jobs to Firebase${result.failed > 0 ? ` (${result.failed} failed)` : ''}`);
-      }
+      alert(result.message);
       
       // Refresh Firebase status
       setFirebaseStatus(getFirebaseStatus());
-    } catch (error) {
+    } else {
       setSyncStatus({ 
         syncing: false, 
-        message: '❌ Error syncing to Firebase',
+        message: '❌ Firebase connection failed',
         synced: 0,
-        failed: 0
+        failed: 1
       });
-      alert('Error syncing to Firebase: ' + error);
+      alert(result.message);
     }
-  };
+  } catch (error) {
+    setSyncStatus({ 
+      syncing: false, 
+      message: '❌ Error testing Firebase connection',
+      synced: 0,
+      failed: 1
+    });
+    alert('Error testing Firebase connection. Check console for details.');
+    console.error('Connection test error:', error);
+  }
+};
+
+const syncToFirebase = async () => {
+  if (!window.confirm('This will sync all localStorage jobs to Firebase. Continue?')) {
+    return;
+  }
+  
+  setSyncStatus({ syncing: true, message: 'Syncing jobs to Firebase...' });
+  
+  try {
+    const result = await firebaseJobService.syncAllToFirebase();
+    
+    setSyncStatus({ 
+      syncing: false, 
+      message: result.synced > 0 ? 
+        `✅ Synced ${result.synced} jobs to Firebase` : 
+        result.synced === 0 && result.failed === 0 ? 
+          'No jobs to sync' : 'Failed to sync jobs',
+      synced: result.synced,
+      failed: result.failed
+    });
+    
+    if (result.synced > 0) {
+      alert(`Successfully synced ${result.synced} jobs to Firebase${result.failed > 0 ? ` (${result.failed} failed)` : ''}`);
+    } else if (result.failed > 0) {
+      alert('Failed to sync jobs. Please check console for errors.');
+    } else {
+      alert('No jobs available to sync.');
+    }
+    
+    // Refresh Firebase status
+    setFirebaseStatus(getFirebaseStatus());
+  } catch (error) {
+    setSyncStatus({ 
+      syncing: false, 
+      message: '❌ Error syncing to Firebase',
+      synced: 0,
+      failed: 0
+    });
+    alert('Error syncing to Firebase. Please check console for details.');
+    console.error('Sync error:', error);
+  }
+};
 
   // Apply quick template
   const applyTemplate = (templateKey: keyof typeof quickTemplates) => {

@@ -1,10 +1,12 @@
-// src/components/JobApplications.tsx - COMPLETE WITH FIXED DATE HANDLING
+// src/components/JobApplications.tsx - UPDATED TO FETCH FROM FIREBASE
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { usePageTimeTracker } from '../hooks/usePageTimeTracker';
+import { firebaseJobService } from '../firebase/jobService'; // ADD THIS IMPORT
+import type { JobData } from '../firebase/jobService'; // ADD THIS IMPORT
 import { 
   Share2, 
   ExternalLink, 
@@ -32,29 +34,17 @@ import {
   Filter,
   BarChart,
   Heart,
-  Bookmark
+  Bookmark,
+  Database,
+  WifiOff
 } from 'lucide-react';
 
-interface Job {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  type: string;
-  sector: string;
-  salary: string;
-  description: string;
-  requirements: string[];
-  postedDate?: string; // Made optional
-  applyLink: string;
-  featured?: boolean;
-  isReal?: boolean;
+// Use JobData interface from jobService instead of local interface
+type Job = JobData & {
   addedTimestamp?: number;
   page?: number;
-  views?: number;
-  shares?: number;
-  applications?: number;
-}
+  isNew?: boolean;
+};
 
 const JobApplications: React.FC = () => {
   const [selectedSector, setSelectedSector] = useState<string>('all');
@@ -64,6 +54,10 @@ const JobApplications: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [syncStatus, setSyncStatus] = useState<string>('');
+  
   const jobsPerPage = 10;
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
@@ -96,9 +90,7 @@ const JobApplications: React.FC = () => {
     trackCTAClick,
     trackSocialShare,
     trackFunnelStep,
-    trackUserFlow,
-    getUserId,
-    getSessionId
+    trackUserFlow
   } = useFirebaseAnalytics();
   
   // Initialize Google Analytics
@@ -112,13 +104,102 @@ const JobApplications: React.FC = () => {
     trackJobSearch: trackGoogleJobSearch
   } = useGoogleAnalytics();
 
+  // Load jobs from Firebase and localStorage
+  const loadJobs = useCallback(async () => {
+    setLoading(true);
+    setSyncStatus('🔄 Loading jobs...');
+    
+    try {
+      // Try to load from Firebase first
+      try {
+        const firebaseResult = await firebaseJobService.getJobs({}, 1, 1000);
+        
+        if (firebaseResult.jobs && firebaseResult.jobs.length > 0) {
+          console.log(`✅ Loaded ${firebaseResult.jobs.length} jobs from Firebase`);
+          
+          // Convert Firebase jobs to our Job type
+          const firebaseJobs: Job[] = firebaseResult.jobs.map(job => ({
+            ...job,
+            id: job.id || `firebase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            addedTimestamp: job.createdAt ? new Date(job.createdAt).getTime() : Date.now(),
+            postedDate: job.postedDate || new Date(job.createdAt || Date.now()).toISOString().split('T')[0],
+            page: 1,
+            isNew: true,
+            views: job.views || 0,
+            shares: job.shares || 0,
+            applications: job.applications || 0
+          }));
+          
+          setFirebaseConnected(true);
+          setSyncStatus(`✅ ${firebaseJobs.length} jobs from Firebase`);
+          
+          // Also update localStorage for offline access
+          localStorage.setItem('firebase_jobs_cache', JSON.stringify({
+            jobs: firebaseJobs,
+            timestamp: Date.now()
+          }));
+          
+          setJobs(firebaseJobs);
+          setLoading(false);
+          return;
+        }
+      } catch (firebaseError) {
+        console.log('Firebase not available, using localStorage fallback:', firebaseError);
+        setFirebaseConnected(false);
+      }
+      
+      // Fallback to localStorage
+      const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+      
+      // Clean up old jobs (older than 90 days)
+      const now = Date.now();
+      const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+      
+      const recentJobs = savedJobs.filter((job: Job) => {
+        const jobTimestamp = job.addedTimestamp || new Date(job.postedDate || Date.now()).getTime();
+        return jobTimestamp >= ninetyDaysAgo;
+      });
+      
+      // Update localStorage with only recent jobs
+      if (recentJobs.length !== savedJobs.length) {
+        localStorage.setItem('manualJobs', JSON.stringify(recentJobs));
+      }
+      
+      // Sort by addedTimestamp (newest first)
+      const sortedJobs = recentJobs.sort((a: Job, b: Job) => {
+        const timeA = a.addedTimestamp || new Date(a.postedDate || Date.now()).getTime();
+        const timeB = b.addedTimestamp || new Date(b.postedDate || Date.now()).getTime();
+        return timeB - timeA; // Descending order (newest first)
+      });
+
+      // Add page numbers
+      const jobsWithPages = sortedJobs.map((job: Job, index: number) => ({
+        ...job,
+        page: job.page || Math.floor(index / jobsPerPage) + 1,
+        addedTimestamp: job.addedTimestamp || Date.now(),
+        views: job.views || 0,
+        shares: job.shares || 0,
+        applications: job.applications || 0
+      }));
+
+      setJobs(jobsWithPages);
+      setSyncStatus(`📱 ${jobsWithPages.length} jobs from localStorage`);
+      
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+      setSyncStatus('❌ Error loading jobs');
+      setJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Initialize user ID if not exists
   useEffect(() => {
     if (!localStorage.getItem('firebase_user_id')) {
       const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('firebase_user_id', userId);
       
-      // Track new user registration
       trackFirebaseEvent(
         'new_user_registered',
         'User',
@@ -130,14 +211,15 @@ const JobApplications: React.FC = () => {
     // Load saved jobs
     const saved = JSON.parse(localStorage.getItem('saved_jobs') || '[]');
     setSavedJobs(saved);
-  }, []);
+    
+    // Load jobs
+    loadJobs();
+  }, [loadJobs]);
 
   // Track page view on mount
   useEffect(() => {
-    // Track page view with both systems
     trackPageView('/job-applications', 'Job Applications');
     
-    // Track funnel step
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFunnelStep('job_search_funnel', 'viewed_jobs_listing', 1, {
       user_id: userId,
@@ -147,81 +229,6 @@ const JobApplications: React.FC = () => {
 
     // Load analytics data
     loadAnalyticsData();
-  }, []);
-
-  // Clean up old jobs (older than 3 months) and load jobs
-  useEffect(() => {
-    // Load manual jobs from localStorage
-    const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
-    
-    // Filter out jobs older than 90 days (3 months)
-    const now = Date.now();
-    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
-    
-    const recentJobs = savedJobs.filter((job: Job) => {
-      const jobTimestamp = job.addedTimestamp || new Date(job.postedDate || Date.now()).getTime();
-      return jobTimestamp >= ninetyDaysAgo;
-    });
-    
-    // Update localStorage with only recent jobs
-    if (recentJobs.length !== savedJobs.length) {
-      localStorage.setItem('manualJobs', JSON.stringify(recentJobs));
-      console.log(`Auto-cleaned ${savedJobs.length - recentJobs.length} old jobs`);
-      
-      // Track cleanup event
-      trackFirebaseEvent(
-        'jobs_auto_cleaned',
-        'System',
-        'cleanup',
-        {
-          old_count: savedJobs.length,
-          new_count: recentJobs.length,
-          days_old: 90
-        },
-        savedJobs.length - recentJobs.length
-      );
-    }
-    
-    // Sort by addedTimestamp (newest first)
-    const sortedJobs = recentJobs.sort((a: Job, b: Job) => {
-      const timeA = a.addedTimestamp || new Date(a.postedDate || Date.now()).getTime();
-      const timeB = b.addedTimestamp || new Date(b.postedDate || Date.now()).getTime();
-      return timeB - timeA; // Descending order (newest first)
-    });
-
-    // Add page numbers if not present
-    const jobsWithPages = sortedJobs.map((job: Job, index: number) => ({
-      ...job,
-      page: job.page || Math.floor(index / jobsPerPage) + 1,
-      addedTimestamp: job.addedTimestamp || Date.now(),
-      views: job.views || 0,
-      shares: job.shares || 0,
-      applications: job.applications || 0
-    }));
-
-    setJobs(jobsWithPages);
-    
-    // Load stats from localStorage
-    const shares = parseInt(localStorage.getItem('total_job_shares') || '0');
-    setTotalShares(shares);
-    
-    const views = parseInt(localStorage.getItem('total_job_views') || '0');
-    setTotalViews(views);
-    
-    const applications = parseInt(localStorage.getItem('total_job_applications_submitted') || '0');
-    setTotalApplications(applications);
-    
-    // Show notification banner if first visit today
-    const today = new Date().toDateString();
-    const lastVisit = localStorage.getItem('last_job_page_visit');
-    if (lastVisit !== today) {
-      setShowNotificationBanner(true);
-      localStorage.setItem('last_job_page_visit', today);
-      
-      // Track notification shown
-      trackGoogleButtonClick('notification_shown_jobs', 'system', 'job_applications');
-      trackButtonClick('notification_shown_jobs', 'system', '/job-applications');
-    }
   }, []);
 
   // Load analytics data
@@ -257,7 +264,7 @@ const JobApplications: React.FC = () => {
           company: job.company
         }));
 
-      // Simulate hourly trends (in real app, fetch from Firebase)
+      // Simulate hourly trends
       const hourlyTrends = Array.from({ length: 24 }, (_, i) => ({
         hour: i,
         views: Math.floor(Math.random() * 100) + 20
@@ -286,7 +293,6 @@ const JobApplications: React.FC = () => {
     e.preventDefault();
     setCurrentPage(1);
     
-    // Track search with all systems
     const resultsCount = filteredJobs.length;
     
     // Firebase
@@ -330,14 +336,11 @@ const JobApplications: React.FC = () => {
     setLocationFilter(city);
     setCurrentPage(1);
     
-    // Track filter clicks
     trackGoogleButtonClick(`filter_city_${city}`, 'city_filters', 'job_applications');
     trackButtonClick(`filter_city_${city}`, 'city_filters', '/job-applications');
     
-    // Track job search with city filter
     trackJobSearch('', filteredJobs.length, city);
     
-    // Track filter event
     trackFirebaseEvent(
       'job_filter_applied',
       'Job Filter',
@@ -362,7 +365,6 @@ const JobApplications: React.FC = () => {
     trackGoogleButtonClick('clear_filters', 'filters', 'job_applications');
     trackButtonClick('clear_filters', 'filters', '/job-applications');
     
-    // Track clear filters event
     trackFirebaseEvent(
       'job_filters_cleared',
       'Job Filter',
@@ -397,10 +399,10 @@ const JobApplications: React.FC = () => {
   const featuredJobs = jobs.filter(job => job.featured);
   const totalJobsCount = jobs.length;
 
-  // Calculate stats - FIXED: Handle undefined postedDate
+  // Calculate stats
   const remoteJobsCount = jobs.filter(job => job.type === 'Remote').length;
   const todayJobsCount = jobs.filter(job => {
-    const jobDate = new Date(job.postedDate || job.addedTimestamp || Date.now());
+    const jobDate = new Date(job.postedDate || job.createdAt || Date.now());
     const today = new Date();
     return jobDate.toDateString() === today.toDateString();
   }).length;
@@ -412,7 +414,6 @@ const JobApplications: React.FC = () => {
     trackGoogleButtonClick(`page_${page}`, 'pagination', 'job_applications');
     trackButtonClick(`page_${page}`, 'pagination', '/job-applications');
     
-    // Track pagination event
     trackFirebaseEvent(
       'job_pagination_click',
       'Job Navigation',
@@ -434,7 +435,6 @@ const JobApplications: React.FC = () => {
     trackGoogleButtonClick(`filter_sector_${sector}`, 'sector_filters', 'job_applications');
     trackButtonClick(`filter_sector_${sector}`, 'sector_filters', '/job-applications');
     
-    // Track sector filter event
     trackFirebaseEvent(
       'job_filter_applied',
       'Job Filter',
@@ -454,7 +454,6 @@ const JobApplications: React.FC = () => {
     trackGoogleButtonClick(`filter_type_${type}`, 'type_filters', 'job_applications');
     trackButtonClick(`filter_type_${type}`, 'type_filters', '/job-applications');
     
-    // Track type filter event
     trackFirebaseEvent(
       'job_filter_applied',
       'Job Filter',
@@ -475,11 +474,10 @@ const JobApplications: React.FC = () => {
     trackGoogleButtonClick('open_share_modal', 'job_card', 'job_applications');
     trackButtonClick('open_share_modal', 'job_card', '/job-applications');
     
-    // Track share modal opened
     trackFirebaseEvent(
       'job_share_modal_opened',
       'Job Sharing',
-      job.id,
+      job.id || 'unknown',
       {
         job_id: job.id,
         job_title: job.title,
@@ -502,14 +500,18 @@ const JobApplications: React.FC = () => {
         await navigator.clipboard.writeText(jobUrl);
         setCopySuccess(true);
         
-        // Update job shares
+        // Update job shares in Firebase
+        if (selectedJob.id) {
+          await firebaseJobService.incrementShareCount(selectedJob.id);
+        }
+        
+        // Update local state
         const updatedJobs = jobs.map(job => 
           job.id === selectedJob.id 
             ? { ...job, shares: (job.shares || 0) + 1 }
             : job
         );
         setJobs(updatedJobs);
-        localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
         
         // Update total shares
         const newTotal = totalShares + 1;
@@ -519,10 +521,9 @@ const JobApplications: React.FC = () => {
         // Track sharing
         trackGoogleButtonClick('copy_job_link', 'share_modal', 'job_applications');
         trackButtonClick('copy_job_link', 'share_modal', '/job-applications');
-        trackSocialShare('copy_link', 'job', selectedJob.id);
-        trackGoogleSocialShare('copy_link', 'job', selectedJob.id);
+        trackSocialShare('copy_link', 'job', selectedJob.id || '');
+        trackGoogleSocialShare('copy_link', 'job', selectedJob.id || '');
         
-        // Track share event
         trackFirebaseEvent(
           'job_shared',
           'Social Sharing',
@@ -558,14 +559,18 @@ const JobApplications: React.FC = () => {
       window.open(shareUrls[platform], '_blank', 'noopener,noreferrer');
     }
     
-    // Update job shares
+    // Update job shares in Firebase
+    if (selectedJob.id) {
+      firebaseJobService.incrementShareCount(selectedJob.id);
+    }
+    
+    // Update local state
     const updatedJobs = jobs.map(job => 
       job.id === selectedJob.id 
         ? { ...job, shares: (job.shares || 0) + 1 }
         : job
     );
     setJobs(updatedJobs);
-    localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
     
     // Update total shares
     const newTotal = totalShares + 1;
@@ -575,10 +580,9 @@ const JobApplications: React.FC = () => {
     // Track sharing
     trackGoogleButtonClick(`share_${platform}`, 'share_modal', 'job_applications');
     trackButtonClick(`share_${platform}`, 'share_modal', '/job-applications');
-    trackSocialShare(platform, 'job', selectedJob.id);
-    trackGoogleSocialShare(platform, 'job', selectedJob.id);
+    trackSocialShare(platform, 'job', selectedJob.id || '');
+    trackGoogleSocialShare(platform, 'job', selectedJob.id || '');
     
-    // Track share event
     trackFirebaseEvent(
       'job_shared',
       'Social Sharing',
@@ -599,14 +603,18 @@ const JobApplications: React.FC = () => {
       const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\n\nView details: ${window.location.href}`;
       window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
       
-      // Update job shares
+      // Update job shares in Firebase
+      if (selectedJob.id) {
+        firebaseJobService.incrementShareCount(selectedJob.id);
+      }
+      
+      // Update local state
       const updatedJobs = jobs.map(job => 
         job.id === selectedJob.id 
           ? { ...job, shares: (job.shares || 0) + 1 }
           : job
       );
       setJobs(updatedJobs);
-      localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
       
       // Update total shares
       const newTotal = totalShares + 1;
@@ -616,8 +624,8 @@ const JobApplications: React.FC = () => {
       // Track sharing
       trackGoogleButtonClick('share_email', 'share_modal', 'job_applications');
       trackButtonClick('share_email', 'share_modal', '/job-applications');
-      trackSocialShare('email', 'job', selectedJob.id);
-      trackGoogleSocialShare('email', 'job', selectedJob.id);
+      trackSocialShare('email', 'job', selectedJob.id || '');
+      trackGoogleSocialShare('email', 'job', selectedJob.id || '');
     }
   };
 
@@ -639,7 +647,6 @@ const JobApplications: React.FC = () => {
       // Track job save
       trackJobSave(jobId, jobTitle, company);
       
-      // Track save event
       trackFirebaseEvent(
         'job_saved',
         'Job Interaction',
@@ -672,7 +679,6 @@ const JobApplications: React.FC = () => {
       trackGoogleButtonClick('newsletter_signup_jobs', 'newsletter', 'job_applications');
       trackButtonClick('newsletter_signup_jobs', 'newsletter', '/job-applications');
       
-      // Track newsletter signup
       trackFirebaseEvent(
         'newsletter_signup',
         'User Engagement',
@@ -687,7 +693,6 @@ const JobApplications: React.FC = () => {
         }
       );
       
-      // Save to localStorage
       const subscribers = JSON.parse(localStorage.getItem('job_subscribers') || '[]');
       subscribers.push({ 
         email: newsletterEmail, 
@@ -712,7 +717,6 @@ const JobApplications: React.FC = () => {
           trackGoogleButtonClick('notification_enabled', 'system', 'job_applications');
           trackButtonClick('notification_enabled', 'system', '/job-applications');
           
-          // Track notification permission granted
           trackFirebaseEvent(
             'notification_permission_granted',
             'System',
@@ -763,7 +767,6 @@ const JobApplications: React.FC = () => {
     trackGoogleButtonClick('download_jobs_csv', 'export', 'job_applications');
     trackButtonClick('download_jobs_csv', 'export', '/job-applications');
     
-    // Track export event
     trackFirebaseEvent(
       'jobs_exported',
       'System',
@@ -783,7 +786,6 @@ const JobApplications: React.FC = () => {
     trackGoogleCTAClick('analytics_dashboard', 'page_header', 'job_applications');
     trackCTAClick('analytics_dashboard', 'page_header', '/job-applications');
     
-    // Track analytics view event
     trackFirebaseEvent(
       'analytics_dashboard_accessed',
       'Analytics',
@@ -796,19 +798,23 @@ const JobApplications: React.FC = () => {
   };
 
   // Apply for job
-  const handleApply = (job: Job) => {
+  const handleApply = async (job: Job) => {
     // Track job application
-    trackJobApplication(job.id, job.title, job.company, 'direct');
-    trackJobApplicationSubmit(job.id, job.title, job.company, 'direct');
+    trackJobApplication(job.id || '', job.title, job.company, 'direct');
+    trackJobApplicationSubmit(job.id || '', job.title, job.company, 'direct');
     
-    // Update job applications count
+    // Update job applications count in Firebase
+    if (job.id) {
+      await firebaseJobService.incrementApplicationCount(job.id);
+    }
+    
+    // Update local state
     const updatedJobs = jobs.map(j => 
       j.id === job.id 
         ? { ...j, applications: (j.applications || 0) + 1 }
         : j
     );
     setJobs(updatedJobs);
-    localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
     
     // Update total applications
     const newTotal = totalApplications + 1;
@@ -819,7 +825,7 @@ const JobApplications: React.FC = () => {
     trackFirebaseEvent(
       'job_application_submitted',
       'Job Applications',
-      job.id,
+      job.id || '',
       {
         job_id: job.id,
         job_title: job.title,
@@ -845,6 +851,29 @@ const JobApplications: React.FC = () => {
       window.open(job.applyLink, '_blank', 'noopener,noreferrer');
       trackExternalLink('Apply Now', job.applyLink, 'job_applications');
     }
+  };
+
+  // Sync with Firebase manually
+  const syncWithFirebase = async () => {
+    setSyncStatus('🔄 Syncing with Firebase...');
+    try {
+      const result = await firebaseJobService.syncAllToFirebase();
+      if (result.synced > 0) {
+        setSyncStatus(`✅ Synced ${result.synced} jobs to Firebase`);
+        // Reload jobs
+        loadJobs();
+      } else {
+        setSyncStatus('✅ Already synced');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      setSyncStatus('❌ Sync failed');
+    }
+  };
+
+  // Reload jobs
+  const reloadJobs = () => {
+    loadJobs();
   };
 
   return (
@@ -901,6 +930,16 @@ const JobApplications: React.FC = () => {
         </script>
       </Helmet>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-700">{syncStatus}</p>
+          </div>
+        </div>
+      )}
+
       {/* Notification Banner */}
       {showNotificationBanner && (
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4">
@@ -956,6 +995,33 @@ const JobApplications: React.FC = () => {
             Freshly updated job postings from top Indian companies. Updated daily.
             <span className="block text-sm text-blue-200 mt-2">Share jobs to help friends & grow community</span>
           </p>
+          
+          {/* Firebase Status */}
+          <div className="flex flex-wrap justify-center items-center gap-4 mb-4">
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+              firebaseConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {firebaseConnected ? <Database size={14} /> : <WifiOff size={14} />}
+              {firebaseConnected ? 'Firebase Connected' : 'Local Storage'}
+            </div>
+            <div className="text-sm text-blue-200">
+              {syncStatus}
+            </div>
+            <button 
+              onClick={reloadJobs}
+              className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors"
+            >
+              🔄 Reload
+            </button>
+            {!firebaseConnected && (
+              <button 
+                onClick={syncWithFirebase}
+                className="text-sm bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition-colors"
+              >
+                🔄 Sync to Firebase
+              </button>
+            )}
+          </div>
           
           {/* Quick Navigation */}
           <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -1303,7 +1369,7 @@ const JobApplications: React.FC = () => {
                 {savedJobs.length > 0 && (
                   <button 
                     onClick={() => {
-                      const savedJobsList = jobs.filter(job => savedJobs.includes(job.id));
+                      const savedJobsList = jobs.filter(job => savedJobs.includes(job.id || ''));
                       alert(`Saved Jobs:\n${savedJobsList.map(job => `• ${job.title} at ${job.company}`).join('\n')}`);
                     }}
                     className="text-amber-600 hover:text-amber-700 text-sm font-medium"
@@ -1346,12 +1412,16 @@ const JobApplications: React.FC = () => {
                         key={job.id} 
                         job={job} 
                         featured 
-                        saved={savedJobs.includes(job.id)}
+                        saved={savedJobs.includes(job.id || '')}
                         onShare={handleShareClick}
                         onSave={handleSaveJob}
                         onApply={handleApply}
                         onTrackView={(jobId, jobTitle, company) => {
                           trackJobView(jobId, jobTitle, company);
+                          // Increment view count in Firebase
+                          if (jobId) {
+                            firebaseJobService.incrementViewCount(jobId);
+                          }
                         }}
                       />
                     ))}
@@ -1391,12 +1461,16 @@ const JobApplications: React.FC = () => {
                       <JobCard 
                         key={job.id} 
                         job={job} 
-                        saved={savedJobs.includes(job.id)}
+                        saved={savedJobs.includes(job.id || '')}
                         onShare={handleShareClick}
                         onSave={handleSaveJob}
                         onApply={handleApply}
                         onTrackView={(jobId, jobTitle, company) => {
                           trackJobView(jobId, jobTitle, company);
+                          // Increment view count in Firebase
+                          if (jobId) {
+                            firebaseJobService.incrementViewCount(jobId);
+                          }
                         }}
                       />
                     ))}
@@ -1713,19 +1787,7 @@ const JobCard: React.FC<JobCardProps> = ({
   
   // Track job view on mount
   useEffect(() => {
-    onTrackView(job.id, job.title, job.company);
-    
-    // Update job views
-    const updatedJob = { ...job, views: (job.views || 0) + 1 };
-    const jobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
-    const updatedJobs = jobs.map((j: Job) => 
-      j.id === job.id ? updatedJob : j
-    );
-    localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-    
-    // Update total views
-    const currentViews = parseInt(localStorage.getItem('total_job_views') || '0');
-    localStorage.setItem('total_job_views', (currentViews + 1).toString());
+    onTrackView(job.id || '', job.title, job.company);
   }, [job.id]);
 
   const handleApplyClick = () => {
@@ -1746,7 +1808,7 @@ const JobCard: React.FC<JobCardProps> = ({
   const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    onSave(job.id, job.title, job.company);
+    onSave(job.id || '', job.title, job.company);
   };
 
   return (
@@ -1823,7 +1885,7 @@ const JobCard: React.FC<JobCardProps> = ({
           <div className="mb-4">
             <h4 className="font-semibold text-gray-800 mb-2">Requirements:</h4>
             <ul className="text-sm text-gray-600 space-y-1">
-              {job.requirements.map((req, index) => (
+              {job.requirements?.map((req, index) => (
                 <li key={index}>• {req}</li>
               ))}
             </ul>
@@ -1832,7 +1894,7 @@ const JobCard: React.FC<JobCardProps> = ({
           <div className="flex items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1">
               <Calendar size={14} />
-              Posted {new Date(job.postedDate || job.addedTimestamp || Date.now()).toLocaleDateString()} {/* FIXED LINE */}
+              Posted {new Date(job.postedDate || job.createdAt || Date.now()).toLocaleDateString()}
             </span>
             {job.addedTimestamp && (
               <span className="flex items-center gap-1">
