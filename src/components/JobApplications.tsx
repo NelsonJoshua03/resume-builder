@@ -1,12 +1,13 @@
-// src/components/JobApplications.tsx - UPDATED TO FETCH FROM FIREBASE
+// src/components/JobApplications.tsx - FIXED FIREBASE SYNC VERSION
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { usePageTimeTracker } from '../hooks/usePageTimeTracker';
-import { firebaseJobService } from '../firebase/jobService'; // ADD THIS IMPORT
-import type { JobData } from '../firebase/jobService'; // ADD THIS IMPORT
+import { firebaseJobService } from '../firebase/jobService';
+import { getFirebaseStatus } from '../firebase/config';
+import type { JobData } from '../firebase/jobService';
 import { 
   Share2, 
   ExternalLink, 
@@ -36,7 +37,9 @@ import {
   Heart,
   Bookmark,
   Database,
-  WifiOff
+  WifiOff,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 
 // Use JobData interface from jobService instead of local interface
@@ -57,6 +60,7 @@ const JobApplications: React.FC = () => {
   const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [syncStatus, setSyncStatus] = useState<string>('');
+  const [firebaseStatus, setFirebaseStatus] = useState<any>(null);
   
   const jobsPerPage = 10;
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -104,51 +108,100 @@ const JobApplications: React.FC = () => {
     trackJobSearch: trackGoogleJobSearch
   } = useGoogleAnalytics();
 
-  // Load jobs from Firebase and localStorage
+  // Check Firebase status
+  useEffect(() => {
+    const status = getFirebaseStatus();
+    setFirebaseStatus(status);
+    setFirebaseConnected(!!status.firestore);
+  }, []);
+
+  // Load jobs from Firebase and localStorage with proper error handling
   const loadJobs = useCallback(async () => {
     setLoading(true);
     setSyncStatus('🔄 Loading jobs...');
     
     try {
-      // Try to load from Firebase first
-      try {
-        const firebaseResult = await firebaseJobService.getJobs({}, 1, 1000);
+      console.log('🔄 Starting job load process...');
+      
+      // Check Firebase status
+      const status = getFirebaseStatus();
+      console.log('Firebase status:', status);
+      
+      if (status.firestore && status.configValid) {
+        console.log('✅ Firebase is available, loading from Firestore...');
+        setFirebaseConnected(true);
         
-        if (firebaseResult.jobs && firebaseResult.jobs.length > 0) {
-          console.log(`✅ Loaded ${firebaseResult.jobs.length} jobs from Firebase`);
+        try {
+          // Load from Firebase
+          const firebaseResult = await firebaseJobService.getJobs({}, 1, 1000);
           
-          // Convert Firebase jobs to our Job type
-          const firebaseJobs: Job[] = firebaseResult.jobs.map(job => ({
-            ...job,
-            id: job.id || `firebase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            addedTimestamp: job.createdAt ? new Date(job.createdAt).getTime() : Date.now(),
-            postedDate: job.postedDate || new Date(job.createdAt || Date.now()).toISOString().split('T')[0],
-            page: 1,
-            isNew: true,
-            views: job.views || 0,
-            shares: job.shares || 0,
-            applications: job.applications || 0
-          }));
-          
-          setFirebaseConnected(true);
-          setSyncStatus(`✅ ${firebaseJobs.length} jobs from Firebase`);
-          
-          // Also update localStorage for offline access
-          localStorage.setItem('firebase_jobs_cache', JSON.stringify({
-            jobs: firebaseJobs,
-            timestamp: Date.now()
-          }));
-          
-          setJobs(firebaseJobs);
-          setLoading(false);
-          return;
+          if (firebaseResult.jobs && firebaseResult.jobs.length > 0) {
+            console.log(`✅ Loaded ${firebaseResult.jobs.length} jobs from Firebase`);
+            
+            // Convert Firebase jobs to our Job type
+            const firebaseJobs: Job[] = firebaseResult.jobs.map(job => ({
+              ...job,
+              id: job.id || `firebase_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              addedTimestamp: job.createdAt ? new Date(job.createdAt).getTime() : Date.now(),
+              postedDate: job.postedDate || new Date(job.createdAt || Date.now()).toISOString().split('T')[0],
+              page: 1,
+              isNew: true,
+              views: job.views || 0,
+              shares: job.shares || 0,
+              applications: job.applications || 0
+            }));
+            
+            setSyncStatus(`✅ ${firebaseJobs.length} jobs from Firebase`);
+            setJobs(firebaseJobs);
+            
+            // Cache in localStorage for offline access
+            localStorage.setItem('firebase_jobs_cache', JSON.stringify({
+              jobs: firebaseJobs,
+              timestamp: Date.now()
+            }));
+            
+            // Also update manualJobs for backward compatibility
+            localStorage.setItem('manualJobs', JSON.stringify(firebaseJobs));
+            
+            setLoading(false);
+            return;
+          } else {
+            console.log('ℹ️ No jobs found in Firebase, checking localStorage...');
+          }
+        } catch (firebaseError) {
+          console.error('❌ Error loading from Firebase:', firebaseError);
+          setFirebaseConnected(false);
+          setSyncStatus('⚠️ Firebase error, using localStorage');
         }
-      } catch (firebaseError) {
-        console.log('Firebase not available, using localStorage fallback:', firebaseError);
+      } else {
+        console.log('ℹ️ Firebase not configured or invalid, using localStorage');
         setFirebaseConnected(false);
       }
       
       // Fallback to localStorage
+      console.log('🔄 Loading from localStorage...');
+      
+      // First check Firebase cache
+      const cacheData = localStorage.getItem('firebase_jobs_cache');
+      if (cacheData) {
+        try {
+          const { jobs: cachedJobs, timestamp } = JSON.parse(cacheData);
+          const cacheAge = Date.now() - timestamp;
+          const maxCacheAge = 30 * 60 * 1000; // 30 minutes
+          
+          if (cacheAge < maxCacheAge && cachedJobs.length > 0) {
+            console.log(`✅ Using cached jobs (${cacheAge / 1000}s old)`);
+            setJobs(cachedJobs);
+            setSyncStatus(`📱 ${cachedJobs.length} jobs from cache`);
+            setLoading(false);
+            return;
+          }
+        } catch (cacheError) {
+          console.warn('Error parsing cache:', cacheError);
+        }
+      }
+      
+      // Then check manualJobs (legacy)
       const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
       
       // Clean up old jobs (older than 90 days)
@@ -186,7 +239,7 @@ const JobApplications: React.FC = () => {
       setSyncStatus(`📱 ${jobsWithPages.length} jobs from localStorage`);
       
     } catch (error) {
-      console.error('Error loading jobs:', error);
+      console.error('❌ Error loading jobs:', error);
       setSyncStatus('❌ Error loading jobs');
       setJobs([]);
     } finally {
@@ -214,7 +267,16 @@ const JobApplications: React.FC = () => {
     
     // Load jobs
     loadJobs();
-  }, [loadJobs]);
+    
+    // Set up auto-refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      if (firebaseConnected) {
+        loadJobs();
+      }
+    }, 30000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [loadJobs, firebaseConnected]);
 
   // Track page view on mount
   useEffect(() => {
@@ -871,10 +933,42 @@ const JobApplications: React.FC = () => {
     }
   };
 
+  // Test Firebase connection
+  const testFirebaseConnection = async () => {
+    setSyncStatus('🔄 Testing Firebase connection...');
+    try {
+      const result = await firebaseJobService.testFirebaseConnection();
+      if (result.connected) {
+        setFirebaseConnected(true);
+        setSyncStatus('✅ Firebase connected');
+        loadJobs();
+      } else {
+        setFirebaseConnected(false);
+        setSyncStatus('❌ Firebase not connected');
+      }
+    } catch (error) {
+      console.error('Connection test error:', error);
+      setSyncStatus('❌ Connection test failed');
+    }
+  };
+
   // Reload jobs
   const reloadJobs = () => {
     loadJobs();
+    trackGoogleButtonClick('reload_jobs', 'system', 'job_applications');
+    trackButtonClick('reload_jobs', 'system', '/job-applications');
   };
+
+  // Calculate stats on mount
+  useEffect(() => {
+    const totalShares = localStorage.getItem('total_job_shares') || '0';
+    const totalViews = localStorage.getItem('total_job_views') || '0';
+    const totalApplications = localStorage.getItem('total_job_applications_submitted') || '0';
+    
+    setTotalShares(parseInt(totalShares));
+    setTotalViews(parseInt(totalViews));
+    setTotalApplications(parseInt(totalApplications));
+  }, []);
 
   return (
     <>
@@ -1009,19 +1103,51 @@ const JobApplications: React.FC = () => {
             </div>
             <button 
               onClick={reloadJobs}
-              className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors"
+              className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
             >
-              🔄 Reload
+              <RefreshCw size={12} />
+              Reload
+            </button>
+            <button 
+              onClick={testFirebaseConnection}
+              className="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+            >
+              <WifiOff size={12} />
+              Test Connection
             </button>
             {!firebaseConnected && (
               <button 
                 onClick={syncWithFirebase}
-                className="text-sm bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition-colors"
+                className="text-sm bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
               >
-                🔄 Sync to Firebase
+                <Database size={12} />
+                Sync to Firebase
               </button>
             )}
           </div>
+          
+          {/* Firebase Status Details */}
+          {firebaseStatus && (
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 mb-6 max-w-2xl mx-auto">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                <div className={`px-2 py-1 rounded ${firebaseStatus.app ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                  App: {firebaseStatus.app ? '✅' : '❌'}
+                </div>
+                <div className={`px-2 py-1 rounded ${firebaseStatus.firestore ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                  Firestore: {firebaseStatus.firestore ? '✅' : '❌'}
+                </div>
+                <div className={`px-2 py-1 rounded ${firebaseStatus.configValid ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                  Config: {firebaseStatus.configValid ? '✅' : '❌'}
+                </div>
+                <div className={`px-2 py-1 rounded ${firebaseStatus.gdprConsent ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
+                  Consent: {firebaseStatus.gdprConsent ? '✅' : '⚠️'}
+                </div>
+              </div>
+              <p className="text-xs text-blue-200 mt-2">
+                Project: {firebaseStatus.projectId} | Environment: {firebaseStatus.environment}
+              </p>
+            </div>
+          )}
           
           {/* Quick Navigation */}
           <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -1396,8 +1522,15 @@ const JobApplications: React.FC = () => {
                       {totalJobsCount} latest jobs • Sorted by newest first • Auto-cleaned every 90 days
                     </p>
                   </div>
-                  <div className="text-sm text-blue-700 bg-blue-100 px-3 py-1 rounded-full">
-                    Updated: {new Date().toLocaleDateString('en-IN')}
+                  <div className="flex items-center gap-2">
+                    <div className={`text-sm px-2 py-1 rounded-full ${
+                      firebaseConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {firebaseConnected ? 'Firebase ✓' : 'Local Storage'}
+                    </div>
+                    <div className="text-sm text-blue-700 bg-blue-100 px-3 py-1 rounded-full">
+                      Updated: {new Date().toLocaleDateString('en-IN')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1453,6 +1586,20 @@ const JobApplications: React.FC = () => {
                   >
                     Clear All Filters
                   </button>
+                  {!firebaseConnected && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-yellow-700 text-sm flex items-center justify-center gap-2">
+                        <AlertCircle size={16} />
+                        Firebase not connected. Jobs are loaded from local storage only.
+                      </p>
+                      <button 
+                        onClick={testFirebaseConnection}
+                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        Test Firebase Connection
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -1786,7 +1933,7 @@ const JobCard: React.FC<JobCardProps> = ({
   const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000;
   
   // Track job view on mount
-  useEffect(() => {
+  React.useEffect(() => {
     onTrackView(job.id || '', job.title, job.company);
   }, [job.id]);
 
