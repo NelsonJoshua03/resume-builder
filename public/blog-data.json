@@ -1,18 +1,6 @@
 {
   "posts": [
     {
-      "id": 14,
-      "slug": "new-labour-laws-india-2025-impact-on-indian-job-seekers",
-      "title": "India's New Labour Laws 2025: What Every Job Seeker MUST Know (And How It Affects Your Resume)",
-      "excerpt": "Historic 2025 labour reforms explained for job seekers. Learn how new wage codes, social security changes, and flexible work rights impact your resume, interviews, and career strategy.",
-      "category": "career-advice",
-      "date": "2025-12-16",
-      "readTime": "12 min read",
-      "author": "CareerCraft Legal Team",
-      "authorBio": "Indian employment law experts with 15+ years of HR and compliance experience",
-      "contentFile": "new-labour-laws-india-2025-impact-on-indian-job-seekers.md"
-    },
-    {
   "id": 15,
   "slug": "electrical-engineering-fresher-jobs-mumbai-december-2025",
   "title": "Electrical Engineering Fresher Jobs in Mumbai - December 2025: Complete Guide with Resume Templates",
@@ -24,6 +12,19 @@
   "authorBio": "Indian Electrical Engineering Experts with industry recruitment experience",
   "contentFile": "electrical-engineering-fresher-jobs-mumbai-december-2025.md"
 },
+    {
+      "id": 14,
+      "slug": "new-labour-laws-india-2025-impact-on-indian-job-seekers",
+      "title": "India's New Labour Laws 2025: What Every Job Seeker MUST Know (And How It Affects Your Resume)",
+      "excerpt": "Historic 2025 labour reforms explained for job seekers. Learn how new wage codes, social security changes, and flexible work rights impact your resume, interviews, and career strategy.",
+      "category": "career-advice",
+      "date": "2025-12-16",
+      "readTime": "12 min read",
+      "author": "CareerCraft Legal Team",
+      "authorBio": "Indian employment law experts with 15+ years of HR and compliance experience",
+      "contentFile": "new-labour-laws-india-2025-impact-on-indian-job-seekers.md"
+    },
+    
     {
       "id": 13,
       "slug": "careercraft-development-journey-ai-powered-resume-builder",
