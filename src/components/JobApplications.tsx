@@ -1,4 +1,4 @@
-// src/components/JobApplications.tsx - FIXED FIREBASE SYNC VERSION
+// src/components/JobApplications.tsx - UPDATED WITH EXPANDABLE DESCRIPTIONS
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -39,14 +39,70 @@ import {
   Database,
   WifiOff,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Tag,
+  Check,
+  Clock,
+  Award,
+  GraduationCap,
+  Code,
+  BarChart3,
+  Smartphone,
+  Cloud,
+  Server,
+  Database as DatabaseIcon
 } from 'lucide-react';
 
-// Use JobData interface from jobService instead of local interface
 type Job = JobData & {
   addedTimestamp?: number;
   page?: number;
   isNew?: boolean;
+};
+
+// SEO Keywords for Indian job market
+const SEO_KEYWORDS = {
+  'IT/Software': ['JavaScript', 'React', 'Node.js', 'Python', 'Java', 'Cloud', 'AWS', 'DevOps', 'Full Stack', 'Frontend', 'Backend', 'Mobile', 'Web'],
+  'Engineering': ['CAD', 'Design', 'Manufacturing', 'Mechanical', 'Electrical', 'Civil', 'Automation', 'Quality', 'Production', 'Maintenance'],
+  'Data Science': ['Python', 'R', 'Machine Learning', 'AI', 'Analytics', 'SQL', 'Tableau', 'Power BI', 'Big Data', 'Statistics'],
+  'Marketing': ['Digital Marketing', 'SEO', 'Social Media', 'Content', 'Branding', 'Advertising', 'Campaign', 'Analytics', 'Google Ads'],
+  'HR': ['Recruitment', 'Talent Acquisition', 'Employee Relations', 'Training', 'Compensation', 'HRMS', 'Payroll', 'Onboarding'],
+  'Finance': ['Accounting', 'Taxation', 'Audit', 'Financial Analysis', 'Investment', 'Banking', 'CFA', 'CA', 'MBA Finance'],
+  'Healthcare': ['Medical', 'Nursing', 'Pharmacy', 'Hospital', 'Clinical', 'Healthcare Management', 'Doctor', 'Surgeon'],
+  'Education': ['Teaching', 'Training', 'Curriculum', 'Academic', 'Professor', 'Lecturer', 'Education Technology', 'E-learning'],
+  'Sales': ['Business Development', 'Account Management', 'Client Acquisition', 'Negotiation', 'B2B', 'B2C', 'CRM', 'Salesforce']
+};
+
+// Function to extract SEO keywords from description
+const extractSEOKeywords = (description: string, sector: string): string[] => {
+  const keywords: string[] = [];
+  const sectorKeywords = SEO_KEYWORDS[sector as keyof typeof SEO_KEYWORDS] || [];
+  
+  // Check for common keywords
+  const commonKeywords = [
+    'fresher', 'experienced', 'senior', 'junior', 'lead', 'manager', 'director',
+    'remote', 'work from home', 'hybrid', 'onsite',
+    'urgent', 'immediate', 'hiring',
+    'startup', 'MNC', 'corporate', 'multinational'
+  ];
+  
+  // Check description for sector-specific keywords
+  sectorKeywords.forEach(keyword => {
+    if (description.toLowerCase().includes(keyword.toLowerCase())) {
+      keywords.push(keyword);
+    }
+  });
+  
+  // Add common keywords
+  commonKeywords.forEach(keyword => {
+    if (description.toLowerCase().includes(keyword)) {
+      keywords.push(keyword.charAt(0).toUpperCase() + keyword.slice(1));
+    }
+  });
+  
+  // Limit to 5 keywords max
+  return keywords.slice(0, 5);
 };
 
 const JobApplications: React.FC = () => {
@@ -71,6 +127,7 @@ const JobApplications: React.FC = () => {
   const [totalShares, setTotalShares] = useState<number>(0);
   const [totalViews, setTotalViews] = useState<number>(0);
   const [totalApplications, setTotalApplications] = useState<number>(0);
+  const [showDebugInfo, setShowDebugInfo] = useState<boolean>(false);
   const [analytics, setAnalytics] = useState({
     topCities: [] as {city: string; count: number}[],
     topSectors: [] as {sector: string; count: number}[],
@@ -118,17 +175,13 @@ const JobApplications: React.FC = () => {
   // Load jobs from Firebase and localStorage with proper error handling
   const loadJobs = useCallback(async () => {
     setLoading(true);
-    setSyncStatus('🔄 Loading jobs...');
+    setSyncStatus('Loading jobs...');
     
     try {
-      console.log('🔄 Starting job load process...');
-      
       // Check Firebase status
       const status = getFirebaseStatus();
-      console.log('Firebase status:', status);
       
       if (status.firestore && status.configValid) {
-        console.log('✅ Firebase is available, loading from Firestore...');
         setFirebaseConnected(true);
         
         try {
@@ -136,8 +189,6 @@ const JobApplications: React.FC = () => {
           const firebaseResult = await firebaseJobService.getJobs({}, 1, 1000);
           
           if (firebaseResult.jobs && firebaseResult.jobs.length > 0) {
-            console.log(`✅ Loaded ${firebaseResult.jobs.length} jobs from Firebase`);
-            
             // Convert Firebase jobs to our Job type
             const firebaseJobs: Job[] = firebaseResult.jobs.map(job => ({
               ...job,
@@ -151,36 +202,43 @@ const JobApplications: React.FC = () => {
               applications: job.applications || 0
             }));
             
-            setSyncStatus(`✅ ${firebaseJobs.length} jobs from Firebase`);
-            setJobs(firebaseJobs);
+            // Sort by featured first, then by date (newest first)
+            const sortedJobs = firebaseJobs.sort((a, b) => {
+              // Featured jobs first
+              if (a.featured && !b.featured) return -1;
+              if (!a.featured && b.featured) return 1;
+              
+              // Then by date (newest first)
+              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : a.addedTimestamp || 0;
+              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : b.addedTimestamp || 0;
+              return dateB - dateA;
+            });
+            
+            setSyncStatus(`${sortedJobs.length} jobs loaded`);
+            setJobs(sortedJobs);
             
             // Cache in localStorage for offline access
             localStorage.setItem('firebase_jobs_cache', JSON.stringify({
-              jobs: firebaseJobs,
+              jobs: sortedJobs,
               timestamp: Date.now()
             }));
             
             // Also update manualJobs for backward compatibility
-            localStorage.setItem('manualJobs', JSON.stringify(firebaseJobs));
+            localStorage.setItem('manualJobs', JSON.stringify(sortedJobs));
             
             setLoading(false);
             return;
-          } else {
-            console.log('ℹ️ No jobs found in Firebase, checking localStorage...');
           }
         } catch (firebaseError) {
-          console.error('❌ Error loading from Firebase:', firebaseError);
+          console.error('Error loading from Firebase:', firebaseError);
           setFirebaseConnected(false);
-          setSyncStatus('⚠️ Firebase error, using localStorage');
+          setSyncStatus('Using local storage');
         }
       } else {
-        console.log('ℹ️ Firebase not configured or invalid, using localStorage');
         setFirebaseConnected(false);
       }
       
       // Fallback to localStorage
-      console.log('🔄 Loading from localStorage...');
-      
       // First check Firebase cache
       const cacheData = localStorage.getItem('firebase_jobs_cache');
       if (cacheData) {
@@ -190,9 +248,8 @@ const JobApplications: React.FC = () => {
           const maxCacheAge = 30 * 60 * 1000; // 30 minutes
           
           if (cacheAge < maxCacheAge && cachedJobs.length > 0) {
-            console.log(`✅ Using cached jobs (${cacheAge / 1000}s old)`);
             setJobs(cachedJobs);
-            setSyncStatus(`📱 ${cachedJobs.length} jobs from cache`);
+            setSyncStatus(`${cachedJobs.length} cached jobs`);
             setLoading(false);
             return;
           }
@@ -218,14 +275,19 @@ const JobApplications: React.FC = () => {
         localStorage.setItem('manualJobs', JSON.stringify(recentJobs));
       }
       
-      // Sort by addedTimestamp (newest first)
+      // Sort by featured first, then by date (newest first)
       const sortedJobs = recentJobs.sort((a: Job, b: Job) => {
+        // Featured jobs first
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        
+        // Then by date (newest first)
         const timeA = a.addedTimestamp || new Date(a.postedDate || Date.now()).getTime();
         const timeB = b.addedTimestamp || new Date(b.postedDate || Date.now()).getTime();
-        return timeB - timeA; // Descending order (newest first)
+        return timeB - timeA;
       });
 
-      // Add page numbers
+      // Add page numbers and default values
       const jobsWithPages = sortedJobs.map((job: Job, index: number) => ({
         ...job,
         page: job.page || Math.floor(index / jobsPerPage) + 1,
@@ -236,11 +298,11 @@ const JobApplications: React.FC = () => {
       }));
 
       setJobs(jobsWithPages);
-      setSyncStatus(`📱 ${jobsWithPages.length} jobs from localStorage`);
+      setSyncStatus(`${jobsWithPages.length} jobs from storage`);
       
     } catch (error) {
-      console.error('❌ Error loading jobs:', error);
-      setSyncStatus('❌ Error loading jobs');
+      console.error('Error loading jobs:', error);
+      setSyncStatus('Error loading jobs');
       setJobs([]);
     } finally {
       setLoading(false);
@@ -380,17 +442,6 @@ const JobApplications: React.FC = () => {
       },
       resultsCount
     );
-    
-    // Track funnel step for search
-    const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
-    if (searchTerm || locationFilter) {
-      trackFunnelStep('job_search_funnel', 'searched_jobs', 2, {
-        user_id: userId,
-        search_query: searchTerm,
-        location_filter: locationFilter,
-        results_count: resultsCount
-      });
-    }
   };
 
   // Handle city quick filter
@@ -458,7 +509,6 @@ const JobApplications: React.FC = () => {
   const startIndex = (currentPage - 1) * jobsPerPage;
   const currentJobs = filteredJobs.slice(startIndex, startIndex + jobsPerPage);
 
-  const featuredJobs = jobs.filter(job => job.featured);
   const totalJobsCount = jobs.length;
 
   // Calculate stats
@@ -917,38 +967,38 @@ const JobApplications: React.FC = () => {
 
   // Sync with Firebase manually
   const syncWithFirebase = async () => {
-    setSyncStatus('🔄 Syncing with Firebase...');
+    setSyncStatus('Syncing with Firebase...');
     try {
       const result = await firebaseJobService.syncAllToFirebase();
       if (result.synced > 0) {
-        setSyncStatus(`✅ Synced ${result.synced} jobs to Firebase`);
+        setSyncStatus(`Synced ${result.synced} jobs`);
         // Reload jobs
         loadJobs();
       } else {
-        setSyncStatus('✅ Already synced');
+        setSyncStatus('Already synced');
       }
     } catch (error) {
       console.error('Sync error:', error);
-      setSyncStatus('❌ Sync failed');
+      setSyncStatus('Sync failed');
     }
   };
 
   // Test Firebase connection
   const testFirebaseConnection = async () => {
-    setSyncStatus('🔄 Testing Firebase connection...');
+    setSyncStatus('Testing Firebase...');
     try {
       const result = await firebaseJobService.testFirebaseConnection();
       if (result.connected) {
         setFirebaseConnected(true);
-        setSyncStatus('✅ Firebase connected');
+        setSyncStatus('Firebase connected');
         loadJobs();
       } else {
         setFirebaseConnected(false);
-        setSyncStatus('❌ Firebase not connected');
+        setSyncStatus('Firebase not connected');
       }
     } catch (error) {
       console.error('Connection test error:', error);
-      setSyncStatus('❌ Connection test failed');
+      setSyncStatus('Connection test failed');
     }
   };
 
@@ -1036,16 +1086,16 @@ const JobApplications: React.FC = () => {
 
       {/* Notification Banner */}
       {showNotificationBanner && (
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4">
           <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
-            <div className="flex items-center mb-2 md:mb-0">
-              <Bell size={20} className="mr-2" />
-              <span className="font-semibold">Turn on notifications to never miss a job!</span>
+            <div className="flex items-center mb-1 md:mb-0">
+              <Bell size={16} className="mr-2" />
+              <span className="font-semibold text-sm">Turn on notifications to never miss a job!</span>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={requestNotificationPermission}
-                className="bg-white text-blue-600 px-4 py-1 rounded-lg text-sm font-semibold hover:bg-blue-50 transition-colors"
+                className="bg-white text-blue-600 px-3 py-1 rounded-lg text-xs font-semibold hover:bg-blue-50 transition-colors"
               >
                 Enable Notifications
               </button>
@@ -1064,163 +1114,116 @@ const JobApplications: React.FC = () => {
         </div>
       )}
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-16">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex justify-between items-center mb-6">
+      {/* Compact Hero Section */}
+      <section className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between mb-4">
             <Link 
               to="/"
-              className="flex items-center gap-2 text-blue-100 hover:text-white"
+              className="flex items-center gap-2 text-blue-100 hover:text-white mb-2 md:mb-0"
               onClick={() => {
                 trackButtonClick('back_to_home', 'navigation', '/job-applications');
                 trackUserFlow('job_applications', 'home', 'navigation');
               }}
             >
-              <Home size={18} />
+              <Home size={16} />
               Back to Home
             </Link>
-            <div className="flex items-center gap-2">
-              <span className="text-blue-100 text-sm">Last Updated: {new Date().toLocaleDateString('en-IN')}</span>
+            
+            <div className="flex items-center gap-4">
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${firebaseConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                {firebaseConnected ? <Database size={12} /> : <WifiOff size={12} />}
+                {firebaseConnected ? 'Online' : 'Offline'}
+              </div>
+              <span className="text-blue-100 text-xs">Updated: {new Date().toLocaleDateString('en-IN')}</span>
             </div>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Latest Job Opportunities in India</h1>
-          <p className="text-xl max-w-2xl mx-auto mb-8">
-            Freshly updated job postings from top Indian companies. Updated daily.
-            <span className="block text-sm text-blue-200 mt-2">Share jobs to help friends & grow community</span>
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 text-center">Latest Job Opportunities in India</h1>
+          <p className="text-center text-blue-100 mb-4">
+            Fresh job postings from top Indian companies • Updated daily
           </p>
           
-          {/* Firebase Status */}
-          <div className="flex flex-wrap justify-center items-center gap-4 mb-4">
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-              firebaseConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {firebaseConnected ? <Database size={14} /> : <WifiOff size={14} />}
-              {firebaseConnected ? 'Firebase Connected' : 'Local Storage'}
-            </div>
-            <div className="text-sm text-blue-200">
+          {/* Minimal Firebase Status */}
+          <div className="flex flex-wrap justify-center items-center gap-2 mb-4">
+            <div className="text-xs text-blue-200">
               {syncStatus}
             </div>
             <button 
               onClick={reloadJobs}
-              className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded-full transition-colors flex items-center gap-1"
             >
-              <RefreshCw size={12} />
+              <RefreshCw size={10} />
               Reload
             </button>
             <button 
-              onClick={testFirebaseConnection}
-              className="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+              onClick={() => setShowDebugInfo(!showDebugInfo)}
+              className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded-full transition-colors"
             >
-              <WifiOff size={12} />
-              Test Connection
+              {showDebugInfo ? 'Hide' : 'Show'} Debug
             </button>
-            {!firebaseConnected && (
-              <button 
-                onClick={syncWithFirebase}
-                className="text-sm bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
-              >
-                <Database size={12} />
-                Sync to Firebase
-              </button>
-            )}
           </div>
           
-          {/* Firebase Status Details */}
-          {firebaseStatus && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 mb-6 max-w-2xl mx-auto">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+          {/* Debug Info (Collapsible) */}
+          {showDebugInfo && firebaseStatus && (
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 mb-4 max-w-2xl mx-auto text-xs">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
                 <div className={`px-2 py-1 rounded ${firebaseStatus.app ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
-                  App: {firebaseStatus.app ? '✅' : '❌'}
+                  App: {firebaseStatus.app ? '✓' : '✗'}
                 </div>
                 <div className={`px-2 py-1 rounded ${firebaseStatus.firestore ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
-                  Firestore: {firebaseStatus.firestore ? '✅' : '❌'}
+                  Firestore: {firebaseStatus.firestore ? '✓' : '✗'}
                 </div>
                 <div className={`px-2 py-1 rounded ${firebaseStatus.configValid ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
-                  Config: {firebaseStatus.configValid ? '✅' : '❌'}
+                  Config: {firebaseStatus.configValid ? '✓' : '✗'}
                 </div>
                 <div className={`px-2 py-1 rounded ${firebaseStatus.gdprConsent ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
-                  Consent: {firebaseStatus.gdprConsent ? '✅' : '⚠️'}
+                  Consent: {firebaseStatus.gdprConsent ? '✓' : '⚠'}
                 </div>
               </div>
-              <p className="text-xs text-blue-200 mt-2">
-                Project: {firebaseStatus.projectId} | Environment: {firebaseStatus.environment}
-              </p>
+              <div className="flex gap-2 mt-2">
+                <button onClick={testFirebaseConnection} className="text-xs bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded">
+                  Test Connection
+                </button>
+                {!firebaseConnected && (
+                  <button onClick={syncWithFirebase} className="text-xs bg-green-600 hover:bg-green-700 px-2 py-1 rounded">
+                    Sync to Firebase
+                  </button>
+                )}
+              </div>
             </div>
           )}
           
-          {/* Quick Navigation */}
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
-            <Link 
-              to="/job-drives"
-              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
-              onClick={() => {
-                trackButtonClick('view_job_drives', 'quick_nav', '/job-applications');
-                trackUserFlow('job_applications', 'job_drives', 'navigation');
-              }}
-            >
-              <ArrowRight size={16} />
-              View Job Drives
-            </Link>
-            <Link 
-              to="/government-exams"
-              className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg hover:bg-emerald-200 transition-colors flex items-center gap-2"
-              onClick={() => {
-                trackButtonClick('view_government_exams', 'quick_nav', '/job-applications');
-                trackUserFlow('job_applications', 'government_exams', 'navigation');
-              }}
-            >
-              <ArrowRight size={16} />
-              View Government Exams
-            </Link>
-            <Link 
-              to="/blog"
-              className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
-              onClick={() => {
-                trackButtonClick('view_career_blog', 'quick_nav', '/job-applications');
-                trackUserFlow('job_applications', 'blog', 'navigation');
-              }}
-            >
-              <ArrowRight size={16} />
-              View Career Blog
-            </Link>
-          </div>
-          
-          {/* Real-time Stats */}
-          <div className="flex flex-wrap justify-center items-center gap-4 mb-8">
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2">
-              <Eye size={16} />
-              <span>{totalViews} views today</span>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2">
-              <Briefcase size={16} />
-              <span>{totalApplications} applications</span>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2">
-              <Share2 size={16} />
-              <span>{totalShares} shares</span>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2">
-              <Users size={16} />
+          {/* Quick Stats */}
+          <div className="flex flex-wrap justify-center items-center gap-3 mb-4">
+            <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg flex items-center gap-2 text-sm">
+              <Briefcase size={14} />
               <span>{jobs.length} jobs</span>
             </div>
+            <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg flex items-center gap-2 text-sm">
+              <Eye size={14} />
+              <span>{totalViews} views</span>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg flex items-center gap-2 text-sm">
+              <Share2 size={14} />
+              <span>{totalShares} shares</span>
+            </div>
             <button 
-              onClick={viewAnalyticsDashboard}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-green-600 hover:to-emerald-600 transition-colors flex items-center gap-2"
+              onClick={clearFilters}
+              className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors"
             >
-              <TrendingUp size={16} />
-              View Analytics
+              Clear Filters
             </button>
           </div>
           
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="max-w-4xl mx-auto bg-white rounded-lg p-4 shadow-lg">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSearch} className="max-w-4xl mx-auto bg-white rounded-lg p-3 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <input
                   type="text"
                   placeholder="Job title, skills, or company..."
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -1229,7 +1232,7 @@ const JobApplications: React.FC = () => {
                 <input
                   type="text"
                   placeholder="City or state"
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-sm"
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
                 />
@@ -1237,76 +1240,42 @@ const JobApplications: React.FC = () => {
               <div>
                 <button 
                   type="submit"
-                  className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm"
                 >
-                  <Search size={20} />
-                  Find Latest Jobs
+                  <Search size={16} />
+                  Find Jobs
                 </button>
               </div>
             </div>
           </form>
 
           {/* Popular Cities Quick Filters */}
-          <div className="mt-6">
-            <p className="text-blue-100 mb-3">Popular Indian Cities:</p>
-            <div className="flex flex-wrap justify-center gap-2">
+          <div className="mt-4">
+            <div className="flex flex-wrap justify-center gap-1">
               {popularCities.map(city => (
                 <button
                   key={city}
                   onClick={() => handleCityFilter(city)}
-                  className="bg-white text-blue-600 px-3 py-1 rounded-full text-sm font-medium hover:bg-blue-50 transition-colors"
+                  className="bg-white text-blue-600 px-2 py-1 rounded-full text-xs font-medium hover:bg-blue-50 transition-colors"
                 >
                   {city}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Stats */}
-          <div className="mt-6 flex flex-wrap justify-center items-center gap-4">
-            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-              <span className="text-blue-100">Latest Jobs: {totalJobsCount}</span>
-              <span className="text-green-300 text-sm">(Auto-cleaned every 90 days)</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-              <Share2 size={16} />
-              <span className="text-blue-100">Shared: {totalShares} times</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-              <Briefcase size={16} />
-              <span className="text-blue-100">Remote: {remoteJobsCount} positions</span>
-            </div>
-            <button 
-              onClick={clearFilters}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
-            >
-              Clear Filters
-            </button>
-            <button
-              onClick={() => {
-                if (jobs.length > 0) {
-                  handleShareClick(jobs[0]);
-                }
-              }}
-              className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:from-yellow-600 hover:to-amber-600 transition-colors flex items-center gap-2"
-            >
-              <Share2 size={16} />
-              Share Jobs
-            </button>
-          </div>
         </div>
       </section>
 
       {/* Main Content */}
-      <section className="py-12">
+      <section className="py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Filters Sidebar */}
             <div className="lg:w-1/4">
-              <div className="bg-white rounded-lg shadow-lg p-6 sticky-sidebar">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                    <Filter size={20} />
+              <div className="bg-white rounded-lg shadow-lg p-4 sticky-sidebar">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <Filter size={18} />
                     Filters
                   </h3>
                   <button 
@@ -1318,13 +1287,10 @@ const JobApplications: React.FC = () => {
                 </div>
                 
                 {/* Sector Filter */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Building size={16} />
-                    Industry
-                  </label>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
                   <select 
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     value={selectedSector}
                     onChange={(e) => handleSectorChange(e.target.value)}
                   >
@@ -1337,13 +1303,10 @@ const JobApplications: React.FC = () => {
                 </div>
 
                 {/* Job Type Filter */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Briefcase size={16} />
-                    Job Type
-                  </label>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
                   <select 
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     value={selectedType}
                     onChange={(e) => handleTypeChange(e.target.value)}
                   >
@@ -1356,254 +1319,94 @@ const JobApplications: React.FC = () => {
                 </div>
 
                 {/* Analytics Insights */}
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <BarChart size={16} />
-                    Analytics Insights
-                  </h4>
-                  <div className="space-y-3 text-sm">
-                    {/* Top Cities */}
+                <div className="border-t border-gray-200 pt-3">
+                  <h4 className="font-semibold text-gray-800 mb-2 text-sm">Insights</h4>
+                  <div className="space-y-2 text-xs">
                     <div>
-                      <p className="text-gray-600 mb-1">🏙️ Top Cities</p>
-                      <div className="space-y-1">
-                        {analytics.topCities.map((city, index) => (
-                          <div key={city.city} className="flex justify-between items-center">
-                            <span className="text-gray-700">{city.city}</span>
-                            <span className="font-bold text-blue-600">{city.count} jobs</span>
-                          </div>
-                        ))}
-                      </div>
+                      <p className="text-gray-600 mb-1">Top Cities</p>
+                      {analytics.topCities.slice(0, 3).map((city) => (
+                        <div key={city.city} className="flex justify-between items-center">
+                          <span className="text-gray-700 truncate">{city.city}</span>
+                          <span className="font-bold text-blue-600">{city.count}</span>
+                        </div>
+                      ))}
                     </div>
                     
-                    {/* Top Sectors */}
                     <div>
-                      <p className="text-gray-600 mb-1">📊 Popular Sectors</p>
-                      <div className="space-y-1">
-                        {analytics.topSectors.map((sector, index) => (
-                          <div key={sector.sector} className="flex justify-between items-center">
-                            <span className="text-gray-700 truncate">{sector.sector}</span>
-                            <span className="font-bold text-purple-600">{sector.count} jobs</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Popular Jobs */}
-                    <div>
-                      <p className="text-gray-600 mb-1">🔥 Popular Jobs</p>
-                      <div className="space-y-2">
-                        {analytics.popularJobs.map((job, index) => (
-                          <div key={index} className="p-2 bg-gray-50 rounded">
-                            <p className="font-medium text-gray-800 text-xs truncate">{job.title}</p>
-                            <p className="text-gray-600 text-xs">{job.company}</p>
-                            <p className="text-green-600 text-xs">👁️ {job.views} views</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Conversion Rate */}
-                    <div className="pt-3 border-t border-gray-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Conversion Rate</span>
-                        <span className="font-bold text-green-600">
-                          {totalViews > 0 ? ((totalApplications / totalViews) * 100).toFixed(1) : '0'}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-gray-600">Page {currentPage} of {totalPages}</span>
-                      </div>
+                      <p className="text-gray-600 mb-1">Popular Jobs</p>
+                      {analytics.popularJobs.map((job, index) => (
+                        <div key={index} className="p-1 bg-gray-50 rounded text-xs">
+                          <p className="font-medium text-gray-800 truncate">{job.title}</p>
+                          <p className="text-gray-600">{job.views} views</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Resume Builder CTA */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                  <Briefcase size={18} />
-                  Build Your Indian Resume
-                </h3>
-                <p className="text-blue-700 text-sm mb-4">
-                  Create an ATS-friendly resume optimized for Indian job market.
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                <h3 className="font-bold text-blue-800 mb-1 text-sm">Build Your Resume</h3>
+                <p className="text-blue-700 text-xs mb-3">
+                  Create an ATS-friendly resume for Indian job market.
                 </p>
                 <Link 
                   to="/builder" 
                   onClick={() => {
                     trackGoogleButtonClick('build_resume_sidebar', 'sidebar_cta', 'job_applications');
                     trackButtonClick('build_resume_sidebar', 'sidebar_cta', '/job-applications');
-                    trackFunnelStep('job_search_funnel', 'build_resume_clicked', 2.5, {
-                      user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
-                      source: 'job_applications_sidebar'
-                    });
                   }}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors block text-center"
+                  className="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors block text-center"
                 >
                   Build Resume
                 </Link>
-              </div>
-
-              {/* Analytics Dashboard Access */}
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-purple-800 mb-2 flex items-center gap-2">
-                  <BarChart size={18} />
-                  View Analytics
-                </h3>
-                <p className="text-purple-700 text-sm mb-3">
-                  Track job applications and user behavior
-                </p>
-                <Link 
-                  to="/admin/firebase-analytics" 
-                  onClick={() => {
-                    trackGoogleButtonClick('view_analytics', 'sidebar_cta', 'job_applications');
-                    trackButtonClick('view_analytics', 'sidebar_cta', '/job-applications');
-                    trackGoogleCTAClick('analytics_dashboard', 'sidebar', 'job_applications');
-                    trackCTAClick('analytics_dashboard', 'sidebar', '/job-applications');
-                  }}
-                  className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors block text-center"
-                >
-                  View Analytics
-                </Link>
-              </div>
-
-              {/* Export Jobs */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
-                  <Download size={18} />
-                  Export Jobs
-                </h3>
-                <p className="text-green-700 text-sm mb-3">
-                  Download all jobs as CSV for offline reference
-                </p>
-                <button 
-                  onClick={downloadJobsCSV}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors block text-center w-full"
-                >
-                  Download CSV
-                </button>
-              </div>
-
-              {/* Saved Jobs */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mt-6">
-                <h3 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-                  <Bookmark size={18} />
-                  Saved Jobs
-                </h3>
-                <p className="text-amber-700 text-sm mb-2">
-                  You have {savedJobs.length} saved jobs
-                </p>
-                {savedJobs.length > 0 && (
-                  <button 
-                    onClick={() => {
-                      const savedJobsList = jobs.filter(job => savedJobs.includes(job.id || ''));
-                      alert(`Saved Jobs:\n${savedJobsList.map(job => `• ${job.title} at ${job.company}`).join('\n')}`);
-                    }}
-                    className="text-amber-600 hover:text-amber-700 text-sm font-medium"
-                  >
-                    View Saved Jobs
-                  </button>
-                )}
               </div>
             </div>
 
             {/* Jobs List */}
             <div className="lg:w-3/4">
               {/* Info Banner */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-blue-800 font-semibold flex items-center gap-2">
-                      📋 Latest CareerCraft Curated Jobs
-                    </p>
-                    <p className="text-blue-700 text-sm">
-                      Showing {filteredJobs.length} freshly filtered jobs from our Indian job database
-                    </p>
-                    <p className="text-blue-700 text-sm">
-                      {totalJobsCount} latest jobs • Sorted by newest first • Auto-cleaned every 90 days
+                    <p className="text-blue-800 font-semibold text-sm">Latest CareerCraft Jobs</p>
+                    <p className="text-blue-700 text-xs">
+                      Showing {filteredJobs.length} jobs • Sorted by newest first
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`text-sm px-2 py-1 rounded-full ${
-                      firebaseConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {firebaseConnected ? 'Firebase ✓' : 'Local Storage'}
-                    </div>
-                    <div className="text-sm text-blue-700 bg-blue-100 px-3 py-1 rounded-full">
-                      Updated: {new Date().toLocaleDateString('en-IN')}
-                    </div>
+                  <div className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
+                    Page {currentPage} of {totalPages}
                   </div>
                 </div>
               </div>
 
-              {/* Featured Jobs */}
-              {featuredJobs.length > 0 && (
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4">⭐ Latest Featured Opportunities</h2>
-                  <div className="space-y-4">
-                    {featuredJobs.map(job => (
-                      <JobCard 
-                        key={job.id} 
-                        job={job} 
-                        featured 
-                        saved={savedJobs.includes(job.id || '')}
-                        onShare={handleShareClick}
-                        onSave={handleSaveJob}
-                        onApply={handleApply}
-                        onTrackView={(jobId, jobTitle, company) => {
-                          trackJobView(jobId, jobTitle, company);
-                          // Increment view count in Firebase
-                          if (jobId) {
-                            firebaseJobService.incrementViewCount(jobId);
-                          }
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* All Jobs */}
+              {/* Unified Jobs List */}
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {selectedSector === 'all' ? 'All Latest Job Opportunities in India' : `Latest ${selectedSector} Jobs in India`} 
-                  <span className="text-gray-600 text-lg ml-2">({filteredJobs.length})</span>
+                <h2 className="text-xl font-bold text-gray-800">
+                  {selectedSector === 'all' ? 'All Job Opportunities' : `${selectedSector} Jobs`} 
+                  <span className="text-gray-600 text-base ml-2">({filteredJobs.length})</span>
                 </h2>
-                <div className="text-sm text-gray-600 flex items-center gap-2">
-                  <Eye size={14} />
-                  {totalViews} views today •
-                  <Briefcase size={14} />
-                  {totalApplications} applications
+                <div className="text-xs text-gray-600 flex items-center gap-2">
+                  <Eye size={12} />
+                  {totalViews} views
                 </div>
               </div>
               
               {currentJobs.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">No latest jobs found</h3>
-                  <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
+                <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">No jobs found</h3>
+                  <p className="text-gray-600 mb-4 text-sm">Try adjusting your filters or search terms</p>
                   <button 
                     onClick={clearFilters}
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
                   >
                     Clear All Filters
                   </button>
-                  {!firebaseConnected && (
-                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-yellow-700 text-sm flex items-center justify-center gap-2">
-                        <AlertCircle size={16} />
-                        Firebase not connected. Jobs are loaded from local storage only.
-                      </p>
-                      <button 
-                        onClick={testFirebaseConnection}
-                        className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        Test Firebase Connection
-                      </button>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <>
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {currentJobs.map(job => (
                       <JobCard 
                         key={job.id} 
@@ -1625,34 +1428,47 @@ const JobApplications: React.FC = () => {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex justify-center mt-8">
-                      <nav className="flex items-center space-x-2">
+                    <div className="flex justify-center mt-6">
+                      <nav className="flex items-center space-x-1">
                         <button
                           onClick={() => goToPage(currentPage - 1)}
                           disabled={currentPage === 1}
-                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >
                           Previous
                         </button>
                         
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <button
-                            key={page}
-                            onClick={() => goToPage(page)}
-                            className={`px-3 py-2 rounded-lg border ${
-                              currentPage === page
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let page;
+                          if (totalPages <= 5) {
+                            page = i + 1;
+                          } else if (currentPage <= 3) {
+                            page = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            page = totalPages - 4 + i;
+                          } else {
+                            page = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => goToPage(page)}
+                              className={`px-2 py-1 rounded border text-sm ${
+                                currentPage === page
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        })}
                         
                         <button
                           onClick={() => goToPage(currentPage + 1)}
                           disabled={currentPage === totalPages}
-                          className="px-3 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >
                           Next
                         </button>
@@ -1663,15 +1479,12 @@ const JobApplications: React.FC = () => {
               )}
 
               {/* Newsletter Signup */}
-              <div className="mt-12 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+              <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex flex-col md:flex-row items-center justify-between">
-                  <div className="mb-4 md:mb-0">
-                    <h3 className="font-bold text-blue-800 text-lg mb-2 flex items-center gap-2">
-                      <Send size={18} />
-                      Get Daily Job Alerts
-                    </h3>
-                    <p className="text-blue-700 text-sm">
-                      We'll send you fresh job openings matching your profile
+                  <div className="mb-3 md:mb-0">
+                    <h3 className="font-bold text-blue-800 text-sm mb-1">Get Daily Job Alerts</h3>
+                    <p className="text-blue-700 text-xs">
+                      Fresh job openings matching your profile
                     </p>
                   </div>
                   <form 
@@ -1680,96 +1493,20 @@ const JobApplications: React.FC = () => {
                   >
                     <input
                       type="email"
-                      placeholder="Your email address"
+                      placeholder="Your email"
                       required
                       value={newsletterEmail}
                       onChange={(e) => setNewsletterEmail(e.target.value)}
-                      className="flex-1 px-4 py-2 rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-1 rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                     <button 
                       type="submit"
-                      className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors whitespace-nowrap flex items-center gap-2"
+                      className="bg-blue-600 text-white px-4 py-1 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm"
                     >
-                      <Send size={16} />
                       Get Alerts
                     </button>
                   </form>
                 </div>
-              </div>
-
-              {/* Community Stats */}
-              <div className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
-                <h3 className="font-bold text-green-800 mb-4 flex items-center gap-2">
-                  <TrendingUp size={20} />
-                  CareerCraft Community Impact
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
-                    <div className="font-bold text-green-600 text-xl">
-                      {totalJobsCount}
-                    </div>
-                    <div className="text-gray-600">Latest Jobs</div>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
-                    <div className="font-bold text-blue-600 text-xl">
-                      {totalShares}
-                    </div>
-                    <div className="text-gray-600">Jobs Shared</div>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
-                    <div className="font-bold text-purple-600 text-xl">
-                      {Math.ceil(totalJobsCount / 10)}
-                    </div>
-                    <div className="text-gray-600">Job Pages</div>
-                  </div>
-                  <div className="bg-white p-3 rounded-lg border border-green-100 text-center">
-                    <div className="font-bold text-amber-600 text-xl">
-                      90
-                    </div>
-                    <div className="text-gray-600">Days Fresh</div>
-                  </div>
-                </div>
-                <p className="text-green-700 text-sm mt-4 text-center">
-                  <Users size={14} className="inline mr-1" />
-                  Every share helps a friend find their dream job. Keep sharing!
-                </p>
-              </div>
-
-              {/* Navigation to Other Sections */}
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link 
-                  to="/job-drives"
-                  className="bg-green-50 border border-green-200 rounded-xl p-6 hover:bg-green-100 transition-colors"
-                  onClick={() => {
-                    trackButtonClick('navigate_job_drives', 'bottom_nav', '/job-applications');
-                    trackUserFlow('job_applications', 'job_drives', 'bottom_navigation');
-                  }}
-                >
-                  <h3 className="font-bold text-green-800 mb-2">🚀 Job Drives & Walk-ins</h3>
-                  <p className="text-green-700 text-sm">Immediate hiring with direct company interviews</p>
-                </Link>
-                <Link 
-                  to="/government-exams"
-                  className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 hover:bg-emerald-100 transition-colors"
-                  onClick={() => {
-                    trackButtonClick('navigate_government_exams', 'bottom_nav', '/job-applications');
-                    trackUserFlow('job_applications', 'government_exams', 'bottom_navigation');
-                  }}
-                >
-                  <h3 className="font-bold text-emerald-800 mb-2">🏛️ Government Exams</h3>
-                  <p className="text-emerald-700 text-sm">Latest Sarkari Naukri exams and notifications</p>
-                </Link>
-                <Link 
-                  to="/blog"
-                  className="bg-purple-50 border border-purple-200 rounded-xl p-6 hover:bg-purple-100 transition-colors"
-                  onClick={() => {
-                    trackButtonClick('navigate_career_blog', 'bottom_nav', '/job-applications');
-                    trackUserFlow('job_applications', 'blog', 'bottom_navigation');
-                  }}
-                >
-                  <h3 className="font-bold text-purple-800 mb-2">📝 Career Blog</h3>
-                  <p className="text-purple-700 text-sm">Resume tips and career advice for Indian job market</p>
-                </Link>
               </div>
             </div>
           </div>
@@ -1780,122 +1517,65 @@ const JobApplications: React.FC = () => {
       {showShareModal && selectedJob && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">Share Job Opportunity</h3>
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-bold text-gray-800">Share Job</h3>
                 <button
                   onClick={closeShareModal}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <X size={24} />
+                  <X size={20} />
                 </button>
               </div>
               
-              <div className="mb-6">
-                <h4 className="font-semibold text-gray-700 mb-2">{selectedJob.title}</h4>
-                <p className="text-sm text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
-                <p className="text-xs text-gray-500 mt-1">Share with friends who might be interested</p>
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-700 mb-1 text-sm">{selectedJob.title}</h4>
+                <p className="text-xs text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
               </div>
 
               {/* Social Sharing Options */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-3 gap-2 mb-4">
                 <button
                   onClick={() => shareOnPlatform('facebook')}
-                  className="flex flex-col items-center justify-center p-4 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors"
                 >
-                  <Facebook size={24} />
-                  <span className="text-xs mt-2">Facebook</span>
-                </button>
-                
-                <button
-                  onClick={() => shareOnPlatform('twitter')}
-                  className="flex flex-col items-center justify-center p-4 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                >
-                  <Twitter size={24} />
-                  <span className="text-xs mt-2">Twitter/X</span>
-                </button>
-                
-                <button
-                  onClick={() => shareOnPlatform('linkedin')}
-                  className="flex flex-col items-center justify-center p-4 bg-[#0A66C2] text-white rounded-lg hover:bg-[#0958b3] transition-colors"
-                >
-                  <Linkedin size={24} />
-                  <span className="text-xs mt-2">LinkedIn</span>
+                  <Facebook size={20} />
+                  <span className="text-xs mt-1">Facebook</span>
                 </button>
                 
                 <button
                   onClick={() => shareOnPlatform('whatsapp')}
-                  className="flex flex-col items-center justify-center p-4 bg-[#25D366] text-white rounded-lg hover:bg-[#20b857] transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-[#25D366] text-white rounded-lg hover:bg-[#20b857] transition-colors"
                 >
-                  <MessageCircle size={24} />
-                  <span className="text-xs mt-2">WhatsApp</span>
+                  <MessageCircle size={20} />
+                  <span className="text-xs mt-1">WhatsApp</span>
                 </button>
                 
                 <button
-                  onClick={shareViaEmail}
-                  className="flex flex-col items-center justify-center p-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  onClick={() => shareOnPlatform('linkedin')}
+                  className="flex flex-col items-center justify-center p-3 bg-[#0A66C2] text-white rounded-lg hover:bg-[#0958b3] transition-colors"
                 >
-                  <Mail size={24} />
-                  <span className="text-xs mt-2">Email</span>
-                </button>
-                
-                <button
-                  onClick={copyToClipboard}
-                  className="flex flex-col items-center justify-center p-4 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
-                >
-                  <Copy size={24} />
-                  <span className="text-xs mt-2">
-                    {copySuccess ? 'Copied!' : 'Copy Link'}
-                  </span>
+                  <Linkedin size={20} />
+                  <span className="text-xs mt-1">LinkedIn</span>
                 </button>
               </div>
 
-              {/* Copy Link Input */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Direct Link to Job
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}/job-applications?job=${selectedJob.id}`}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
-                  />
-                  <button
-                    onClick={copyToClipboard}
-                    className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors text-sm"
-                  >
-                    {copySuccess ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <button
                   onClick={closeShareModal}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-sm"
                 >
                   Close
                 </button>
                 <button
                   onClick={() => {
-                    trackGoogleButtonClick('apply_from_share', 'share_modal', 'job_applications');
-                    trackButtonClick('apply_from_share', 'share_modal', '/job-applications');
-                    trackFunnelStep('job_search_funnel', 'application_started_from_share', 2.2, {
-                      user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
-                      job_id: selectedJob.id,
-                      source: 'share_modal'
-                    });
-                    
                     if (selectedJob.applyLink && selectedJob.applyLink.startsWith('http')) {
                       handleApply(selectedJob);
                     }
                     closeShareModal();
                   }}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all text-sm"
                 >
-                  <ExternalLink size={16} className="inline mr-2" />
                   Apply Now
                 </button>
               </div>
@@ -1907,7 +1587,7 @@ const JobApplications: React.FC = () => {
   );
 };
 
-// Job Card Component with Enhanced Tracking
+// Job Card Component with Expandable Description
 interface JobCardProps {
   job: Job;
   featured?: boolean;
@@ -1930,7 +1610,13 @@ const JobCard: React.FC<JobCardProps> = ({
   const { trackButtonClick: trackGoogleButtonClick } = useGoogleAnalytics();
   const { trackButtonClick } = useFirebaseAnalytics();
   
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [showFullRequirements, setShowFullRequirements] = useState(false);
+  
   const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000;
+  const seoKeywords = extractSEOKeywords(job.description, job.sector);
+  const maxDescriptionLength = 200;
+  const maxRequirementsToShow = 3;
   
   // Track job view on mount
   React.useEffect(() => {
@@ -1939,11 +1625,6 @@ const JobCard: React.FC<JobCardProps> = ({
 
   const handleApplyClick = () => {
     onApply(job);
-  };
-
-  const handleBuildResumeClick = () => {
-    trackGoogleButtonClick('build_resume_from_job', 'job_card', 'job_applications');
-    trackButtonClick('build_resume_from_job', 'job_card', '/job-applications');
   };
 
   const handleShareClick = (e: React.MouseEvent) => {
@@ -1958,14 +1639,56 @@ const JobCard: React.FC<JobCardProps> = ({
     onSave(job.id || '', job.title, job.company);
   };
 
+  const toggleDescription = () => {
+    setShowFullDescription(!showFullDescription);
+    trackGoogleButtonClick(
+      showFullDescription ? 'collapse_description' : 'expand_description',
+      'job_card',
+      'job_applications'
+    );
+  };
+
+  const toggleRequirements = () => {
+    setShowFullRequirements(!showFullRequirements);
+    trackGoogleButtonClick(
+      showFullRequirements ? 'collapse_requirements' : 'expand_requirements',
+      'job_card',
+      'job_applications'
+    );
+  };
+
+  // Get appropriate icon for sector
+  const getSectorIcon = (sector: string) => {
+    switch(sector) {
+      case 'IT/Software': return <Code size={14} />;
+      case 'Engineering': return <Briefcase size={14} />;
+      case 'Data Science': return <BarChart3 size={14} />;
+      case 'Marketing': return <TrendingUp size={14} />;
+      case 'HR': return <Users size={14} />;
+      case 'Finance': return <DollarSign size={14} />;
+      case 'Healthcare': return <Award size={14} />;
+      case 'Education': return <GraduationCap size={14} />;
+      case 'Sales': return <TrendingUp size={14} />;
+      default: return <Briefcase size={14} />;
+    }
+  };
+
   return (
-    <div className={`job-card bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow ${featured ? 'featured-job border-l-4 border-blue-500' : ''}`}>
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
+    <div className={`bg-white rounded-lg shadow-lg p-4 hover:shadow-xl transition-shadow ${featured ? 'border-l-4 border-blue-500' : ''}`}>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between">
         <div className="flex-1">
+          {/* Job Header */}
           <div className="flex items-start justify-between mb-2">
-            <div>
-              <h3 className="text-xl font-bold text-gray-800 mb-1">{job.title}</h3>
-              <p className="text-lg text-gray-700 mb-2">{job.company} • {job.location}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                {getSectorIcon(job.sector)}
+                <h3 className="text-lg font-bold text-gray-800">{job.title}</h3>
+              </div>
+              <div className="flex items-center flex-wrap gap-2">
+                <p className="text-gray-700 text-sm font-medium">{job.company}</p>
+                <span className="text-gray-500 text-xs">•</span>
+                <p className="text-gray-600 text-sm">{job.location}</p>
+              </div>
             </div>
             <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-2">
@@ -1974,116 +1697,212 @@ const JobCard: React.FC<JobCardProps> = ({
                   className={`p-1 rounded-full ${saved ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
                   title={saved ? 'Remove from saved' : 'Save job'}
                 >
-                  <Heart size={18} fill={saved ? 'currentColor' : 'none'} />
+                  <Heart size={16} fill={saved ? 'currentColor' : 'none'} />
                 </button>
                 <button
                   onClick={handleShareClick}
                   className="text-gray-400 hover:text-blue-600 transition-colors p-1"
                   title="Share this job"
                 >
-                  <Share2 size={18} />
+                  <Share2 size={16} />
                 </button>
               </div>
               <div className="flex flex-col gap-1">
                 {isNewJob && (
-                  <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
-                    🔥 NEW TODAY
+                  <span className="bg-red-100 text-red-800 text-xs font-medium px-1.5 py-0.5 rounded-full">
+                    NEW
                   </span>
                 )}
                 {featured && (
-                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                    ⭐ Featured
+                  <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.5 rounded-full">
+                    FEATURED
                   </span>
                 )}
-                <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                  Updated: {new Date(job.addedTimestamp || job.postedDate || Date.now()).toLocaleDateString('en-IN')}
-                </span>
-                {/* Job Stats */}
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span>👁️ {job.views || 0}</span>
-                  <span>📤 {job.shares || 0}</span>
-                  <span>📝 {job.applications || 0}</span>
-                </div>
               </div>
             </div>
           </div>
           
-          <div className="flex flex-wrap gap-2 mb-3">
-            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-              <Briefcase size={12} />
+          {/* Job Tags & Quick Info */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+              <Briefcase size={11} />
               {job.type}
             </span>
-            <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-              <Building size={12} />
+            <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+              <Building size={11} />
               {job.sector}
             </span>
-            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-              <DollarSign size={12} />
-              {job.salary}
-            </span>
-            <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm flex items-center gap-1">
-              <MapPin size={12} />
-              {job.location}
-            </span>
+            {job.salary && (
+              <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                <DollarSign size={11} />
+                {job.salary}
+              </span>
+            )}
+            {seoKeywords.length > 0 && (
+              <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
+                <Tag size={11} />
+                Keywords: {seoKeywords.slice(0, 2).join(', ')}
+              </span>
+            )}
           </div>
 
-          <p className="text-gray-600 mb-4 line-clamp-2">{job.description}</p>
+          {/* SEO Keywords Badges */}
+          {seoKeywords.length > 0 && (
+            <div className="mb-3">
+              <div className="flex flex-wrap gap-1">
+                {seoKeywords.map((keyword, index) => (
+                  <span 
+                    key={index} 
+                    className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-xs"
+                  >
+                    {keyword}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
-          <div className="mb-4">
-            <h4 className="font-semibold text-gray-800 mb-2">Requirements:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              {job.requirements?.map((req, index) => (
-                <li key={index}>• {req}</li>
-              ))}
-            </ul>
+          {/* Job Description with Read More */}
+          <div className="mb-3">
+            <h4 className="font-semibold text-gray-800 mb-1 text-sm flex items-center gap-1">
+              <span>Job Description</span>
+            </h4>
+            <div className="text-gray-600 text-sm">
+              {showFullDescription ? (
+                <div className="space-y-2">
+                  <p>{job.description}</p>
+                  <button
+                    onClick={toggleDescription}
+                    className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1"
+                  >
+                    <ChevronUp size={12} />
+                    Show Less
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p>
+                    {job.description.length > maxDescriptionLength 
+                      ? `${job.description.substring(0, maxDescriptionLength)}...`
+                      : job.description
+                    }
+                  </p>
+                  {job.description.length > maxDescriptionLength && (
+                    <button
+                      onClick={toggleDescription}
+                      className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1"
+                    >
+                      <ChevronDown size={12} />
+                      Read More
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          {/* Requirements with Read More */}
+          {job.requirements && job.requirements.length > 0 && (
+            <div className="mb-3">
+              <h4 className="font-semibold text-gray-800 mb-1 text-sm flex items-center gap-1">
+                <Check size={14} />
+                Key Requirements
+              </h4>
+              <ul className="text-sm text-gray-600">
+                {job.requirements
+                  .slice(0, showFullRequirements ? job.requirements.length : maxRequirementsToShow)
+                  .map((req, index) => (
+                    <li key={index} className="flex items-start mb-1">
+                      <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                      <span>{req}</span>
+                    </li>
+                  ))}
+              </ul>
+              {job.requirements.length > maxRequirementsToShow && (
+                <button
+                  onClick={toggleRequirements}
+                  className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1 mt-1"
+                >
+                  {showFullRequirements ? (
+                    <>
+                      <ChevronUp size={12} />
+                      Show Less Requirements
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={12} />
+                      Show All {job.requirements.length} Requirements
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Job Stats & Metadata */}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
             <span className="flex items-center gap-1">
-              <Calendar size={14} />
+              <Calendar size={12} />
               Posted {new Date(job.postedDate || job.createdAt || Date.now()).toLocaleDateString()}
             </span>
             {job.addedTimestamp && (
               <span className="flex items-center gap-1">
-                <Briefcase size={14} />
-                Last Updated: {new Date(job.addedTimestamp).toLocaleDateString('en-IN')}
+                <Clock size={12} />
+                Updated: {new Date(job.addedTimestamp).toLocaleDateString('en-IN')}
               </span>
+            )}
+            {(job.views || job.shares || job.applications) && (
+              <div className="flex items-center gap-2">
+                {job.views && job.views > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Eye size={12} />
+                    {job.views} views
+                  </span>
+                )}
+                {job.applications && job.applications > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Users size={12} />
+                    {job.applications} applications
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        <div className="lg:ml-6 lg:text-right mt-4 lg:mt-0 flex flex-col gap-2">
+        {/* Action Buttons */}
+        <div className="md:ml-4 mt-3 md:mt-0 flex flex-col gap-2 min-w-[140px]">
           <button 
             onClick={handleApplyClick}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center flex items-center justify-center gap-2"
+            className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2.5 rounded-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all text-center flex items-center justify-center gap-2 text-sm shadow-md hover:shadow-lg"
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={14} />
             Apply Now
           </button>
           <button
             onClick={handleShareClick}
-            className="border border-blue-600 text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-center flex items-center justify-center gap-2"
+            className="border border-blue-600 text-blue-600 px-4 py-2.5 rounded-lg font-semibold hover:bg-blue-50 transition-colors text-center flex items-center justify-center gap-2 text-sm"
           >
-            <Share2 size={18} />
+            <Share2 size={14} />
             Share Job
           </button>
           <button
             onClick={handleSaveClick}
-            className={`border px-6 py-3 rounded-lg font-semibold transition-colors text-center flex items-center justify-center gap-2 ${
+            className={`border px-4 py-2.5 rounded-lg font-semibold transition-colors text-center flex items-center justify-center gap-2 text-sm ${
               saved
                 ? 'border-red-600 text-red-600 hover:bg-red-50'
-                : 'border-gray-600 text-gray-600 hover:bg-gray-50'
+                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
             }`}
           >
-            <Heart size={18} fill={saved ? 'currentColor' : 'none'} />
+            <Heart size={14} fill={saved ? 'currentColor' : 'none'} />
             {saved ? 'Saved' : 'Save Job'}
           </button>
           <Link 
             to="/builder" 
-            onClick={handleBuildResumeClick}
-            className="border border-green-600 text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors text-center"
+            onClick={() => trackGoogleButtonClick('build_resume_from_job', 'job_card', 'job_applications')}
+            className="border border-green-600 text-green-600 px-4 py-2.5 rounded-lg font-semibold hover:bg-green-50 transition-colors text-center text-sm"
           >
-            Build Resume First
+            Build Resume
           </Link>
         </div>
       </div>
