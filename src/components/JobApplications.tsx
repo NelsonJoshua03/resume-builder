@@ -1,4 +1,4 @@
-// src/components/JobApplications.tsx - UPDATED WITH EXPANDABLE DESCRIPTIONS
+// src/components/JobApplications.tsx - UPDATED WITH postedDate SORTING
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -11,48 +11,35 @@ import type { JobData } from '../firebase/jobService';
 import { 
   Share2, 
   ExternalLink, 
-  Copy, 
   Facebook, 
-  Twitter, 
   Linkedin, 
   MessageCircle,
-  Mail,
   X,
   Bell,
-  Send,
-  Users,
-  TrendingUp,
-  Eye,
-  Briefcase,
-  Search,
-  ArrowRight,
   Home,
   MapPin,
   Building,
   DollarSign,
   Calendar,
-  Download,
+  Search,
   Filter,
-  BarChart,
   Heart,
-  Bookmark,
+  Eye,
+  Users,
+  Briefcase,
+  RefreshCw,
   Database,
   WifiOff,
-  RefreshCw,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  Tag,
-  Check,
   Clock,
   Award,
   GraduationCap,
   Code,
   BarChart3,
-  Smartphone,
-  Cloud,
-  Server,
-  Database as DatabaseIcon
+  TrendingUp,
+  Tag,
+  Check,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 type Job = JobData & {
@@ -121,7 +108,6 @@ const JobApplications: React.FC = () => {
   const jobsPerPage = 10;
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
-  const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const [newsletterEmail, setNewsletterEmail] = useState<string>('');
   const [showNotificationBanner, setShowNotificationBanner] = useState<boolean>(false);
   const [totalShares, setTotalShares] = useState<number>(0);
@@ -132,7 +118,6 @@ const JobApplications: React.FC = () => {
     topCities: [] as {city: string; count: number}[],
     topSectors: [] as {sector: string; count: number}[],
     popularJobs: [] as {title: string; views: number; company: string}[],
-    hourlyTrends: [] as {hour: number; views: number}[]
   });
 
   // Track page time
@@ -172,6 +157,23 @@ const JobApplications: React.FC = () => {
     setFirebaseConnected(!!status.firestore);
   }, []);
 
+  // Helper function to parse postedDate and sort jobs
+  const sortJobsByPostedDate = (jobsArray: Job[]): Job[] => {
+    return [...jobsArray].sort((a, b) => {
+      // Parse postedDate strings to Date objects
+      const dateA = a.postedDate ? new Date(a.postedDate).getTime() : 
+                   a.createdAt ? new Date(a.createdAt).getTime() : 
+                   a.addedTimestamp || 0;
+      
+      const dateB = b.postedDate ? new Date(b.postedDate).getTime() : 
+                   b.createdAt ? new Date(b.createdAt).getTime() : 
+                   b.addedTimestamp || 0;
+      
+      // Newest first (descending order)
+      return dateB - dateA;
+    });
+  };
+
   // Load jobs from Firebase and localStorage with proper error handling
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -202,29 +204,30 @@ const JobApplications: React.FC = () => {
               applications: job.applications || 0
             }));
             
-            // Sort by featured first, then by date (newest first)
-            const sortedJobs = firebaseJobs.sort((a, b) => {
-              // Featured jobs first
+            // FIXED: Sort by postedDate (newest first), then featured
+            const sortedJobs = sortJobsByPostedDate(firebaseJobs);
+            
+            // Move featured jobs to top but maintain date order
+            const finalSortedJobs = sortedJobs.sort((a, b) => {
+              // If both are featured or both are not, maintain date order
+              if (a.featured === b.featured) return 0;
+              // If a is featured and b is not, a comes first
               if (a.featured && !b.featured) return -1;
-              if (!a.featured && b.featured) return 1;
-              
-              // Then by date (newest first)
-              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : a.addedTimestamp || 0;
-              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : b.addedTimestamp || 0;
-              return dateB - dateA;
+              // If b is featured and a is not, b comes first
+              return 1;
             });
             
-            setSyncStatus(`${sortedJobs.length} jobs loaded`);
-            setJobs(sortedJobs);
+            setSyncStatus(`${finalSortedJobs.length} jobs loaded (newest first)`);
+            setJobs(finalSortedJobs);
             
             // Cache in localStorage for offline access
             localStorage.setItem('firebase_jobs_cache', JSON.stringify({
-              jobs: sortedJobs,
+              jobs: finalSortedJobs,
               timestamp: Date.now()
             }));
             
             // Also update manualJobs for backward compatibility
-            localStorage.setItem('manualJobs', JSON.stringify(sortedJobs));
+            localStorage.setItem('manualJobs', JSON.stringify(finalSortedJobs));
             
             setLoading(false);
             return;
@@ -248,8 +251,11 @@ const JobApplications: React.FC = () => {
           const maxCacheAge = 30 * 60 * 1000; // 30 minutes
           
           if (cacheAge < maxCacheAge && cachedJobs.length > 0) {
-            setJobs(cachedJobs);
-            setSyncStatus(`${cachedJobs.length} cached jobs`);
+            // Sort cache by postedDate (newest first)
+            const sortedCachedJobs = sortJobsByPostedDate(cachedJobs);
+            
+            setJobs(sortedCachedJobs);
+            setSyncStatus(`${sortedCachedJobs.length} cached jobs`);
             setLoading(false);
             return;
           }
@@ -266,7 +272,9 @@ const JobApplications: React.FC = () => {
       const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
       
       const recentJobs = savedJobs.filter((job: Job) => {
-        const jobTimestamp = job.addedTimestamp || new Date(job.postedDate || Date.now()).getTime();
+        const jobTimestamp = job.postedDate ? new Date(job.postedDate).getTime() : 
+                           job.createdAt ? new Date(job.createdAt).getTime() : 
+                           job.addedTimestamp || new Date().getTime();
         return jobTimestamp >= ninetyDaysAgo;
       });
       
@@ -275,17 +283,8 @@ const JobApplications: React.FC = () => {
         localStorage.setItem('manualJobs', JSON.stringify(recentJobs));
       }
       
-      // Sort by featured first, then by date (newest first)
-      const sortedJobs = recentJobs.sort((a: Job, b: Job) => {
-        // Featured jobs first
-        if (a.featured && !b.featured) return -1;
-        if (!a.featured && b.featured) return 1;
-        
-        // Then by date (newest first)
-        const timeA = a.addedTimestamp || new Date(a.postedDate || Date.now()).getTime();
-        const timeB = b.addedTimestamp || new Date(b.postedDate || Date.now()).getTime();
-        return timeB - timeA;
-      });
+      // Sort by postedDate (newest first)
+      const sortedJobs = sortJobsByPostedDate(recentJobs);
 
       // Add page numbers and default values
       const jobsWithPages = sortedJobs.map((job: Job, index: number) => ({
@@ -298,7 +297,7 @@ const JobApplications: React.FC = () => {
       }));
 
       setJobs(jobsWithPages);
-      setSyncStatus(`${jobsWithPages.length} jobs from storage`);
+      setSyncStatus(`${jobsWithPages.length} jobs from storage (newest first)`);
       
     } catch (error) {
       console.error('Error loading jobs:', error);
@@ -330,9 +329,9 @@ const JobApplications: React.FC = () => {
     // Load jobs
     loadJobs();
     
-    // Set up auto-refresh every 30 seconds
+    // Set up auto-refresh every 30 seconds when online
     const refreshInterval = setInterval(() => {
-      if (firebaseConnected) {
+      if (firebaseConnected && navigator.onLine) {
         loadJobs();
       }
     }, 30000);
@@ -388,17 +387,10 @@ const JobApplications: React.FC = () => {
           company: job.company
         }));
 
-      // Simulate hourly trends
-      const hourlyTrends = Array.from({ length: 24 }, (_, i) => ({
-        hour: i,
-        views: Math.floor(Math.random() * 100) + 20
-      }));
-
       setAnalytics({
         topCities,
         topSectors,
         popularJobs,
-        hourlyTrends
       });
 
     } catch (error) {
@@ -602,58 +594,6 @@ const JobApplications: React.FC = () => {
   const closeShareModal = () => {
     setShowShareModal(false);
     setSelectedJob(null);
-    setCopySuccess(false);
-  };
-
-  const copyToClipboard = async () => {
-    if (selectedJob) {
-      const jobUrl = `${window.location.origin}/job-applications?job=${selectedJob.id}`;
-      try {
-        await navigator.clipboard.writeText(jobUrl);
-        setCopySuccess(true);
-        
-        // Update job shares in Firebase
-        if (selectedJob.id) {
-          await firebaseJobService.incrementShareCount(selectedJob.id);
-        }
-        
-        // Update local state
-        const updatedJobs = jobs.map(job => 
-          job.id === selectedJob.id 
-            ? { ...job, shares: (job.shares || 0) + 1 }
-            : job
-        );
-        setJobs(updatedJobs);
-        
-        // Update total shares
-        const newTotal = totalShares + 1;
-        setTotalShares(newTotal);
-        localStorage.setItem('total_job_shares', newTotal.toString());
-        
-        // Track sharing
-        trackGoogleButtonClick('copy_job_link', 'share_modal', 'job_applications');
-        trackButtonClick('copy_job_link', 'share_modal', '/job-applications');
-        trackSocialShare('copy_link', 'job', selectedJob.id || '');
-        trackGoogleSocialShare('copy_link', 'job', selectedJob.id || '');
-        
-        trackFirebaseEvent(
-          'job_shared',
-          'Social Sharing',
-          'copy_link',
-          {
-            job_id: selectedJob.id,
-            job_title: selectedJob.title,
-            company: selectedJob.company,
-            platform: 'copy_link',
-            user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
-          }
-        );
-        
-        setTimeout(() => setCopySuccess(false), 2000);
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
-    }
   };
 
   const shareOnPlatform = (platform: string) => {
@@ -661,10 +601,8 @@ const JobApplications: React.FC = () => {
     
     const shareUrls: Record<string, string> = {
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(`Check out this job: ${selectedJob.title} at ${selectedJob.company}`)}`,
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this job opportunity: ${selectedJob.title} at ${selectedJob.company} in ${selectedJob.location}`)}&url=${encodeURIComponent(window.location.href)}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`,
       whatsapp: `https://wa.me/?text=${encodeURIComponent(`Check out this job opportunity on CareerCraft: ${selectedJob.title} at ${selectedJob.company} - ${window.location.href}`)}`,
-      telegram: `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out this job: ${selectedJob.title}`)}`
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`,
     };
     
     if (shareUrls[platform]) {
@@ -707,38 +645,6 @@ const JobApplications: React.FC = () => {
         user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
       }
     );
-  };
-
-  const shareViaEmail = () => {
-    if (selectedJob) {
-      const subject = `Job Opportunity: ${selectedJob.title} at ${selectedJob.company}`;
-      const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\n\nView details: ${window.location.href}`;
-      window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
-      
-      // Update job shares in Firebase
-      if (selectedJob.id) {
-        firebaseJobService.incrementShareCount(selectedJob.id);
-      }
-      
-      // Update local state
-      const updatedJobs = jobs.map(job => 
-        job.id === selectedJob.id 
-          ? { ...job, shares: (job.shares || 0) + 1 }
-          : job
-      );
-      setJobs(updatedJobs);
-      
-      // Update total shares
-      const newTotal = totalShares + 1;
-      setTotalShares(newTotal);
-      localStorage.setItem('total_job_shares', newTotal.toString());
-      
-      // Track sharing
-      trackGoogleButtonClick('share_email', 'share_modal', 'job_applications');
-      trackButtonClick('share_email', 'share_modal', '/job-applications');
-      trackSocialShare('email', 'job', selectedJob.id || '');
-      trackGoogleSocialShare('email', 'job', selectedJob.id || '');
-    }
   };
 
   // Save job functionality
@@ -847,68 +753,6 @@ const JobApplications: React.FC = () => {
     }
   };
 
-  // Download jobs as CSV
-  const downloadJobsCSV = () => {
-    const csvContent = [
-      ['Title', 'Company', 'Location', 'Type', 'Sector', 'Salary', 'Posted Date', 'Apply Link', 'Views', 'Shares', 'Applications'],
-      ...jobs.map(job => [
-        `"${job.title}"`,
-        `"${job.company}"`,
-        `"${job.location}"`,
-        `"${job.type}"`,
-        `"${job.sector}"`,
-        `"${job.salary}"`,
-        `"${job.postedDate || 'Not specified'}"`,
-        `"${job.applyLink}"`,
-        job.views || 0,
-        job.shares || 0,
-        job.applications || 0
-      ])
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `careercraft-jobs-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    trackGoogleButtonClick('download_jobs_csv', 'export', 'job_applications');
-    trackButtonClick('download_jobs_csv', 'export', '/job-applications');
-    
-    trackFirebaseEvent(
-      'jobs_exported',
-      'System',
-      'csv_export',
-      {
-        format: 'csv',
-        job_count: jobs.length,
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
-      }
-    );
-  };
-
-  // View analytics dashboard
-  const viewAnalyticsDashboard = () => {
-    trackGoogleButtonClick('view_analytics_dashboard', 'analytics_cta', 'job_applications');
-    trackButtonClick('view_analytics_dashboard', 'analytics_cta', '/job-applications');
-    trackGoogleCTAClick('analytics_dashboard', 'page_header', 'job_applications');
-    trackCTAClick('analytics_dashboard', 'page_header', '/job-applications');
-    
-    trackFirebaseEvent(
-      'analytics_dashboard_accessed',
-      'Analytics',
-      'job_applications',
-      {
-        source: 'page_header',
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
-      }
-    );
-  };
-
   // Apply for job
   const handleApply = async (job: Job) => {
     // Track job application
@@ -972,10 +816,10 @@ const JobApplications: React.FC = () => {
       const result = await firebaseJobService.syncAllToFirebase();
       if (result.synced > 0) {
         setSyncStatus(`Synced ${result.synced} jobs`);
-        // Reload jobs
+        // Reload jobs to get updated list from Firebase
         loadJobs();
       } else {
-        setSyncStatus('Already synced');
+        setSyncStatus('Already synced or no jobs to sync');
       }
     } catch (error) {
       console.error('Sync error:', error);
@@ -1372,7 +1216,7 @@ const JobApplications: React.FC = () => {
                   <div>
                     <p className="text-blue-800 font-semibold text-sm">Latest CareerCraft Jobs</p>
                     <p className="text-blue-700 text-xs">
-                      Showing {filteredJobs.length} jobs • Sorted by newest first
+                      Showing {filteredJobs.length} jobs • Sorted by posted date (newest first)
                     </p>
                   </div>
                   <div className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded-full">
@@ -1613,7 +1457,15 @@ const JobCard: React.FC<JobCardProps> = ({
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [showFullRequirements, setShowFullRequirements] = useState(false);
   
-  const isNewJob = job.addedTimestamp && (Date.now() - job.addedTimestamp) < 24 * 60 * 60 * 1000;
+  // Calculate if job is new (posted within last 24 hours)
+  const isNewJob = () => {
+    const jobTimestamp = job.postedDate ? new Date(job.postedDate).getTime() : 
+                        job.createdAt ? new Date(job.createdAt).getTime() : 
+                        job.addedTimestamp || 0;
+    const now = Date.now();
+    return (now - jobTimestamp) < 24 * 60 * 60 * 1000; // 24 hours
+  };
+  
   const seoKeywords = extractSEOKeywords(job.description, job.sector);
   const maxDescriptionLength = 200;
   const maxRequirementsToShow = 3;
@@ -1708,7 +1560,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 </button>
               </div>
               <div className="flex flex-col gap-1">
-                {isNewJob && (
+                {isNewJob() && (
                   <span className="bg-red-100 text-red-800 text-xs font-medium px-1.5 py-0.5 rounded-full">
                     NEW
                   </span>
@@ -1843,14 +1695,8 @@ const JobCard: React.FC<JobCardProps> = ({
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
             <span className="flex items-center gap-1">
               <Calendar size={12} />
-              Posted {new Date(job.postedDate || job.createdAt || Date.now()).toLocaleDateString()}
+              Posted: {job.postedDate ? new Date(job.postedDate).toLocaleDateString('en-IN') : 'Recently'}
             </span>
-            {job.addedTimestamp && (
-              <span className="flex items-center gap-1">
-                <Clock size={12} />
-                Updated: {new Date(job.addedTimestamp).toLocaleDateString('en-IN')}
-              </span>
-            )}
             {(job.views || job.shares || job.applications) && (
               <div className="flex items-center gap-2">
                 {job.views && job.views > 0 && (
