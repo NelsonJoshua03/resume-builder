@@ -1,4 +1,4 @@
-// src/hooks/useFirebaseAnalytics.ts - UPDATED WITH PROPER TYPES
+// src/hooks/useFirebaseAnalytics.ts - UPDATED WITH PROPER TYPES AND ALL METHODS
 import { useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { firebaseAnalytics } from '../firebase/analytics';
@@ -313,6 +313,191 @@ export const useFirebaseAnalytics = () => {
     );
   }, [trackFirebaseEvent]);
 
+  // ✅ ADDED: Job Drives tracking methods
+  const trackWalkinDriveView = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'walkin_drive_view',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackWalkinDriveRegistration = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'walkin_drive_registration',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobDriveView = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    source: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_drive_view',
+      'Job Drives',
+      driveTitle,
+      { driveId, source }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobDriveRegistration = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_drive_registration',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackWalkinDriveRegistrationEnhanced = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'walkin_drive_registration_enhanced',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  // Daily Analytics methods
+  const trackDailyPageView = useCallback(async (
+    pageName: string,
+    pagePath: string
+  ) => {
+    const today = new Date().toISOString().split('T')[0];
+    await trackFirebaseEvent(
+      'daily_page_view',
+      'Daily Analytics',
+      pageName,
+      { pagePath, date: today }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobViewEnhanced = useCallback(async (
+    jobId: string,
+    jobTitle: string,
+    company: string,
+    source: string = 'listing'
+  ) => {
+    await trackFirebaseEvent(
+      'job_view_enhanced',
+      'Job Applications',
+      jobTitle,
+      { jobId, company, source }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobApplicationSubmitEnhanced = useCallback(async (
+    jobId: string,
+    jobTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_application_submitted_enhanced',
+      'Job Applications',
+      jobTitle,
+      { jobId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobSearchEnhanced = useCallback(async (
+    searchTerm: string,
+    resultsCount: number,
+    location?: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_search_enhanced',
+      'Job Search',
+      searchTerm,
+      { searchTerm, resultsCount, location: location || 'all' }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackBlogPostReadEnhanced = useCallback(async (
+    postSlug: string,
+    postTitle: string,
+    readDuration: number
+  ) => {
+    await trackFirebaseEvent(
+      'blog_post_read_enhanced',
+      'Blog',
+      postTitle,
+      { postSlug, readDuration }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobDisciplineViewEnhanced = useCallback(async (
+    disciplineName: string,
+    pageTitle: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_discipline_view_enhanced',
+      'Job Disciplines',
+      disciplineName,
+      { pageTitle }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackGovExamApplication = useCallback(async (
+    examId: string,
+    examName: string,
+    organization: string
+  ) => {
+    await trackFirebaseEvent(
+      'gov_exam_application',
+      'Government Exams',
+      examName,
+      { examId, organization }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackResumeGenerationEnhanced = useCallback(async (
+    templateName: string
+  ) => {
+    await trackFirebaseEvent(
+      'resume_generation_enhanced',
+      'Resume Builder',
+      templateName,
+      { templateName }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackDailyUniqueUser = useCallback(async (
+    pagePath: string
+  ) => {
+    const today = new Date().toISOString().split('T')[0];
+    const userId = localStorage.getItem('user_id');
+    
+    if (userId) {
+      await trackFirebaseEvent(
+        'daily_unique_user',
+        'User Analytics',
+        userId,
+        { pagePath, date: today, userId }
+      );
+    }
+  }, [trackFirebaseEvent]);
+
   // Simplified subscribe to events
   const subscribeToEvents = useCallback((callback: (events: any[]) => void) => {
     return firebaseAnalytics.subscribeToAnalytics(callback);
@@ -328,6 +513,7 @@ export const useFirebaseAnalytics = () => {
     trackResumeGeneration,
     trackResumeDownload,
     trackResumePreview,
+    trackResumeGenerationEnhanced,
     
     // Job Portal
     trackJobView,
@@ -335,9 +521,20 @@ export const useFirebaseAnalytics = () => {
     trackJobSave,
     trackJobSearch,
     
+    // Job Drives
+    trackWalkinDriveView,
+    trackWalkinDriveRegistration,
+    trackJobDriveView,
+    trackJobDriveRegistration,
+    trackWalkinDriveRegistrationEnhanced,
+    
     // Blog
     trackBlogView,
     trackBlogSearch,
+    trackBlogPostReadEnhanced,
+    
+    // Government Exams
+    trackGovExamApplication,
     
     // User Interactions
     trackButtonClick,
@@ -348,6 +545,14 @@ export const useFirebaseAnalytics = () => {
     trackTemplateChange,
     trackUserFlow,
     trackError,
+    
+    // Enhanced Analytics
+    trackDailyPageView,
+    trackDailyUniqueUser,
+    trackJobViewEnhanced,
+    trackJobApplicationSubmitEnhanced,
+    trackJobSearchEnhanced,
+    trackJobDisciplineViewEnhanced,
     
     // Real-time analytics
     subscribeToEvents,

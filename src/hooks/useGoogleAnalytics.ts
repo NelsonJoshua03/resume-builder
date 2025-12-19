@@ -1,4 +1,4 @@
-// src/hooks/useGoogleAnalytics.ts - COMPLETE WITH DUAL TRACKING
+// src/hooks/useGoogleAnalytics.ts - COMPLETE WITH DUAL TRACKING AND ALL METHODS
 import { useCallback } from 'react';
 
 export const useGoogleAnalytics = () => {
@@ -151,6 +151,37 @@ export const useGoogleAnalytics = () => {
 
   const trackWalkinDriveRegistration = useCallback((driveId: string, driveTitle: string, company: string) => {
     trackEvent('walkin_drive_registration', {
+      drive_id: driveId,
+      drive_title: driveTitle,
+      company: company,
+      event_category: 'Job Drives',
+      event_label: driveTitle
+    });
+  }, [trackEvent]);
+
+  // Enhanced drive tracking methods
+  const trackJobDriveView = useCallback((driveId: string, driveTitle: string, source: string) => {
+    trackEvent('job_drive_view', {
+      drive_id: driveId,
+      drive_title: driveTitle,
+      source: source,
+      event_category: 'Job Drives',
+      event_label: driveTitle
+    });
+  }, [trackEvent]);
+
+  const trackJobDriveRegistration = useCallback((driveId: string, driveTitle: string, company: string) => {
+    trackEvent('job_drive_registration', {
+      drive_id: driveId,
+      drive_title: driveTitle,
+      company: company,
+      event_category: 'Job Drives',
+      event_label: driveTitle
+    });
+  }, [trackEvent]);
+
+  const trackWalkinDriveRegistrationEnhanced = useCallback((driveId: string, driveTitle: string, company: string) => {
+    trackEvent('walkin_drive_registration_enhanced', {
       drive_id: driveId,
       drive_title: driveTitle,
       company: company,
@@ -361,6 +392,68 @@ export const useGoogleAnalytics = () => {
     });
   }, [trackEvent]);
 
+  // ============ NEW: DAILY ANALYTICS METHODS ============
+  const trackDailyPageView = useCallback((pageName: string, pagePath: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    trackEvent('daily_page_view', {
+      page_name: pageName,
+      page_path: pagePath,
+      date: today,
+      event_category: 'Daily Analytics',
+      event_label: pageName
+    });
+  }, [trackEvent]);
+
+  const trackJobViewEnhanced = useCallback((jobId: string, jobTitle: string, company: string, source: string = 'listing') => {
+    trackEvent('job_view_enhanced', {
+      job_id: jobId,
+      job_title: jobTitle,
+      company: company,
+      source: source,
+      event_category: 'Job Applications',
+      event_label: jobTitle
+    });
+  }, [trackEvent]);
+
+  const trackJobApplicationSubmitEnhanced = useCallback((jobId: string, jobTitle: string, company: string) => {
+    trackEvent('job_application_submitted_enhanced', {
+      job_id: jobId,
+      job_title: jobTitle,
+      company: company,
+      event_category: 'Job Applications',
+      event_label: jobTitle
+    });
+  }, [trackEvent]);
+
+  const trackJobSearchEnhanced = useCallback((searchTerm: string, resultsCount: number, location?: string) => {
+    trackEvent('job_search_enhanced', {
+      search_term: searchTerm,
+      results_count: resultsCount,
+      location: location || 'all',
+      event_category: 'Job Search',
+      event_label: searchTerm
+    });
+  }, [trackEvent]);
+
+  const trackBlogPostReadEnhanced = useCallback((postSlug: string, postTitle: string, readDuration: number) => {
+    trackEvent('blog_post_read_enhanced', {
+      post_slug: postSlug,
+      post_title: postTitle,
+      read_duration: readDuration,
+      event_category: 'Blog',
+      event_label: postTitle
+    });
+  }, [trackEvent]);
+
+  const trackJobDisciplineViewEnhanced = useCallback((disciplineName: string, pageTitle: string) => {
+    trackEvent('job_discipline_view_enhanced', {
+      discipline_name: disciplineName,
+      page_title: pageTitle,
+      event_category: 'Job Disciplines',
+      event_label: disciplineName
+    });
+  }, [trackEvent]);
+
   return {
     // Core tracking
     trackEvent,
@@ -385,6 +478,9 @@ export const useGoogleAnalytics = () => {
     // Job Drives
     trackWalkinDriveView,
     trackWalkinDriveRegistration,
+    trackJobDriveView,
+    trackJobDriveRegistration,
+    trackWalkinDriveRegistrationEnhanced,
     
     // Blog
     trackBlogView,
@@ -425,6 +521,14 @@ export const useGoogleAnalytics = () => {
     trackUserFlow,
     
     // Compatibility
-    trackSearch
+    trackSearch,
+    
+    // Enhanced Analytics
+    trackDailyPageView,
+    trackJobViewEnhanced,
+    trackJobApplicationSubmitEnhanced,
+    trackJobSearchEnhanced,
+    trackBlogPostReadEnhanced,
+    trackJobDisciplineViewEnhanced
   };
 };

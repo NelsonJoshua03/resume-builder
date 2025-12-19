@@ -1,10 +1,12 @@
-// src/components/JobDrives.tsx - COMPLETE WITH FIREBASE ANALYTICS
+// src/components/JobDrives.tsx - MOBILE OPTIMIZED & PROFESSIONAL DESIGN
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
-import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
+import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
+import { firebaseDriveService } from '../firebase/driveService';
+import { getFirebaseStatus } from '../firebase/config';
+import type { JobDriveData } from '../firebase/driveService';
 import { 
   Share2, 
   Calendar, 
@@ -28,30 +30,24 @@ import {
   Eye,
   Star,
   TrendingUp,
-  CalendarDays
+  CalendarDays,
+  Database,
+  WifiOff,
+  Heart,
+  Check,
+  Briefcase,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Search
 } from 'lucide-react';
 
-interface JobDrive {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  date: string;
-  time: string;
-  image: string;
-  description: string;
-  eligibility: string[];
-  documents: string[];
-  applyLink: string;
-  contact: string;
-  featured?: boolean;
+// Use the JobDriveData type from driveService
+type JobDrive = JobDriveData & {
   addedTimestamp?: number;
-  expectedCandidates?: number;
-  registrationLink?: string;
-  driveType?: string;
-  experience?: string;
-  salary?: string;
-}
+  page?: number;
+  isNew?: boolean;
+};
 
 const JobDrives: React.FC = () => {
   const [drives, setDrives] = useState<JobDrive[]>([]);
@@ -65,18 +61,20 @@ const JobDrives: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [copySuccess, setCopySuccess] = useState(false);
-  const [showNewsletterSignup, setShowNewsletterSignup] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [expandedDrives, setExpandedDrives] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<'all' | 'today' | 'featured' | 'upcoming'>('all');
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [syncStatus, setSyncStatus] = useState<string>('');
+  const [firebaseStatus, setFirebaseStatus] = useState<any>(null);
+  const [showDebugInfo, setShowDebugInfo] = useState<boolean>(false);
+  const [savedDrives, setSavedDrives] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [drivesPerPage] = useState<number>(3);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   // Analytics hooks
-  const { 
-    trackDailyPageView,
-    trackJobDriveView,
-    trackJobDriveRegistration 
-  } = useEnhancedAnalytics();
-  
   const { 
     trackButtonClick: trackGoogleButtonClick, 
     trackSocialShare: trackGoogleSocialShare, 
@@ -93,14 +91,12 @@ const JobDrives: React.FC = () => {
     trackSocialShare: trackFirebaseSocialShare,
     trackFunnelStep,
     trackUserFlow,
-    trackJobView: trackFirebaseJobView
+    trackWalkinDriveView,
+    trackWalkinDriveRegistration
   } = useFirebaseAnalytics();
 
   // Track page view on mount
   useEffect(() => {
-    // Enhanced Analytics
-    trackDailyPageView('Job Drives', '/job-drives');
-    
     // Firebase Analytics
     trackFirebasePageView('/job-drives', 'Job Drives');
     
@@ -112,61 +108,184 @@ const JobDrives: React.FC = () => {
       source: document.referrer || 'direct'
     });
 
+    // Load saved drives
+    const saved = JSON.parse(localStorage.getItem('saved_drives') || '[]');
+    setSavedDrives(saved);
+    
+    // Check Firebase status
+    const status = getFirebaseStatus();
+    setFirebaseStatus(status);
+    setFirebaseConnected(!!status.firestore);
+    
     // Load drives
-    loadAndCleanDrives();
+    loadDrives();
   }, []);
 
-  // Clean up old drives (older than 3 months) and load drives
-  const loadAndCleanDrives = () => {
-    // Load drives from localStorage
-    const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
+  // Load drives from Firebase and localStorage
+  const loadDrives = async () => {
+    setLoading(true);
+    setSyncStatus('Loading drives...');
     
-    // Filter out drives older than 90 days (3 months)
-    const now = Date.now();
-    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
-    
-    const recentDrives = savedDrives.filter((drive: JobDrive) => {
-      const driveTimestamp = drive.addedTimestamp || new Date(drive.date).getTime();
-      return driveTimestamp >= ninetyDaysAgo;
-    });
-    
-    // Update localStorage with only recent drives
-    if (recentDrives.length !== savedDrives.length) {
-      localStorage.setItem('jobDrives', JSON.stringify(recentDrives));
-      console.log(`Auto-cleaned ${savedDrives.length - recentDrives.length} old drives (older than 90 days)`);
+    try {
+      // Check Firebase status
+      const status = getFirebaseStatus();
       
-      // Track cleanup event with Firebase - FIXED: Use trackFirebaseEvent
-      const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
-      trackFirebaseEvent(
-        'job_drives_auto_cleaned',
-        'System',
-        'auto_cleanup',
-        {
-          old_count: savedDrives.length,
-          new_count: recentDrives.length,
-          days_old: 90,
-          user_id: userId,
-          timestamp: new Date().toISOString()
-        },
-        savedDrives.length - recentDrives.length
-      );
+      if (status.firestore && status.configValid) {
+        setFirebaseConnected(true);
+        
+        try {
+          // Load from Firebase
+          const firebaseResult = await firebaseDriveService.getDrives({}, 1, 1000);
+          
+          if (firebaseResult.drives && firebaseResult.drives.length > 0) {
+            // Convert Firebase drives to our JobDrive type
+            const firebaseDrives: JobDrive[] = firebaseResult.drives.map(drive => ({
+              ...drive,
+              id: drive.id || `drive_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              addedTimestamp: drive.createdAt ? new Date(drive.createdAt).getTime() : Date.now(),
+              page: 1,
+              isNew: true,
+              views: drive.views || 0,
+              shares: drive.shares || 0,
+              registrations: drive.registrations || 0
+            }));
+            
+            // Sort by date (newest first)
+            const sortedDrives = firebaseDrives.sort((a, b) => {
+              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : a.addedTimestamp || 0;
+              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : b.addedTimestamp || 0;
+              return dateB - dateA; // Descending order (newest first)
+            });
+            
+            // Move featured drives to top
+            const finalSortedDrives = sortedDrives.sort((a, b) => {
+              if (a.featured === b.featured) return 0;
+              if (a.featured && !b.featured) return -1;
+              return 1;
+            });
+            
+            setSyncStatus(`${finalSortedDrives.length} drives loaded`);
+            setDrives(finalSortedDrives);
+            setLastUpdated(new Date().toLocaleString('en-IN'));
+            
+            // Cache in localStorage for offline access
+            localStorage.setItem('firebase_drives_cache', JSON.stringify({
+              drives: finalSortedDrives,
+              timestamp: Date.now()
+            }));
+            
+            // Also update jobDrives for backward compatibility
+            localStorage.setItem('jobDrives', JSON.stringify(finalSortedDrives));
+            
+            setLoading(false);
+            return;
+          }
+        } catch (firebaseError) {
+          console.error('Error loading from Firebase:', firebaseError);
+          setFirebaseConnected(false);
+          setSyncStatus('Using local storage');
+        }
+      } else {
+        setFirebaseConnected(false);
+      }
+      
+      // Fallback to localStorage
+      // First check Firebase cache
+      const cacheData = localStorage.getItem('firebase_drives_cache');
+      if (cacheData) {
+        try {
+          const { drives: cachedDrives, timestamp } = JSON.parse(cacheData);
+          const cacheAge = Date.now() - timestamp;
+          const maxCacheAge = 30 * 60 * 1000; // 30 minutes
+          
+          if (cacheAge < maxCacheAge && cachedDrives.length > 0) {
+            // Sort cache by date (newest first)
+            const sortedCachedDrives = cachedDrives.sort((a: JobDrive, b: JobDrive) => {
+              const dateA = a.createdAt ? new Date(a.createdAt).getTime() : a.addedTimestamp || 0;
+              const dateB = b.createdAt ? new Date(b.createdAt).getTime() : b.addedTimestamp || 0;
+              return dateB - dateA;
+            });
+            
+            setDrives(sortedCachedDrives);
+            setLastUpdated(new Date(timestamp).toLocaleString('en-IN'));
+            setSyncStatus(`${sortedCachedDrives.length} cached drives`);
+            setLoading(false);
+            return;
+          }
+        } catch (cacheError) {
+          console.warn('Error parsing cache:', cacheError);
+        }
+      }
+      
+      // Then check jobDrives (legacy)
+      const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
+      
+      // Clean up old drives (older than 90 days)
+      const now = Date.now();
+      const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+      
+      const recentDrives = savedDrives.filter((drive: JobDrive) => {
+        const driveTimestamp = drive.createdAt ? new Date(drive.createdAt).getTime() : 
+                               drive.addedTimestamp || new Date(drive.date).getTime();
+        return driveTimestamp >= ninetyDaysAgo;
+      });
+      
+      // Update localStorage with only recent drives
+      if (recentDrives.length !== savedDrives.length) {
+        localStorage.setItem('jobDrives', JSON.stringify(recentDrives));
+      }
+      
+      // Sort by date (newest first)
+      const sortedDrives = recentDrives.sort((a: JobDrive, b: JobDrive) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : a.addedTimestamp || new Date(a.date).getTime();
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : b.addedTimestamp || new Date(b.date).getTime();
+        return dateB - dateA;
+      });
+
+      // Add page numbers and default values
+      const drivesWithPages = sortedDrives.map((drive: JobDrive, index: number) => ({
+        ...drive,
+        page: drive.page || Math.floor(index / 10) + 1,
+        addedTimestamp: drive.addedTimestamp || Date.now(),
+        views: drive.views || 0,
+        shares: drive.shares || 0,
+        registrations: drive.registrations || 0
+      }));
+
+      setDrives(drivesWithPages);
+      setLastUpdated(new Date().toLocaleString('en-IN'));
+      setSyncStatus(`${drivesWithPages.length} drives from storage`);
+      
+    } catch (error) {
+      console.error('Error loading drives:', error);
+      setSyncStatus('Error loading drives');
+      setDrives([]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Reload drives
+  const handleRefresh = () => {
+    setCurrentPage(1);
+    loadDrives();
     
-    // Sort by addedTimestamp (newest first)
-    const sortedDrives = recentDrives.sort((a: JobDrive, b: JobDrive) => {
-      const timeA = a.addedTimestamp || new Date(a.date).getTime();
-      const timeB = b.addedTimestamp || new Date(b.date).getTime();
-      return timeB - timeA; // Descending order (newest first)
-    });
+    // Track with both systems
+    trackGoogleButtonClick('refresh_drives', 'refresh', 'job_drives');
+    trackFirebaseButtonClick('refresh_drives', 'refresh', '/job-drives');
     
-    setDrives(sortedDrives);
-    setLastUpdated(new Date().toLocaleString('en-IN'));
-    
-    // Track cleanup if needed
-    if (recentDrives.length !== savedDrives.length) {
-      trackGoogleButtonClick('auto_clean_drives', 'system', 'job_drives');
-      trackFirebaseButtonClick('auto_clean_drives', 'system', '/job-drives');
-    }
+    // Firebase refresh event
+    const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
+    trackFirebaseEvent(
+      'job_drives_refreshed',
+      'User Interaction',
+      'manual_refresh',
+      {
+        user_id: userId,
+        timestamp: new Date().toISOString(),
+        drive_count: drives.length
+      }
+    );
   };
 
   // Categories for filtering
@@ -244,6 +363,40 @@ const JobDrives: React.FC = () => {
   const upcomingDrivesCount = drives.filter(d => new Date(d.date) > new Date() && new Date(d.date).toDateString() !== new Date().toDateString()).length;
   const allDrivesCount = drives.length;
 
+  // Pagination logic
+  const indexOfLastDrive = currentPage * drivesPerPage;
+  const indexOfFirstDrive = indexOfLastDrive - drivesPerPage;
+  const currentDrives = filteredDrives.slice(indexOfFirstDrive, indexOfLastDrive);
+  const totalPages = Math.ceil(filteredDrives.length / drivesPerPage);
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    
+    // Track with both systems
+    trackGoogleButtonClick('page_change', 'pagination', 'job_drives');
+    trackFirebaseButtonClick('page_change', 'pagination', '/job-drives');
+    
+    // Firebase pagination event
+    const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
+    trackFirebaseEvent(
+      'job_drives_page_changed',
+      'User Interaction',
+      `page_${pageNumber}`,
+      {
+        user_id: userId,
+        timestamp: new Date().toISOString(),
+        page: pageNumber,
+        drives_per_page: drivesPerPage
+      }
+    );
+    
+    // Scroll to top of drives section
+    window.scrollTo({
+      top: 500,
+      behavior: 'smooth'
+    });
+  };
+
   const handleShare = (drive: JobDrive) => {
     setSelectedDrive(drive);
     setShowShareModal(true);
@@ -252,12 +405,12 @@ const JobDrives: React.FC = () => {
     trackGoogleButtonClick('share_drive', 'drive_card', 'job_drives');
     trackFirebaseButtonClick('share_drive', 'drive_card', '/job-drives');
     
-    // Track Firebase event - FIXED: Use trackFirebaseEvent
+    // Firebase event
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFirebaseEvent(
       'job_drive_share_opened',
       'Job Drives',
-      drive.id,
+      drive.id || 'unknown',
       {
         drive_id: drive.id,
         drive_title: drive.title,
@@ -270,12 +423,14 @@ const JobDrives: React.FC = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setCurrentPage(1);
+    setShowMobileSearch(false);
     
     // Track with both systems
     trackGoogleButtonClick('search_drives', 'search_form', 'job_drives');
     trackFirebaseButtonClick('search_drives', 'search_form', '/job-drives');
     
-    // Track Firebase search event - FIXED: Use trackFirebaseEvent
+    // Firebase search event
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFirebaseEvent(
       'job_drive_search_performed',
@@ -294,22 +449,20 @@ const JobDrives: React.FC = () => {
     );
   };
 
-  const handleRegisterClick = (drive: JobDrive) => {
-    // Enhanced Analytics
-    trackJobDriveRegistration(drive.id, drive.title, drive.company);
-    
+  const handleRegisterClick = async (drive: JobDrive) => {
     // Google Analytics
     trackGoogleButtonClick('register_drive', 'drive_card', 'job_drives');
     
     // Firebase Analytics
     trackFirebaseButtonClick('register_drive', 'drive_card', '/job-drives');
+    trackWalkinDriveRegistration(drive.id || '', drive.title, drive.company);
     
-    // Firebase registration event - FIXED: Use trackFirebaseEvent
+    // Firebase registration event
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFirebaseEvent(
       'job_drive_registration_started',
       'Job Drives',
-      drive.id,
+      drive.id || 'unknown',
       {
         drive_id: drive.id,
         drive_title: drive.title,
@@ -329,15 +482,20 @@ const JobDrives: React.FC = () => {
       company: drive.company
     });
 
+    // Increment registration count in Firebase
+    if (drive.id) {
+      await firebaseDriveService.incrementRegistrationCount(drive.id);
+    }
+
     // Handle external links properly
-    if (drive.registrationLink || drive.applyLink) {
-      const url = drive.registrationLink || drive.applyLink;
-      if (url.startsWith('http')) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-        trackExternalLink('Drive Registration', url, 'job_drives');
-      } else {
-        console.warn('Invalid URL for drive:', drive.title, url);
-      }
+    const url = drive.registrationLink || drive.applyLink;
+    if (url && url.startsWith('http')) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      trackExternalLink('Drive Registration', url, 'job_drives');
+    } else if (url && url.startsWith('mailto:')) {
+      window.location.href = url;
+    } else {
+      console.warn('Invalid URL for drive:', drive.title, url);
     }
   };
 
@@ -348,12 +506,13 @@ const JobDrives: React.FC = () => {
     setDriveTypeFilter('all');
     setFeaturedFilter('all');
     setActiveTab('all');
+    setCurrentPage(1);
     
     // Track with both systems
     trackGoogleButtonClick('clear_filters', 'filters', 'job_drives');
     trackFirebaseButtonClick('clear_filters', 'filters', '/job-drives');
     
-    // Firebase clear filters event - FIXED: Use trackFirebaseEvent
+    // Firebase clear filters event
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFirebaseEvent(
       'job_drive_filters_cleared',
@@ -373,12 +532,12 @@ const JobDrives: React.FC = () => {
   const handleSocialShare = (platform: string) => {
     if (selectedDrive) {
       // Google Analytics
-      trackGoogleSocialShare(platform, 'job_drive', selectedDrive.id);
+      trackGoogleSocialShare(platform, 'job_drive', selectedDrive.id || '');
       
       // Firebase Analytics
-      trackFirebaseSocialShare(platform, 'job_drive', selectedDrive.id);
+      trackFirebaseSocialShare(platform, 'job_drive', selectedDrive.id || '');
       
-      // Firebase share event - FIXED: Use trackFirebaseEvent
+      // Firebase share event
       const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
       trackFirebaseEvent(
         'job_drive_shared',
@@ -393,28 +552,12 @@ const JobDrives: React.FC = () => {
           timestamp: new Date().toISOString()
         }
       );
-    }
-  };
 
-  const handleRefresh = () => {
-    loadAndCleanDrives();
-    
-    // Track with both systems
-    trackGoogleButtonClick('refresh_drives', 'refresh', 'job_drives');
-    trackFirebaseButtonClick('refresh_drives', 'refresh', '/job-drives');
-    
-    // Firebase refresh event - FIXED: Use trackFirebaseEvent
-    const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
-    trackFirebaseEvent(
-      'job_drives_refreshed',
-      'User Interaction',
-      'manual_refresh',
-      {
-        user_id: userId,
-        timestamp: new Date().toISOString(),
-        drive_count: drives.length
+      // Increment share count in Firebase
+      if (selectedDrive.id) {
+        firebaseDriveService.incrementShareCount(selectedDrive.id);
       }
-    );
+    }
   };
 
   const closeShareModal = () => {
@@ -435,10 +578,10 @@ const JobDrives: React.FC = () => {
       trackFirebaseButtonClick('copy_drive_link', 'share_modal', '/job-drives');
       
       // Social share tracking
-      trackGoogleSocialShare('copy_link', 'job_drive', selectedDrive.id);
-      trackFirebaseSocialShare('copy_link', 'job_drive', selectedDrive.id);
+      trackGoogleSocialShare('copy_link', 'job_drive', selectedDrive.id || '');
+      trackFirebaseSocialShare('copy_link', 'job_drive', selectedDrive.id || '');
       
-      // Firebase copy event - FIXED: Use trackFirebaseEvent
+      // Firebase copy event
       const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
       trackFirebaseEvent(
         'job_drive_link_copied',
@@ -469,12 +612,12 @@ const JobDrives: React.FC = () => {
         });
         
         // Track with both systems
-        trackGoogleSocialShare('native', 'job_drive', selectedDrive.id);
-        trackFirebaseSocialShare('native', 'job_drive', selectedDrive.id);
+        trackGoogleSocialShare('native', 'job_drive', selectedDrive.id || '');
+        trackFirebaseSocialShare('native', 'job_drive', selectedDrive.id || '');
         trackGoogleButtonClick('native_share', 'share_modal', 'job_drives');
         trackFirebaseButtonClick('native_share', 'share_modal', '/job-drives');
         
-        // Firebase native share event - FIXED: Use trackFirebaseEvent
+        // Firebase native share event
         const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
         trackFirebaseEvent(
           'job_drive_native_shared',
@@ -550,7 +693,7 @@ const JobDrives: React.FC = () => {
       trackGoogleButtonClick('newsletter_signup_drives', 'newsletter', 'job_drives');
       trackFirebaseButtonClick('newsletter_signup_drives', 'newsletter', '/job-drives');
       
-      // Firebase newsletter signup event - FIXED: Use trackFirebaseEvent
+      // Firebase newsletter signup event
       const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
       trackFirebaseEvent(
         'job_drive_newsletter_signup',
@@ -570,7 +713,6 @@ const JobDrives: React.FC = () => {
       
       alert(`Thank you! You'll receive drive alerts at ${newsletterEmail}`);
       setNewsletterEmail('');
-      setShowNewsletterSignup(false);
       
       // Save to localStorage
       const subscribers = JSON.parse(localStorage.getItem('drive_subscribers') || '[]');
@@ -599,8 +741,8 @@ const JobDrives: React.FC = () => {
   const toggleExpandAll = () => {
     const allExpanded = Object.values(expandedDrives).every(val => val);
     const newExpandedState: Record<string, boolean> = {};
-    filteredDrives.forEach(drive => {
-      newExpandedState[drive.id] = !allExpanded;
+    currentDrives.forEach(drive => {
+      newExpandedState[drive.id || ''] = !allExpanded;
     });
     setExpandedDrives(newExpandedState);
     
@@ -608,7 +750,7 @@ const JobDrives: React.FC = () => {
     trackGoogleButtonClick('toggle_all_expand', 'page_controls', 'job_drives');
     trackFirebaseButtonClick('toggle_all_expand', 'page_controls', '/job-drives');
     
-    // Firebase expand all event - FIXED: Use trackFirebaseEvent
+    // Firebase expand all event
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFirebaseEvent(
       allExpanded ? 'job_drives_all_collapsed' : 'job_drives_all_expanded',
@@ -617,7 +759,7 @@ const JobDrives: React.FC = () => {
       {
         user_id: userId,
         action: allExpanded ? 'collapse_all' : 'expand_all',
-        drive_count: filteredDrives.length,
+        drive_count: currentDrives.length,
         timestamp: new Date().toISOString()
       }
     );
@@ -626,12 +768,13 @@ const JobDrives: React.FC = () => {
   // Handle tab change
   const handleTabChange = (tab: 'all' | 'today' | 'featured' | 'upcoming') => {
     setActiveTab(tab);
+    setCurrentPage(1);
     
     // Track with both systems
     trackGoogleButtonClick(`tab_${tab}`, 'tabs', 'job_drives');
     trackFirebaseButtonClick(`tab_${tab}`, 'tabs', '/job-drives');
     
-    // Firebase tab change event - FIXED: Use trackFirebaseEvent
+    // Firebase tab change event
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFirebaseEvent(
       'job_drives_tab_changed',
@@ -646,6 +789,91 @@ const JobDrives: React.FC = () => {
       }
     );
   };
+
+  // Save drive functionality
+  const handleSaveDrive = (driveId: string, driveTitle: string, company: string) => {
+    const isAlreadySaved = savedDrives.includes(driveId);
+    
+    if (isAlreadySaved) {
+      // Remove from saved
+      const newSaved = savedDrives.filter(id => id !== driveId);
+      setSavedDrives(newSaved);
+      localStorage.setItem('saved_drives', JSON.stringify(newSaved));
+    } else {
+      // Add to saved
+      const newSaved = [...savedDrives, driveId];
+      setSavedDrives(newSaved);
+      localStorage.setItem('saved_drives', JSON.stringify(newSaved));
+      
+      // Firebase save event
+      const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
+      trackFirebaseEvent(
+        'drive_saved',
+        'Drive Interaction',
+        driveId,
+        {
+          drive_id: driveId,
+          drive_title: driveTitle,
+          company: company,
+          user_id: userId
+        }
+      );
+    }
+    
+    trackGoogleButtonClick(
+      isAlreadySaved ? 'unsave_drive' : 'save_drive', 
+      'drive_card', 
+      'job_drives'
+    );
+    trackFirebaseButtonClick(
+      isAlreadySaved ? 'unsave_drive' : 'save_drive', 
+      'drive_card', 
+      '/job-drives'
+    );
+  };
+
+  // Sync with Firebase manually
+  const syncWithFirebase = async () => {
+    setSyncStatus('Syncing with Firebase...');
+    try {
+      const result = await firebaseDriveService.syncAllToFirebase();
+      if (result.synced > 0) {
+        setSyncStatus(`Synced ${result.synced} drives`);
+        // Reload drives to get updated list from Firebase
+        loadDrives();
+      } else {
+        setSyncStatus('Already synced or no drives to sync');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      setSyncStatus('Sync failed');
+    }
+  };
+
+  // Test Firebase connection
+  const testFirebaseConnection = async () => {
+    setSyncStatus('Testing Firebase...');
+    try {
+      const result = await firebaseDriveService.testFirebaseConnection();
+      if (result.connected) {
+        setFirebaseConnected(true);
+        setSyncStatus('Firebase connected');
+        loadDrives();
+      } else {
+        setFirebaseConnected(false);
+        setSyncStatus('Firebase not connected');
+      }
+    } catch (error) {
+      console.error('Connection test error:', error);
+      setSyncStatus('Connection test failed');
+    }
+  };
+
+  // Popular Indian cities for quick filters
+  const popularCities = [
+    'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 
+    'Pune', 'Kolkata', 'Ahmedabad', 'Remote', 'Gurgaon', 'Noida'
+  ];
 
   return (
     <>
@@ -711,39 +939,95 @@ const JobDrives: React.FC = () => {
         </script>
       </Helmet>
 
-      {/* Hero Section - WIDER CONTAINER */}
-      <section className="bg-gradient-to-r from-green-600 to-emerald-500 text-white py-16">
-        <div className="container mx-auto px-4 text-center max-w-7xl">
-          <div className="flex justify-between items-center mb-6">
+      {/* Loading State */}
+      {loading && (
+        <div className="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <p className="mt-4 text-gray-700">{syncStatus}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Hero Section - MOBILE OPTIMIZED */}
+      <section className="bg-gradient-to-r from-green-600 to-emerald-500 text-white pt-4 pb-8 md:py-16">
+        <div className="container mx-auto px-3 md:px-4 max-w-7xl">
+          {/* Top Bar */}
+          <div className="flex justify-between items-center mb-4">
             <Link 
               to="/"
-              className="flex items-center gap-2 text-green-100 hover:text-white"
+              className="flex items-center gap-2 text-green-100 hover:text-white text-sm"
               onClick={() => {
                 trackFirebaseButtonClick('back_to_home', 'navigation', '/job-drives');
                 trackUserFlow('job_drives', 'home', 'navigation');
               }}
             >
-              <ArrowRight className="rotate-180" size={18} />
-              Back to Home
+              <ArrowRight className="rotate-180" size={16} />
+              <span className="hidden sm:inline">Back to Home</span>
             </Link>
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition-colors"
-              title="Refresh latest drives"
-            >
-              <RefreshCw size={18} />
-              <span className="text-sm">Refresh</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${firebaseConnected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                {firebaseConnected ? <Database size={10} /> : <WifiOff size={10} />}
+                <span className="hidden xs:inline">{firebaseConnected ? 'Online' : 'Offline'}</span>
+              </div>
+              <button
+                onClick={handleRefresh}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors"
+                title="Refresh latest drives"
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
+                onClick={() => setShowMobileSearch(!showMobileSearch)}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 p-2 rounded-full transition-colors md:hidden"
+                title="Search drives"
+              >
+                <Search size={16} />
+              </button>
+            </div>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Latest Walk-in Drives & Job Fairs in India</h1>
-          <p className="text-xl max-w-3xl mx-auto mb-8">
-            Fresh immediate hiring opportunities with direct company interviews across India
-            <span className="block text-sm text-green-200 mt-2">Auto-cleaned every 90 days • Updated: {lastUpdated}</span>
-          </p>
+          {/* Title - Smaller on mobile */}
+          <div className="text-center mb-4">
+            <h1 className="text-2xl md:text-4xl font-bold mb-2">Walk-in Drives & Job Fairs</h1>
+            <p className="text-sm md:text-base opacity-90 max-w-3xl mx-auto">
+              Immediate hiring opportunities across India
+              <span className="block text-xs opacity-75 mt-1">Updated: {lastUpdated}</span>
+            </p>
+          </div>
           
-          {/* Search Form - WIDER */}
-          <form onSubmit={handleSearch} className="max-w-6xl mx-auto bg-white rounded-xl p-4 shadow-2xl">
+          {/* Mobile Search Bar */}
+          {showMobileSearch && (
+            <div className="mb-4 md:hidden">
+              <form onSubmit={handleSearch} className="bg-white rounded-lg p-3 shadow-lg">
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Job title or company..."
+                    className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 text-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    placeholder="City or location"
+                    className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900 text-sm"
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                  />
+                  <button 
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded font-medium text-sm"
+                  >
+                    Search Drives
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Desktop Search Form */}
+          <form onSubmit={handleSearch} className="hidden md:block max-w-6xl mx-auto bg-white rounded-xl p-4 shadow-2xl mb-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <input
@@ -781,7 +1065,7 @@ const JobDrives: React.FC = () => {
                   type="submit"
                   className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
                 >
-                  Find Latest Drives
+                  Find Drives
                 </button>
               </div>
             </div>
@@ -832,8 +1116,8 @@ const JobDrives: React.FC = () => {
                   </div>
                   <div className="flex items-center">
                     <div className="bg-gray-100 p-3 rounded-lg text-center w-full">
-                      <div className="text-sm text-gray-700">Found Drives:</div>
-                      <div className="text-2xl font-bold text-green-600">{filteredDrives.length}</div>
+                      <div className="text-sm text-gray-700">Found:</div>
+                      <div className="text-xl font-bold text-green-600">{filteredDrives.length}</div>
                     </div>
                   </div>
                   <div className="flex items-end">
@@ -842,7 +1126,7 @@ const JobDrives: React.FC = () => {
                       onClick={handleClearFilters}
                       className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                     >
-                      Clear All Filters
+                      Clear Filters
                     </button>
                   </div>
                 </div>
@@ -850,304 +1134,328 @@ const JobDrives: React.FC = () => {
             </div>
           </form>
 
-          {/* Stats - WIDER */}
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-6 gap-3 max-w-5xl mx-auto">
+          {/* Stats - SMALLER FONTS */}
+          <div className="mt-4 grid grid-cols-4 gap-2 max-w-3xl mx-auto">
             <div 
-              className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
               onClick={() => handleTabChange('all')}
             >
-              <div className="text-2xl font-bold">{allDrivesCount}</div>
-              <div className="text-green-100 text-xs md:text-sm">Total Drives</div>
+              <div className="text-lg font-bold">{allDrivesCount}</div>
+              <div className="text-green-100 text-xs">Total</div>
             </div>
             <div 
-              className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
               onClick={() => handleTabChange('today')}
             >
-              <div className="text-2xl font-bold">{todayDrivesCount}</div>
-              <div className="text-green-100 text-xs md:text-sm">Today</div>
+              <div className="text-lg font-bold">{todayDrivesCount}</div>
+              <div className="text-green-100 text-xs">Today</div>
             </div>
             <div 
-              className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
               onClick={() => handleTabChange('featured')}
             >
-              <div className="text-2xl font-bold">{featuredDrivesCount}</div>
-              <div className="text-green-100 text-xs md:text-sm">Featured</div>
+              <div className="text-lg font-bold">{featuredDrivesCount}</div>
+              <div className="text-green-100 text-xs">Featured</div>
             </div>
             <div 
-              className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
               onClick={() => handleTabChange('upcoming')}
             >
-              <div className="text-2xl font-bold">{upcomingDrivesCount}</div>
-              <div className="text-green-100 text-xs md:text-sm">Upcoming</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-lg text-center">
-              <div className="text-2xl font-bold">{drives.filter(d => d.image).length}</div>
-              <div className="text-green-100 text-xs md:text-sm">With Images</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-3 rounded-lg text-center">
-              <div className="text-2xl font-bold">{new Date().getDate()}</div>
-              <div className="text-green-100 text-xs md:text-sm">Current Day</div>
+              <div className="text-lg font-bold">{upcomingDrivesCount}</div>
+              <div className="text-green-100 text-xs">Upcoming</div>
             </div>
           </div>
 
-          {/* Share CTA */}
-          <div className="mt-6">
-            <button
-              onClick={() => {
-                if (drives.length > 0) {
-                  setSelectedDrive(drives[0]);
-                  setShowShareModal(true);
-                }
-              }}
-              className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-6 py-3 rounded-full font-semibold hover:from-yellow-600 hover:to-amber-600 transition-all shadow-lg hover:shadow-xl flex items-center gap-2 mx-auto"
+          {/* Debug Section - Hidden but accessible */}
+          <div className="mt-3 text-center">
+            <button 
+              onClick={() => setShowDebugInfo(!showDebugInfo)}
+              className="text-xs opacity-50 hover:opacity-100 transition-opacity"
             >
-              <Share2 size={20} />
-              Share Latest Drives with Friends
+              {showDebugInfo ? 'Hide' : 'Show'} System Info
             </button>
+            
+            {/* Debug Info - Hidden by default */}
+            {showDebugInfo && firebaseStatus && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 mt-2 max-w-2xl mx-auto text-xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-1">
+                  <div className={`px-2 py-1 rounded ${firebaseStatus.app ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                    App: {firebaseStatus.app ? '✓' : '✗'}
+                  </div>
+                  <div className={`px-2 py-1 rounded ${firebaseStatus.firestore ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                    Firestore: {firebaseStatus.firestore ? '✓' : '✗'}
+                  </div>
+                  <div className={`px-2 py-1 rounded ${firebaseStatus.configValid ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                    Config: {firebaseStatus.configValid ? '✓' : '✗'}
+                  </div>
+                  <div className={`px-2 py-1 rounded ${firebaseStatus.gdprConsent ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
+                    Consent: {firebaseStatus.gdprConsent ? '✓' : '⚠'}
+                  </div>
+                </div>
+                <div className="mt-2 text-xs opacity-75">{syncStatus}</div>
+                <div className="flex justify-center gap-2 mt-2">
+                  <button 
+                    onClick={testFirebaseConnection}
+                    className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors"
+                  >
+                    Test Connection
+                  </button>
+                  {!firebaseConnected && (
+                    <button 
+                      onClick={syncWithFirebase}
+                      className="text-xs bg-green-600 hover:bg-green-700 px-2 py-1 rounded transition-colors"
+                    >
+                      Sync to Firebase
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Quick City Filters - Smaller */}
+          <div className="mt-3">
+            <div className="flex flex-wrap justify-center gap-1">
+              {popularCities.slice(0, 6).map(city => (
+                <button
+                  key={city}
+                  onClick={() => setLocationFilter(city)}
+                  className="bg-white text-green-600 px-2 py-1 rounded-full text-xs hover:bg-green-50 transition-colors"
+                >
+                  {city}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Main Content - WIDER CONTAINER */}
-      <section className="py-12">
-        <div className="container mx-auto px-4 max-w-7xl">
-          {/* Quick Navigation */}
-          <div className="flex flex-wrap gap-4 mb-6">
+      {/* Main Content */}
+      <section className="py-6">
+        <div className="container mx-auto px-3 md:px-4 max-w-7xl">
+          {/* Quick Navigation - Smaller */}
+          <div className="flex flex-wrap gap-2 mb-4">
             <Link 
               to="/job-applications"
-              className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
+              className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded text-sm hover:bg-blue-100 transition-colors flex items-center gap-1"
               onClick={() => {
                 trackFirebaseButtonClick('view_job_applications', 'quick_nav', '/job-drives');
                 trackUserFlow('job_drives', 'job_applications', 'navigation');
               }}
             >
-              <ArrowRight size={16} />
-              View Job Applications
+              <ArrowRight size={14} />
+              Job Applications
             </Link>
             <Link 
               to="/government-exams"
-              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+              className="bg-green-50 text-green-700 px-3 py-1.5 rounded text-sm hover:bg-green-100 transition-colors flex items-center gap-1"
               onClick={() => {
                 trackFirebaseButtonClick('view_government_exams', 'quick_nav', '/job-drives');
                 trackUserFlow('job_drives', 'government_exams', 'navigation');
               }}
             >
-              <ArrowRight size={16} />
-              View Government Exams
+              <ArrowRight size={14} />
+              Govt Exams
             </Link>
+          </div>
+
+          {/* Admin Access - Only visible on desktop */}
+          <div className="hidden md:flex justify-end mb-4">
             <Link 
-              to="/blog"
-              className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2"
+              to="/admin/job-drives" 
               onClick={() => {
-                trackFirebaseButtonClick('view_career_blog', 'quick_nav', '/job-drives');
-                trackUserFlow('job_drives', 'blog', 'navigation');
+                trackGoogleCTAClick('admin_job_drives', 'admin_access', 'job_drives');
+                trackFirebaseCTAClick('admin_job_drives', 'admin_access', '/job-drives');
               }}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:from-green-700 hover:to-emerald-700 transition-all"
             >
-              <ArrowRight size={16} />
-              View Career Blog
+              Add New Drive
             </Link>
           </div>
 
-          {/* Quick Admin Access */}
-          <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4 mb-8 shadow-sm">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="flex-1">
-                <h3 className="font-bold text-yellow-800 text-lg mb-2">📊 Latest Drives Tracking Active</h3>
-                <p className="text-yellow-700 text-sm mb-1">Drive views, registrations, and shares are being tracked in real-time</p>
-                <p className="text-yellow-700 text-sm mb-1">Auto-cleaned every 90 days • Updated: {lastUpdated}</p>
-                <p className="text-yellow-700 text-sm">Showing only drives from last 3 months</p>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-3 md:mt-0">
-                <Link 
-                  to="/admin/job-drives" 
-                  onClick={() => {
-                    trackGoogleCTAClick('admin_job_drives', 'admin_access', 'job_drives');
-                    trackFirebaseCTAClick('admin_job_drives', 'admin_access', '/job-drives');
-                    trackGoogleButtonClick('admin_panel', 'admin_cta', 'job_drives');
-                    trackFirebaseButtonClick('admin_panel', 'admin_cta', '/job-drives');
-                  }}
-                  className="bg-gradient-to-r from-yellow-600 to-amber-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-yellow-700 hover:to-amber-700 transition-all shadow-md hover:shadow-lg"
-                >
-                  Add New Drive
-                </Link>
-                <Link 
-                  to="/admin/daily-analytics" 
-                  onClick={() => {
-                    trackGoogleButtonClick('view_drive_analytics', 'analytics_cta', 'job_drives');
-                    trackFirebaseButtonClick('view_drive_analytics', 'analytics_cta', '/job-drives');
-                  }}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
-                >
-                  View Analytics
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs Navigation */}
-          <div className="mb-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          {/* Tabs Navigation - Compact */}
+          <div className="mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
               <div>
-                <h2 className="text-3xl font-bold text-gray-800">
-                  {activeTab === 'all' && 'All Latest Walk-in Drives in India'}
-                  {activeTab === 'today' && "Today's Walk-in Drives"}
-                  {activeTab === 'featured' && 'Featured Walk-in Drives'}
-                  {activeTab === 'upcoming' && 'Upcoming Walk-in Drives'}
-                  <span className="text-gray-600 text-lg ml-2">({filteredDrives.length})</span>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                  {activeTab === 'all' && 'All Drives'}
+                  {activeTab === 'today' && "Today's Drives"}
+                  {activeTab === 'featured' && 'Featured Drives'}
+                  {activeTab === 'upcoming' && 'Upcoming Drives'}
+                  <span className="text-gray-600 text-sm md:text-base ml-2">({filteredDrives.length})</span>
                 </h2>
-                <p className="text-gray-600 text-sm mt-1">
-                  Sorted by newest • Auto-cleaned every 90 days • Updated: {lastUpdated}
+                <p className="text-gray-500 text-xs md:text-sm mt-1">
+                  Page {currentPage} of {totalPages} • Showing {currentDrives.length} of {filteredDrives.length}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={toggleExpandAll}
-                  className="text-sm text-gray-700 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg transition-colors flex items-center gap-1"
+                  className="text-xs md:text-sm text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1.5 md:px-3 md:py-2 rounded transition-colors flex items-center gap-1"
                 >
-                  <Eye size={16} />
-                  {Object.values(expandedDrives).every(val => val) ? 'Collapse All' : 'Expand All'}
+                  <Eye size={14} />
+                  <span className="hidden xs:inline">{Object.values(expandedDrives).every(val => val) ? 'Collapse' : 'Expand'}</span>
                 </button>
                 <button
                   onClick={handleClearFilters}
-                  className="text-sm text-gray-700 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-lg transition-colors"
+                  className="text-xs md:text-sm text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-1.5 md:px-3 md:py-2 rounded transition-colors"
                 >
-                  Clear Filters
+                  Clear
                 </button>
               </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex flex-wrap gap-2 mb-6">
+            {/* Tabs - Compact */}
+            <div className="flex flex-wrap gap-1 mb-4">
               <button
                 onClick={() => handleTabChange('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'all' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`px-3 py-1.5 rounded text-sm transition-all ${activeTab === 'all' ? 'bg-green-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
               >
-                All Drives ({allDrivesCount})
+                All ({allDrivesCount})
               </button>
               <button
                 onClick={() => handleTabChange('today')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${activeTab === 'today' ? 'bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`px-3 py-1.5 rounded text-sm transition-all flex items-center gap-1 ${activeTab === 'today' ? 'bg-red-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
               >
-                <CalendarDays size={16} />
+                <CalendarDays size={14} />
                 Today ({todayDrivesCount})
               </button>
               <button
                 onClick={() => handleTabChange('featured')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${activeTab === 'featured' ? 'bg-yellow-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`px-3 py-1.5 rounded text-sm transition-all flex items-center gap-1 ${activeTab === 'featured' ? 'bg-yellow-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
               >
-                <Star size={16} />
+                <Star size={14} />
                 Featured ({featuredDrivesCount})
               </button>
               <button
                 onClick={() => handleTabChange('upcoming')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${activeTab === 'upcoming' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                className={`px-3 py-1.5 rounded text-sm transition-all flex items-center gap-1 ${activeTab === 'upcoming' ? 'bg-blue-600 text-white shadow' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
               >
-                <TrendingUp size={16} />
+                <TrendingUp size={14} />
                 Upcoming ({upcomingDrivesCount})
               </button>
             </div>
-
-            {/* Tab Description */}
-            <div className="mb-6">
-              {activeTab === 'all' && (
-                <p className="text-gray-600">
-                  Browse all latest walk-in drives, job fairs, and hiring events across India. Use filters to narrow down your search.
-                </p>
-              )}
-              {activeTab === 'today' && (
-                <p className="text-gray-600">
-                  Drives happening today ({new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}). Don't miss these immediate opportunities!
-                </p>
-              )}
-              {activeTab === 'featured' && (
-                <p className="text-gray-600">
-                  Highlighted drives with special opportunities, higher packages, or exclusive hiring events. These are marked as featured by our team.
-                </p>
-              )}
-              {activeTab === 'upcoming' && (
-                <p className="text-gray-600">
-                  Future drives and job fairs you can prepare for. Plan ahead and register early for these upcoming opportunities.
-                </p>
-              )}
-            </div>
           </div>
 
-          {/* Drives Grid - SINGLE SECTION */}
+          {/* Drives Grid - 3 DRIVES PER PAGE */}
           <div>
             {filteredDrives.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">No drives found</h3>
-                <p className="text-gray-600 mb-4">
-                  {activeTab === 'all' && "Try adjusting your search terms or check back later for new Indian job drives"}
-                  {activeTab === 'today' && "No drives scheduled for today. Check all drives or upcoming drives for more opportunities."}
-                  {activeTab === 'featured' && "No featured drives available at the moment. Check back later for highlighted opportunities."}
-                  {activeTab === 'upcoming' && "No upcoming drives scheduled. Check all drives for current opportunities."}
+              <div className="bg-white rounded-lg shadow p-6 text-center">
+                <h3 className="text-lg font-bold text-gray-800 mb-2">No drives found</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  {activeTab === 'all' && "Try adjusting your search terms"}
+                  {activeTab === 'today' && "No drives scheduled for today"}
+                  {activeTab === 'featured' && "No featured drives available"}
+                  {activeTab === 'upcoming' && "No upcoming drives scheduled"}
                 </p>
-                <div className="flex flex-wrap justify-center gap-3">
+                <div className="flex flex-wrap justify-center gap-2">
                   <button 
                     onClick={handleClearFilters}
-                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300 transition-colors"
                   >
-                    Clear All Filters
+                    Clear Filters
                   </button>
                   <button 
                     onClick={() => handleTabChange('all')}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all"
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded text-sm hover:from-green-700 hover:to-emerald-700 transition-all"
                   >
                     View All Drives
                   </button>
-                  <Link 
-                    to="/admin/job-drives"
-                    onClick={() => {
-                      trackGoogleCTAClick('add_first_drive', 'empty_state', 'job_drives');
-                      trackFirebaseCTAClick('add_first_drive', 'empty_state', '/job-drives');
-                    }}
-                    className="bg-gradient-to-r from-yellow-600 to-amber-600 text-white px-6 py-2 rounded-lg hover:from-yellow-700 hover:to-amber-700 transition-all"
-                  >
-                    Add New Drive
-                  </Link>
                 </div>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {filteredDrives.map(drive => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {currentDrives.map(drive => (
                     <DriveCard 
                       key={drive.id} 
                       drive={drive} 
                       onShare={handleShare}
                       onRegister={handleRegisterClick}
+                      onSave={handleSaveDrive}
+                      saved={savedDrives.includes(drive.id || '')}
                       expandedDrives={expandedDrives}
                       toggleExpandDrive={toggleExpandDrive}
                     />
                   ))}
                 </div>
-                
-                {/* Load More Button (if needed) */}
-                {filteredDrives.length > 16 && (
-                  <div className="text-center mt-8">
-                    <button
-                      onClick={() => {
-                        trackGoogleButtonClick('load_more_drives', 'pagination', 'job_drives');
-                        trackFirebaseButtonClick('load_more_drives', 'pagination', '/job-drives');
-                      }}
-                      className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
-                    >
-                      Load More Drives ({filteredDrives.length - 16} more)
-                    </button>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="mt-6 flex flex-col items-center">
+                    <div className="flex items-center gap-1 mb-3">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                      >
+                        <ChevronLeft size={14} />
+                        <span className="hidden xs:inline">Previous</span>
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 2) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 1) {
+                            pageNum = totalPages - 2 + i;
+                          } else {
+                            pageNum = currentPage - 1 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => handlePageChange(pageNum)}
+                              className={`px-2 py-1 rounded text-sm ${currentPage === pageNum ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                        
+                        {totalPages > 3 && currentPage < totalPages - 1 && (
+                          <>
+                            <span className="px-1">...</span>
+                            <button
+                              onClick={() => handlePageChange(totalPages)}
+                              className={`px-2 py-1 rounded text-sm ${currentPage === totalPages ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                            >
+                              {totalPages}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded text-sm ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                      >
+                        <span className="hidden xs:inline">Next</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                    
+                    <p className="text-xs text-gray-500">
+                      Showing {indexOfFirstDrive + 1} - {Math.min(indexOfLastDrive, filteredDrives.length)} of {filteredDrives.length}
+                    </p>
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {/* Newsletter Signup */}
-          <div className="mt-12 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
+          {/* Newsletter Signup - Simplified */}
+          <div className="mt-8 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
             <div className="flex flex-col md:flex-row items-center justify-between">
-              <div className="mb-4 md:mb-0">
-                <h3 className="font-bold text-green-800 text-lg mb-2">📬 Get Drive Alerts</h3>
-                <p className="text-green-700 text-sm">
-                  We'll notify you about upcoming walk-in drives in your city
+              <div className="mb-3 md:mb-0">
+                <h3 className="font-bold text-green-800 text-sm md:text-base mb-1">Get Drive Alerts</h3>
+                <p className="text-green-700 text-xs">
+                  Notifications for upcoming drives
                 </p>
               </div>
               <form 
@@ -1156,56 +1464,56 @@ const JobDrives: React.FC = () => {
               >
                 <input
                   type="email"
-                  placeholder="Your email address"
+                  placeholder="Email address"
                   required
                   value={newsletterEmail}
                   onChange={(e) => setNewsletterEmail(e.target.value)}
-                  className="flex-1 px-4 py-2 rounded-lg border border-green-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="flex-1 px-3 py-1.5 rounded border border-green-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                 />
                 <button 
                   type="submit"
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors whitespace-nowrap"
+                  className="bg-green-600 text-white px-4 py-1.5 rounded text-sm hover:bg-green-700 transition-colors whitespace-nowrap"
                 >
-                  Get Alerts
+                  Subscribe
                 </button>
               </form>
             </div>
           </div>
 
-          {/* Navigation to other sections */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Navigation to other sections - Simplified */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
             <Link 
               to="/job-applications"
-              className="bg-blue-50 border border-blue-200 rounded-xl p-6 hover:bg-blue-100 transition-colors"
+              className="bg-blue-50 border border-blue-200 rounded-lg p-4 hover:bg-blue-100 transition-colors"
               onClick={() => {
                 trackFirebaseButtonClick('navigate_job_applications', 'bottom_nav', '/job-drives');
                 trackUserFlow('job_drives', 'job_applications', 'bottom_navigation');
               }}
             >
-              <h3 className="font-bold text-blue-800 mb-2">📄 Latest Job Applications</h3>
-              <p className="text-blue-700 text-sm">Browse fresh job postings from top Indian companies</p>
+              <h3 className="font-bold text-blue-800 text-sm mb-1">Latest Job Applications</h3>
+              <p className="text-blue-700 text-xs">Fresh job postings from top companies</p>
             </Link>
             <Link 
               to="/government-exams"
-              className="bg-green-50 border border-green-200 rounded-xl p-6 hover:bg-green-100 transition-colors"
+              className="bg-green-50 border border-green-200 rounded-lg p-4 hover:bg-green-100 transition-colors"
               onClick={() => {
                 trackFirebaseButtonClick('navigate_government_exams', 'bottom_nav', '/job-drives');
                 trackUserFlow('job_drives', 'government_exams', 'bottom_navigation');
               }}
             >
-              <h3 className="font-bold text-green-800 mb-2">🏛️ Government Exams</h3>
-              <p className="text-green-700 text-sm">Latest Sarkari Naukri exams and notifications</p>
+              <h3 className="font-bold text-green-800 text-sm mb-1">Government Exams</h3>
+              <p className="text-green-700 text-xs">Latest Sarkari Naukri exams</p>
             </Link>
             <Link 
               to="/blog"
-              className="bg-purple-50 border border-purple-200 rounded-xl p-6 hover:bg-purple-100 transition-colors"
+              className="bg-purple-50 border border-purple-200 rounded-lg p-4 hover:bg-purple-100 transition-colors"
               onClick={() => {
                 trackFirebaseButtonClick('navigate_career_blog', 'bottom_nav', '/job-drives');
                 trackUserFlow('job_drives', 'blog', 'bottom_navigation');
               }}
             >
-              <h3 className="font-bold text-purple-800 mb-2">📝 Career Blog</h3>
-              <p className="text-purple-700 text-sm">Resume tips and career advice for Indian job market</p>
+              <h3 className="font-bold text-purple-800 text-sm mb-1">Career Blog</h3>
+              <p className="text-purple-700 text-xs">Resume tips and career advice</p>
             </Link>
           </div>
         </div>
@@ -1217,111 +1525,88 @@ const JobDrives: React.FC = () => {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">Share Drive Opportunity</h3>
+                <h3 className="text-lg font-bold text-gray-800">Share Drive</h3>
                 <button
                   onClick={closeShareModal}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  <X size={24} />
+                  <X size={20} />
                 </button>
               </div>
               
               <div className="mb-6">
-                <h4 className="font-semibold text-gray-700 mb-2">{selectedDrive.title}</h4>
+                <h4 className="font-semibold text-gray-700 mb-1">{selectedDrive.title}</h4>
                 <p className="text-sm text-gray-600">{selectedDrive.company} • {selectedDrive.location}</p>
-                <p className="text-xs text-gray-500 mt-1">Date: {new Date(selectedDrive.date).toLocaleDateString()} at {selectedDrive.time}</p>
-                <p className="text-xs text-gray-500 mt-1">Share with friends who might be interested</p>
               </div>
 
               {/* Native Share Button */}
               {typeof navigator.share === 'function' && (
                 <button
                   onClick={nativeShare}
-                  className="w-full mb-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2"
+                  className="w-full mb-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2"
                 >
-                  <Share2 size={20} />
+                  <Share2 size={18} />
                   Share via Device
                 </button>
               )}
 
               {/* Social Sharing Options */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-3 gap-2 mb-6">
                 <button
                   onClick={shareOnFacebook}
-                  className="flex flex-col items-center justify-center p-4 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors"
                 >
-                  <Facebook size={24} />
-                  <span className="text-xs mt-2">Facebook</span>
+                  <Facebook size={20} />
+                  <span className="text-xs mt-1">Facebook</span>
                 </button>
                 
                 <button
                   onClick={shareOnTwitter}
-                  className="flex flex-col items-center justify-center p-4 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
                 >
-                  <Twitter size={24} />
-                  <span className="text-xs mt-2">Twitter/X</span>
+                  <Twitter size={20} />
+                  <span className="text-xs mt-1">Twitter</span>
                 </button>
                 
                 <button
                   onClick={shareOnLinkedIn}
-                  className="flex flex-col items-center justify-center p-4 bg-[#0A66C2] text-white rounded-lg hover:bg-[#0958b3] transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-[#0A66C2] text-white rounded-lg hover:bg-[#0958b3] transition-colors"
                 >
-                  <Linkedin size={24} />
-                  <span className="text-xs mt-2">LinkedIn</span>
+                  <Linkedin size={20} />
+                  <span className="text-xs mt-1">LinkedIn</span>
                 </button>
                 
                 <button
                   onClick={shareOnWhatsApp}
-                  className="flex flex-col items-center justify-center p-4 bg-[#25D366] text-white rounded-lg hover:bg-[#20b857] transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-[#25D366] text-white rounded-lg hover:bg-[#20b857] transition-colors"
                 >
-                  <MessageCircle size={24} />
-                  <span className="text-xs mt-2">WhatsApp</span>
+                  <MessageCircle size={20} />
+                  <span className="text-xs mt-1">WhatsApp</span>
                 </button>
                 
                 <button
                   onClick={shareViaEmail}
-                  className="flex flex-col items-center justify-center p-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 >
-                  <Mail size={24} />
-                  <span className="text-xs mt-2">Email</span>
+                  <Mail size={20} />
+                  <span className="text-xs mt-1">Email</span>
                 </button>
                 
                 <button
                   onClick={copyToClipboard}
-                  className="flex flex-col items-center justify-center p-4 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+                  className="flex flex-col items-center justify-center p-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
                 >
-                  <Copy size={24} />
-                  <span className="text-xs mt-2">
+                  <Copy size={20} />
+                  <span className="text-xs mt-1">
                     {copySuccess ? 'Copied!' : 'Copy Link'}
                   </span>
                 </button>
               </div>
 
-              {/* Copy Link Input */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Direct Link to Drive
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}/job-drives?drive=${selectedDrive.id}`}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
-                  />
-                  <button
-                    onClick={copyToClipboard}
-                    className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors text-sm"
-                  >
-                    {copySuccess ? 'Copied!' : 'Copy'}
-                  </button>
-                </div>
-              </div>
-
               <div className="flex gap-3">
                 <button
                   onClick={closeShareModal}
-                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors"
                 >
                   Close
                 </button>
@@ -1337,16 +1622,16 @@ const JobDrives: React.FC = () => {
                     
                     if (selectedDrive.registrationLink || selectedDrive.applyLink) {
                       const url = selectedDrive.registrationLink || selectedDrive.applyLink;
-                      if (url.startsWith('http')) {
+                      if (url.startsWith('http') || url.startsWith('mailto:')) {
                         handleRegisterClick(selectedDrive);
                       }
                     }
                     closeShareModal();
                   }}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all"
                 >
                   <ExternalLink size={16} className="inline mr-2" />
-                  Register Now
+                  Register
                 </button>
               </div>
             </div>
@@ -1357,34 +1642,37 @@ const JobDrives: React.FC = () => {
   );
 };
 
-// Drive Card Component - UPDATED WITH SEE MORE FUNCTIONALITY
+// Drive Card Component - PROFESSIONAL DESIGN
 const DriveCard: React.FC<{ 
   drive: JobDrive; 
   onShare: (drive: JobDrive) => void; 
   onRegister: (drive: JobDrive) => void;
+  onSave: (driveId: string, driveTitle: string, company: string) => void;
+  saved: boolean;
   expandedDrives: Record<string, boolean>;
   toggleExpandDrive: (driveId: string, e?: React.MouseEvent) => void;
 }> = ({ 
   drive, 
   onShare, 
   onRegister,
+  onSave,
+  saved,
   expandedDrives,
   toggleExpandDrive,
 }) => {
-  const { trackJobDriveView } = useEnhancedAnalytics();
   const { trackButtonClick: trackGoogleButtonClick, trackExternalLink } = useGoogleAnalytics();
-  const { trackButtonClick: trackFirebaseButtonClick, trackFirebaseEvent } = useFirebaseAnalytics();
+  const { trackButtonClick: trackFirebaseButtonClick, trackFirebaseEvent, trackWalkinDriveView } = useFirebaseAnalytics();
   
   const isUpcoming = new Date(drive.date) >= new Date();
   const isToday = new Date(drive.date).toDateString() === new Date().toDateString();
   const isRecent = drive.addedTimestamp && (Date.now() - drive.addedTimestamp) < 24 * 60 * 60 * 1000;
-  const isExpanded = expandedDrives[drive.id] || false;
+  const isExpanded = expandedDrives[drive.id || ''] || false;
 
   const handleDetailsClick = () => {
     trackGoogleButtonClick('view_drive_details', 'drive_card', 'job_drives');
     trackFirebaseButtonClick('view_drive_details', 'drive_card', '/job-drives');
     
-    if (drive.applyLink.startsWith('http')) {
+    if (drive.applyLink && drive.applyLink.startsWith('http')) {
       trackExternalLink('Drive Details', drive.applyLink, 'job_drives');
     }
   };
@@ -1399,17 +1687,20 @@ const DriveCard: React.FC<{
     onShare(drive);
   };
 
+  const handleSaveClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onSave(drive.id || '', drive.title, drive.company);
+  };
+
   // Track drive view on mount
   useEffect(() => {
-    // Enhanced Analytics
-    trackJobDriveView(drive.id, drive.title, 'drive_listing');
-    
-    // Firebase Analytics - track drive view - FIXED: Use trackFirebaseEvent
+    // Firebase Analytics - track drive view
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
     trackFirebaseEvent(
       'job_drive_viewed',
       'Job Drives',
-      drive.id,
+      drive.id || 'unknown',
       {
         drive_id: drive.id,
         drive_title: drive.title,
@@ -1423,14 +1714,17 @@ const DriveCard: React.FC<{
         timestamp: new Date().toISOString()
       }
     );
+
+    // Track walkin drive view
+    trackWalkinDriveView(drive.id || '', drive.title, drive.company);
   }, [drive.id]);
 
   // Check if description is long enough to need "See More"
   const descriptionLength = drive.description.length;
-  const showSeeMoreDescription = descriptionLength > 100;
+  const showSeeMoreDescription = descriptionLength > 80;
   const displayedDescription = isExpanded || !showSeeMoreDescription 
     ? drive.description 
-    : drive.description.substring(0, 100) + '...';
+    : drive.description.substring(0, 80) + '...';
 
   // Check if eligibility list is long enough to need "See More"
   const eligibilityLength = drive.eligibility?.length || 0;
@@ -1440,180 +1734,171 @@ const DriveCard: React.FC<{
     : drive.eligibility?.slice(0, 2);
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-200">
-      {/* Drive Image */}
-      <div className="relative w-full h-56 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
-        <img 
-          src={drive.image} 
-          alt={drive.title}
-          className="w-full h-full object-contain p-3"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/600x300/10B981/FFFFFF?text=CareerCraft.in+Drive';
-          }}
-          style={{ 
-            maxHeight: '100%', 
-            maxWidth: '100%',
-            objectPosition: 'center'
-          }}
-        />
-        <div className="absolute top-0 left-0 right-0 flex justify-between p-3">
-          <div className="flex flex-col gap-1">
-            {drive.featured && (
-              <span className="bg-gradient-to-r from-yellow-500 to-amber-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                ⭐ Featured
-              </span>
-            )}
-            {isRecent && (
-              <span className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                🔥 NEW
-              </span>
-            )}
-            {isToday && (
-              <span className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                📅 TODAY
-              </span>
-            )}
-            {isUpcoming && !isToday && (
-              <span className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                ⏳ UPCOMING
-              </span>
-            )}
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 h-full flex flex-col">
+      {/* Drive Header - Simplified */}
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-3 border-b border-gray-200">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-1 mb-1">
+              {drive.featured && (
+                <span className="text-xs font-medium text-amber-600">
+                  ★ Featured
+                </span>
+              )}
+              {isToday && (
+                <span className="text-xs font-medium text-green-600">
+                  • Today
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={handleShareClick}
-            className="bg-white/95 hover:bg-white text-gray-800 p-1.5 rounded-full shadow-lg hover:shadow-xl transition-all"
-            title="Share this drive"
-          >
-            <Share2 size={18} />
-          </button>
+          <div className="flex gap-1">
+            <button
+              onClick={handleSaveClick}
+              className={`p-1 ${saved ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+              title={saved ? 'Remove from saved' : 'Save drive'}
+            >
+              <Heart size={16} fill={saved ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              onClick={handleShareClick}
+              className="p-1 text-gray-500 hover:text-gray-700"
+              title="Share this drive"
+            >
+              <Share2 size={16} />
+            </button>
+          </div>
         </div>
-        
-        {drive.expectedCandidates && (
-          <div className="absolute bottom-3 right-3 bg-gradient-to-r from-purple-600 to-violet-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg flex items-center">
-            <Users size={14} className="mr-1.5" />
-            {drive.expectedCandidates}+ expected
-          </div>
-        )}
       </div>
 
       {/* Drive Content */}
-      <div className="p-5">
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="text-lg font-bold text-gray-800 line-clamp-2 min-h-[3.5rem]">{drive.title}</h3>
-          <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full whitespace-nowrap ml-2">
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="text-base font-bold text-gray-800 line-clamp-2">{drive.title}</h3>
+          <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded whitespace-nowrap ml-2">
             {new Date(drive.addedTimestamp || drive.date).toLocaleDateString('en-IN')}
           </span>
         </div>
         
-        <div className="flex items-center text-gray-700 mb-4">
-          <Building size={18} className="mr-2 text-green-600 flex-shrink-0" />
-          <span className="font-semibold text-base truncate">{drive.company}</span>
+        <div className="flex items-center text-gray-700 mb-3">
+          <Building size={14} className="mr-1.5 text-green-600 flex-shrink-0" />
+          <span className="font-medium text-sm truncate">{drive.company}</span>
         </div>
         
-        <div className="space-y-2.5 mb-4">
-          <div className="flex items-center text-sm text-gray-600">
-            <MapPin size={16} className="mr-2 text-blue-600 flex-shrink-0" />
+        <div className="space-y-1.5 mb-3">
+          <div className="flex items-center text-xs text-gray-600">
+            <MapPin size={12} className="mr-1.5 text-blue-600 flex-shrink-0" />
             <span className="truncate">{drive.location}</span>
           </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <Calendar size={16} className="mr-2 text-purple-600 flex-shrink-0" />
+          <div className="flex items-center text-xs text-gray-600">
+            <Calendar size={12} className="mr-1.5 text-purple-600 flex-shrink-0" />
             <span className="truncate">
               {new Date(drive.date).toLocaleDateString('en-IN', { 
-                weekday: 'short', 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
+                day: 'numeric',
+                month: 'short'
               })}
             </span>
           </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <Clock size={16} className="mr-2 text-amber-600 flex-shrink-0" />
+          <div className="flex items-center text-xs text-gray-600">
+            <Clock size={12} className="mr-1.5 text-amber-600 flex-shrink-0" />
             <span className="truncate">{drive.time}</span>
           </div>
         </div>
 
         {/* Description with See More */}
-        <div className="mb-4">
-          <h4 className="text-xs font-semibold text-gray-800 mb-1.5">Description:</h4>
-          <p className="text-sm text-gray-600">
+        <div className="mb-3">
+          <p className="text-xs text-gray-600">
             {displayedDescription}
             {showSeeMoreDescription && (
               <button
-                onClick={(e) => toggleExpandDrive(drive.id, e)}
-                className="ml-1 text-green-600 hover:text-green-800 font-medium text-sm inline-flex items-center"
+                onClick={(e) => toggleExpandDrive(drive.id || '', e)}
+                className="ml-1 text-green-600 hover:text-green-800 font-medium text-xs inline-flex items-center"
               >
-                {isExpanded ? 'See Less' : 'See More'}
-                {isExpanded ? <ChevronUp size={14} className="ml-0.5" /> : <ChevronDown size={14} className="ml-0.5" />}
+                {isExpanded ? 'Less' : 'More'}
+                {isExpanded ? <ChevronUp size={12} className="ml-0.5" /> : <ChevronDown size={12} className="ml-0.5" />}
               </button>
             )}
           </p>
         </div>
 
         {/* Quick Info Badges */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
+        <div className="flex flex-wrap gap-1 mb-3">
           {drive.experience && (
-            <span className="bg-blue-100 text-blue-800 px-2.5 py-1 rounded text-xs truncate max-w-full">
-              Exp: {drive.experience}
+            <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">
+              {drive.experience}
             </span>
           )}
           {drive.salary && (
-            <span className="bg-green-100 text-green-800 px-2.5 py-1 rounded text-xs truncate max-w-full">
+            <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded text-xs">
               {drive.salary}
-            </span>
-          )}
-          {drive.driveType && (
-            <span className="bg-purple-100 text-purple-800 px-2.5 py-1 rounded text-xs truncate max-w-full">
-              {drive.driveType}
             </span>
           )}
         </div>
 
         {/* Eligibility Preview with See More */}
         {drive.eligibility && drive.eligibility.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-xs font-semibold text-gray-800 mb-1.5">Eligibility:</h4>
-            <div className="space-y-1">
+          <div className="mb-3">
+            <div className="space-y-0.5">
               {displayedEligibility?.map((item, index) => (
                 <div key={index} className="flex items-start">
-                  <span className="text-green-600 mr-1.5 mt-0.5 flex-shrink-0">•</span>
+                  <span className="text-green-600 mr-1 mt-0.5 flex-shrink-0 text-xs">•</span>
                   <span className="text-xs text-gray-700 line-clamp-1">{item}</span>
                 </div>
               ))}
               {showSeeMoreEligibility && !isExpanded && (
                 <button
-                  onClick={(e) => toggleExpandDrive(drive.id, e)}
+                  onClick={(e) => toggleExpandDrive(drive.id || '', e)}
                   className="text-green-600 hover:text-green-800 font-medium text-xs inline-flex items-center"
                 >
-                  +{eligibilityLength - 2} more criteria
-                  <ChevronDown size={12} className="ml-0.5" />
+                  +{eligibilityLength - 2} more
                 </button>
               )}
             </div>
           </div>
         )}
 
+        {/* Drive Stats */}
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-3 pt-3 border-t border-gray-200 mt-auto">
+          <div className="flex items-center gap-2">
+            {(drive.views || drive.views === 0) && (
+              <span className="flex items-center gap-0.5">
+                <Eye size={10} />
+                {drive.views}
+              </span>
+            )}
+            {(drive.registrations || drive.registrations === 0) && (
+              <span className="flex items-center gap-0.5">
+                <Users size={10} />
+                {drive.registrations}
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Action Buttons */}
-        <div className="flex gap-2.5">
+        <div className="flex gap-2 mt-auto">
           <button
             onClick={handleShareClick}
-            className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center text-sm"
+            className="flex-1 bg-gray-100 text-gray-700 py-2 rounded font-medium hover:bg-gray-200 transition-colors flex items-center justify-center text-xs"
           >
-            <Share2 size={16} className="mr-1.5" />
+            <Share2 size={14} className="mr-1" />
             Share
           </button>
           <button
             onClick={handleRegister}
-            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2.5 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center text-sm shadow-md hover:shadow-lg"
+            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 rounded font-medium hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center text-xs"
           >
-            <ExternalLink size={16} className="mr-1.5" />
+            <ExternalLink size={14} className="mr-1" />
             Register
           </button>
         </div>
         
         {/* Contact Info */}
         {drive.contact && (
-          <div className="mt-3.5 pt-3.5 border-t border-gray-200">
-            <p className="text-xs text-gray-600 truncate">📞 Contact: {drive.contact}</p>
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <p className="text-xs text-gray-600 break-words">
+              📞 {drive.contact}
+            </p>
           </div>
         )}
       </div>
