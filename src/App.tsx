@@ -1,3 +1,4 @@
+// src/App.tsx - UPDATED WITH ANONYMOUS TRACKING
 // [file name]: App.tsx - UPDATED (removed debug components)
 // src/App.tsx - CLEANED VERSION WITHOUT DEBUG COMPONENTS
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
@@ -49,18 +50,36 @@ import './components/PDFStyles.css';
 // Initialize Firebase
 import { initializeFirebase } from './firebase/config';
 import { firebaseSyncService } from './firebase/syncService';
+import { anonymousTracking } from './firebase/anonymousTracking';
 import { useEffect } from 'react';
 
 function App() {
-  // Initialize Firebase on app start
+  // Initialize Firebase and anonymous tracking on app start
   useEffect(() => {
     try {
       initializeFirebase();
+      
+      // Initialize anonymous tracking for ALL users
+      anonymousTracking.initialize();
       
       // Try to sync any pending events after 2 seconds
       setTimeout(() => {
         firebaseSyncService.checkAndSync();
       }, 2000);
+      
+      // Listen for consent changes
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'gdpr_consent' && e.newValue === 'accepted') {
+          console.log('🎉 User gave consent, migrating anonymous data...');
+          window.location.reload(); // Reload to start fresh with consented tracking
+        }
+      };
+      
+      window.addEventListener('storage', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+      };
       
     } catch (error) {
       console.error('Firebase initialization error:', error);

@@ -30,30 +30,34 @@ export const useFirebaseAnalytics = () => {
   }, [location]);
 
   // ✅ FIXED: trackEvent method with proper typing
-  const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
-    try {
-      // Get consent status
-      const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-      
-      // Prepare complete event data
-      const completeEventData = {
-        eventName: eventData.eventName,
-        eventCategory: eventData.eventCategory,
-        eventLabel: eventData.eventLabel,
-        pagePath: eventData.pagePath || window.location.pathname,
-        pageTitle: eventData.pageTitle || document.title,
-        eventValue: eventData.eventValue,
-        metadata: eventData.metadata || {},
-        // These will be added by firebaseAnalytics.trackEvent
-        consentGiven: hasConsent,
-        dataProcessingLocation: 'IN' as const
-      };
+  // Update trackEvent method to work with anonymous users:
+const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
+  try {
+    // Get consent status
+    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+    
+    // Prepare complete event data
+    const completeEventData = {
+      eventName: eventData.eventName,
+      eventCategory: eventData.eventCategory,
+      eventLabel: eventData.eventLabel,
+      pagePath: eventData.pagePath || window.location.pathname,
+      pageTitle: eventData.pageTitle || document.title,
+      eventValue: eventData.eventValue,
+      metadata: {
+        ...eventData.metadata,
+        is_anonymous: !hasConsent
+      },
+      // These will be added by firebaseAnalytics.trackEvent
+      consentGiven: hasConsent,
+      dataProcessingLocation: 'IN' as const
+    };
 
-      await firebaseAnalytics.trackEvent(completeEventData);
-    } catch (error) {
-      console.error('Firebase tracking error:', error);
-    }
-  }, []);
+    await firebaseAnalytics.trackEvent(completeEventData);
+  } catch (error) {
+    console.error('Firebase tracking error:', error);
+  }
+}, []);
 
   // ✅ FIXED: trackFirebaseEvent method (string parameters)
   const trackFirebaseEvent = useCallback(async (

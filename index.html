@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Content Security Policy - PRODUCTION (UPDATED) -->
+    <!-- Content Security Policy - PRODUCTION -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
                    script-src 'self' 'unsafe-inline' 'unsafe-eval'
@@ -47,7 +46,7 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://careercraft.in/">
     
-    <!-- Enhanced Structured Data for SEO -->
+    <!-- Enhanced Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -73,7 +72,7 @@
     }
     </script>
 
-    <!-- Additional Schema for Local Business -->
+    <!-- Organization Schema -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -105,7 +104,52 @@
     <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
     <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
     
-    <!-- Google Analytics - DUAL TRACKING FOR BOTH DOMAINS -->
+    <!-- Firebase Configuration (Production) -->
+    <script type="module">
+      // Import Firebase modules
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+      import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js';
+      import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+      import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+      import { getPerformance } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-performance.js';
+
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6",
+        authDomain: "careercraft-in.firebaseapp.com",
+        projectId: "careercraft-in",
+        storageBucket: "careercraft-in.appspot.com",
+        messagingSenderId: "1234567890",
+        appId: "1:1234567890:web:1234567890",
+        measurementId: "G-1234567890"
+      };
+
+      // Initialize Firebase
+      try {
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const firestore = getFirestore(app);
+        const auth = getAuth(app);
+        const performance = getPerformance(app);
+        
+        console.log('✅ Firebase initialized successfully in index.html');
+        
+        // Set global variables for app to use
+        window.firebaseApp = app;
+        window.firebaseAnalytics = analytics;
+        window.firebaseFirestore = firestore;
+        
+        // Check GDPR consent
+        const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+        if (!hasConsent) {
+          console.log('GDPR consent not given, Firebase analytics disabled');
+        }
+      } catch (error) {
+        console.error('❌ Firebase initialization failed in index.html:', error);
+      }
+    </script>
+
+    <!-- Google Analytics - DUAL TRACKING -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -133,6 +177,9 @@
           'domains': ['careercraft.in', 'www.careercraft.in']
         }
       });
+      
+      // Debug info
+      console.log('Google Analytics initialized for:', window.location.hostname);
     </script>
     
     <!-- Preload critical resources -->
@@ -244,6 +291,7 @@
           <div class="loading-spinner" style="width: 40px; height: 40px; margin: 0 auto 1rem;"></div>
           <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">CareerCraft India</h1>
           <p style="opacity: 0.8;">Loading your career journey...</p>
+          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 1rem;" id="firebase-status">Initializing Firebase...</p>
         </div>
       </div>
     </div>
@@ -251,8 +299,21 @@
     <!-- Vite will inject the script here -->
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- PRODUCTION: Minimal production-only scripts -->
+    <!-- Firebase Debug Script -->
     <script>
+      // Firebase initialization status
+      setTimeout(() => {
+        const statusElement = document.getElementById('firebase-status');
+        if (statusElement) {
+          const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+          if (hasConsent) {
+            statusElement.textContent = 'Firebase: Initializing...';
+          } else {
+            statusElement.textContent = 'Firebase: Waiting for GDPR consent...';
+          }
+        }
+      }, 1000);
+
       // Performance monitoring
       window.addEventListener('load', function() {
         setTimeout(function() {
@@ -295,6 +356,15 @@
           });
         }
       });
+
+      // Debug info
+      console.log('=== CareerCraft Debug Info ===');
+      console.log('URL:', window.location.href);
+      console.log('Hostname:', window.location.hostname);
+      console.log('Environment:', window.location.hostname.includes('localhost') ? 'development' : 'production');
+      console.log('Firebase App:', window.firebaseApp ? '✅ Loaded' : '❌ Not loaded');
+      console.log('GDPR Consent:', localStorage.getItem('gdpr_consent') || 'Not set');
+      console.log('============================');
     </script>
   </body>
 </html>

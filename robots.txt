@@ -28,14 +28,21 @@ Disallow: /tsconfig.json
 Disallow: /yarn.lock
 Disallow: /package-lock.json
 
-# Asset files that don't need indexing
+# Asset files that don't need indexing (but allow CSS/JS for Googlebot)
 Disallow: /assets/
 Disallow: /static/
 Disallow: /uploads/temp/
 Disallow: /tmp/
 Disallow: /cache/
 
-# URL parameters to avoid duplicate content
+# CRITICAL FIX: Allow Googlebot to access JavaScript and CSS files
+# Remove these lines to let Googlebot render your React app properly
+# Disallow: *.js$
+# Disallow: *.css$
+# Disallow: *.scss$
+# Disallow: *.less$
+
+# URL parameters to avoid duplicate content (adjust based on your site)
 Disallow: /*?search=
 Disallow: /*?filter=
 Disallow: /*?sort=
@@ -46,66 +53,174 @@ Disallow: /*?sessionid=
 Disallow: /*?token=
 Disallow: /*?redirect=
 
-# JavaScript and CSS files (already crawled for rendering)
-Disallow: *.js$
-Disallow: *.css$
-Disallow: *.scss$
-Disallow: *.less$
-
-# ============ SEARCH ENGINE SPECIFIC ============
+# ============ ALLOWED BOTS (Search Engines) ============
 # Googlebot - Primary search engine
 User-agent: Googlebot
 Allow: /
-Allow: /blog/
-Allow: /job-applications/
-Allow: /builder/
-Crawl-delay: 0.5
+Crawl-delay: 1
+
+# Googlebot-Image
+User-agent: Googlebot-Image
+Allow: /
+Disallow: /*.gif$
+
+# Googlebot-News (if you have news content)
+User-agent: Googlebot-News
+Allow: /
+
+# Googlebot-Video
+User-agent: Googlebot-Video
+Allow: /
+
+# AdsBot-Google (for landing page quality)
+User-agent: AdsBot-Google
+Allow: /
+
+# AdsBot-Google-Mobile-Apps
+User-agent: AdsBot-Google-Mobile-Apps
+Allow: /
 
 # Bingbot - Microsoft's crawler
 User-agent: Bingbot
 Allow: /
 Crawl-delay: 1
 
+# MSNBot
+User-agent: MSNBot
+Allow: /
+Crawl-delay: 1
+
 # DuckDuckGo - Privacy-focused search
 User-agent: DuckDuckBot
 Allow: /
-Crawl-delay: 1
+Crawl-delay: 2
 
-# ============ AI AND DATA SCRAPER BOTS ============
-# Block AI training bots
+# Yandex
+User-agent: Yandex
+Allow: /
+Crawl-delay: 2
+
+# Baidu
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 5
+
+# ============ BLOCKED BOTS ============
+# AI and data scraper bots
 User-agent: ChatGPT-User
 Disallow: /
-
 User-agent: GPTBot
 Disallow: /
-
 User-agent: CCBot
 Disallow: /
+User-agent: FacebookBot
+Disallow: /
+User-agent: FacebookExternalHit
+Disallow: /
 
-# ============ HARMFUL OR AGGRESSIVE BOTS ============
+# Aggressive SEO tools (they consume bandwidth)
 User-agent: AhrefsBot
 Disallow: /
 Crawl-delay: 10
-
 User-agent: SemrushBot
 Disallow: /
 Crawl-delay: 10
-
 User-agent: MJ12bot
 Disallow: /
 Crawl-delay: 10
+User-agent: dotbot
+Disallow: /
+User-agent: zoominfobot
+Disallow: /
+User-agent: MojeekBot
+Disallow: /
+User-agent: Barkrowler
+Disallow: /
+User-agent: BLEXBot
+Disallow: /
 
-# ============ ALLOWED CRAWLERS FOR SPECIFIC CONTENT ============
-# Allow Google AdsBot for landing page quality
-User-agent: AdsBot-Google
-Allow: /
-Allow: /builder/
+# Other unwanted bots
+User-agent: ia_archiver
+Disallow: /
+User-agent: archive.org_bot
+Disallow: /
+User-agent: Gigabot
+Disallow: /
+User-agent: Nutch
+Disallow: /
+User-agent: Java
+Disallow: /
+User-agent: curl
+Disallow: /
+User-agent: Wget
+Disallow: /
+User-agent: scrapbot
+Disallow: /
+User-agent: Scrapy
+Disallow: /
+User-agent: Sogou
+Disallow: /
 
 # ============ SITEMAP REFERENCES ============
+# Primary sitemap
 Sitemap: https://careercraft.in/sitemap.xml
 
+# Additional sitemaps (if you have separate ones)
+# Sitemap: https://careercraft.in/blog-sitemap.xml
+# Sitemap: https://careercraft.in/jobs-sitemap.xml
+
 # ============ CRAWLING INSTRUCTIONS ============
+# General crawl delay for all bots (prevents server overload)
 Crawl-delay: 1
 
+# Visit-time for server maintenance window (IST timezone)
+# 2 AM to 5 AM IST (avoid peak hours)
+Visit-time: 0200-0500
+
+# ============ ADDITIONAL SEO DIRECTIVES ============
+# Clean param for dynamic URLs (help avoid duplicate content)
+Clean-param: ref /blog/
+Clean-param: utm_source /
+Clean-param: utm_medium /
+Clean-param: utm_campaign /
+
+# ============ MOBILE CRAWLER SPECIFIC ============
+# Googlebot Smartphone
+User-agent: Googlebot-Mobile
+Allow: /
+Crawl-delay: 1
+
+# ============ FEED CRAWLERS ============
+# Allow legitimate feed readers
+User-agent: Feedfetcher-Google
+Allow: /
+User-agent: Apple-PubSub
+Allow: /
+
+# ============ SPECIALIZED CRAWLERS ============
+# Allow media and social preview bots
+User-agent: Twitterbot
+Allow: /
+User-agent: LinkedInBot
+Allow: /
+User-agent: Pinterest
+Allow: /
+
+# ============ ANALYTICS & MONITORING ============
+# Allow Google PageSpeed Insights
+User-agent: Google-PageSpeed-Insights
+Allow: /
+Crawl-delay: 5
+
+# Allow Google Mobile-Friendly Test
+User-agent: Google-Mobile-Friendly
+Allow: /
+Crawl-delay: 5
+
+# ============ CACHE CONTROL ============
+# Instruct search engines to cache pages
+# This is just a comment - actual cache control via HTTP headers
+
 # ============ END OF ROBOTS.TXT ============
-# For questions, contact: contact@careercraft.in
+# For questions or crawl issues, contact: contact@careercraft.in
+# This file should be placed in the root directory (public/)

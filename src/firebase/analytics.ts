@@ -1,4 +1,4 @@
-// src/firebase/analytics.ts - PRODUCTION VERSION
+// src/firebase/analytics.ts - PRODUCTION VERSION WITH ANONYMOUS TRACKING
 import { 
   addDoc, 
   collection, 
@@ -39,43 +39,82 @@ export class FirebaseAnalyticsService {
   private userId: string;
   private firestore = getFirestoreInstance();
   private analytics = getAnalyticsInstance();
+  private isAnonymous: boolean;
 
   constructor() {
     this.sessionId = this.generateSessionId();
     this.userId = this.getOrCreateUserId();
+    this.isAnonymous = !this.hasConsent();
     this.initializeUser();
   }
 
+  private hasConsent(): boolean {
+    return localStorage.getItem('gdpr_consent') === 'accepted';
+  }
+
   private generateSessionId(): string {
-    let sessionId = localStorage.getItem('firebase_session_id');
+    let sessionId = sessionStorage.getItem('firebase_session_id');
     if (!sessionId) {
       sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      sessionStorage.setItem('firebase_session_id', sessionId);
+      
+      // Also store in localStorage for persistence across tabs
       localStorage.setItem('firebase_session_id', sessionId);
     }
     return sessionId;
   }
 
   private getOrCreateUserId(): string {
-    let userId = localStorage.getItem('firebase_user_id');
+    const hasConsent = this.hasConsent();
     
-    if (!userId) {
-      userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('firebase_user_id', userId);
-      localStorage.setItem('user_created_at', new Date().toISOString());
+    if (hasConsent) {
+      // For consented users, use persistent user ID
+      let userId = localStorage.getItem('firebase_user_id');
+      
+      if (!userId) {
+        userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('firebase_user_id', userId);
+        localStorage.setItem('user_created_at', new Date().toISOString());
+      }
+      
+      return userId;
+    } else {
+      // For anonymous users, use session-based ID
+      let anonymousId = sessionStorage.getItem('firebase_anonymous_id');
+      
+      if (!anonymousId) {
+        anonymousId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem('firebase_anonymous_id', anonymousId);
+        
+        // Store in localStorage as fallback
+        localStorage.setItem('firebase_anonymous_id_backup', anonymousId);
+        
+        // Track anonymous user creation
+        console.log('📊 Anonymous user created:', anonymousId);
+      }
+      
+      return anonymousId;
     }
-
-    return userId;
   }
 
   private initializeUser(): void {
-    if (this.analytics) {
+    const hasConsent = this.hasConsent();
+    
+    if (this.analytics && hasConsent) {
       setUserId(this.analytics, this.userId);
       setUserProperties(this.analytics, {
         session_id: this.sessionId,
-        device_type: this.getDeviceType()
+        device_type: this.getDeviceType(),
+        is_anonymous: !hasConsent
       });
     }
 
+    // Track user type
+    const userType = hasConsent ? 'consented' : 'anonymous';
+    console.log(`📊 User initialized: ${userType}, ID: ${this.userId.substring(0, 10)}...`);
+
+    // Store user info for debugging
+    sessionStorage.setItem('user_type', userType);
     localStorage.setItem('has_visited_before', 'true');
   }
 
@@ -87,11 +126,12 @@ export class FirebaseAnalyticsService {
   }
 
   async trackEvent(eventData: TrackEventInput): Promise<void> {
-    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-    if (!hasConsent && !eventData.eventName.includes('consent')) {
-      return;
-    }
-
+    const hasConsent = this.hasConsent();
+    
+    // Always track events to Firestore (both anonymous and consented)
+    // We use the user's current consent status
+    const isCurrentlyAnonymous = !hasConsent;
+    
     const event: UserEvent = {
       ...eventData,
       userId: this.userId,
@@ -101,47 +141,62 @@ export class FirebaseAnalyticsService {
       screenResolution: `${window.screen.width}x${window.screen.height}`,
       language: navigator.language,
       consentGiven: hasConsent,
-      dataProcessingLocation: 'IN'
+      dataProcessingLocation: 'IN',
+      metadata: {
+        ...eventData.metadata,
+        is_anonymous: isCurrentlyAnonymous,
+        user_type: hasConsent ? 'consented' : 'anonymous'
+      }
     };
 
     try {
-      // Store in Firestore
+      // Store in Firestore - ALWAYS for both anonymous and consented users
       if (this.firestore) {
         await addDoc(collection(this.firestore, COLLECTIONS.EVENTS), {
           ...event,
           timestamp: serverTimestamp()
         });
+        
+        console.log(`📊 Event tracked: ${event.eventName} (${hasConsent ? 'consented' : 'anonymous'})`);
       }
 
-      // Send to Firebase Analytics
-      logAnalyticsEvent(eventData.eventName, {
-        event_category: eventData.eventCategory,
-        event_label: eventData.eventLabel,
-        value: eventData.eventValue,
-        page_path: eventData.pagePath,
-        page_title: eventData.pageTitle,
-        ...eventData.metadata
-      });
+      // Send to Firebase Analytics - ONLY with consent
+      if (hasConsent) {
+        logAnalyticsEvent(eventData.eventName, {
+          event_category: eventData.eventCategory,
+          event_label: eventData.eventLabel,
+          value: eventData.eventValue,
+          page_path: eventData.pagePath,
+          page_title: eventData.pageTitle,
+          ...eventData.metadata
+        });
+      }
 
-      // Send to Google Analytics (dual tracking)
-      if (typeof window.gtag !== 'undefined') {
+      // Send to Google Analytics (dual tracking) - ONLY with consent
+      if (hasConsent && typeof window.gtag !== 'undefined') {
         window.gtag('event', eventData.eventName, {
           event_category: eventData.eventCategory,
           event_label: eventData.eventLabel,
           value: eventData.eventValue,
-          send_to: ['G-SW5M9YN8L5', 'G-WSKZJDJW77']
+          send_to: ['G-SW5M9YN8L5', 'G-WSKZJDJW77'],
+          ...eventData.metadata
         });
       }
 
+      // If anonymous, also store in a special queue for possible migration later
+      if (!hasConsent) {
+        this.storeAnonymousEventInQueue(event);
+      }
+
     } catch (error) {
+      console.error('Error tracking event:', error);
       this.fallbackToLocalStorage(event);
     }
   }
 
   async trackPageView(pagePath: string, pageTitle: string): Promise<void> {
-    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-    if (!hasConsent) return;
-
+    const hasConsent = this.hasConsent();
+    
     const pageView: PageViewEvent = {
       userId: this.userId,
       sessionId: this.sessionId,
@@ -155,33 +210,210 @@ export class FirebaseAnalyticsService {
     };
 
     try {
+      // Always store page views in Firestore
       if (this.firestore) {
         await addDoc(collection(this.firestore, COLLECTIONS.PAGE_VIEWS), {
           ...pageView,
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
+          is_anonymous: !hasConsent
+        });
+        
+        console.log(`📊 Page view tracked: ${pagePath} (${hasConsent ? 'consented' : 'anonymous'})`);
+      }
+
+      // Firebase Analytics - only with consent
+      if (hasConsent) {
+        logAnalyticsEvent('page_view', {
+          page_title: pageTitle,
+          page_location: window.location.href,
+          page_path: pagePath,
+          is_anonymous: false
         });
       }
 
-      // Firebase Analytics
-      logAnalyticsEvent('page_view', {
-        page_title: pageTitle,
-        page_location: window.location.href,
-        page_path: pagePath
-      });
-
-      // Google Analytics
-      if (typeof window.gtag !== 'undefined') {
+      // Google Analytics - only with consent
+      if (hasConsent && typeof window.gtag !== 'undefined') {
         window.gtag('event', 'page_view', {
           page_title: pageTitle,
           page_location: window.location.href,
           page_path: pagePath,
-          send_to: ['G-SW5M9YN8L5', 'G-WSKZJDJW77']
+          send_to: ['G-SW5M9YN8L5', 'G-WSKZJDJW77'],
+          is_anonymous: false
         });
       }
 
+      // Store in session storage for tracking
       sessionStorage.setItem('last_page_view', JSON.stringify(pageView));
+      
+      // For anonymous users, track basic page view
+      if (!hasConsent) {
+        this.trackAnonymousPageView(pagePath, pageTitle);
+      }
+
     } catch (error) {
+      console.error('Error tracking page view:', error);
       this.fallbackToLocalStorage(pageView);
+    }
+  }
+
+  private trackAnonymousPageView(pagePath: string, pageTitle: string): void {
+    // Store anonymous page views for analytics
+    const today = new Date().toISOString().split('T')[0];
+    const key = `anon_pageviews_${today}`;
+    
+    try {
+      const pageviews = JSON.parse(localStorage.getItem(key) || '[]');
+      pageviews.push({
+        pagePath,
+        pageTitle,
+        timestamp: new Date().toISOString(),
+        userId: this.userId,
+        sessionId: this.sessionId
+      });
+      
+      localStorage.setItem(key, JSON.stringify(pageviews.slice(-100))); // Keep last 100
+    } catch (error) {
+      console.warn('Failed to store anonymous page view:', error);
+    }
+  }
+
+  private storeAnonymousEventInQueue(event: UserEvent): void {
+    try {
+      const queueKey = 'anonymous_events_queue';
+      const queue = JSON.parse(localStorage.getItem(queueKey) || '[]');
+      
+      queue.push({
+        ...event,
+        storedAt: new Date().toISOString()
+      });
+      
+      // Keep only last 50 events to avoid storage overflow
+      localStorage.setItem(queueKey, JSON.stringify(queue.slice(-50)));
+      
+      // Also store a summary
+      this.updateAnonymousEventSummary(event.eventName, event.eventCategory);
+      
+    } catch (error) {
+      console.warn('Failed to store anonymous event in queue:', error);
+    }
+  }
+
+  private updateAnonymousEventSummary(eventName: string, eventCategory: string): void {
+    const today = new Date().toISOString().split('T')[0];
+    const summaryKey = `anon_summary_${today}`;
+    
+    try {
+      const summary = JSON.parse(localStorage.getItem(summaryKey) || '{}');
+      
+      if (!summary[eventCategory]) {
+        summary[eventCategory] = {};
+      }
+      
+      if (!summary[eventCategory][eventName]) {
+        summary[eventCategory][eventName] = 0;
+      }
+      
+      summary[eventCategory][eventName] += 1;
+      summary.total = (summary.total || 0) + 1;
+      summary.lastUpdated = new Date().toISOString();
+      
+      localStorage.setItem(summaryKey, JSON.stringify(summary));
+    } catch (error) {
+      console.warn('Failed to update anonymous event summary:', error);
+    }
+  }
+
+  async migrateToConsentedUser(): Promise<void> {
+    console.log('🔄 Migrating anonymous user to consented...');
+    
+    try {
+      // Get anonymous ID
+      const anonymousId = this.userId;
+      
+      // Generate new user ID for consented user
+      const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Update stored user ID
+      localStorage.setItem('firebase_user_id', newUserId);
+      localStorage.setItem('user_created_at', new Date().toISOString());
+      
+      // Update session storage
+      sessionStorage.setItem('previous_anonymous_id', anonymousId);
+      sessionStorage.setItem('migrated_at', new Date().toISOString());
+      
+      // Process queued anonymous events
+      const queueKey = 'anonymous_events_queue';
+      const queue = JSON.parse(localStorage.getItem(queueKey) || '[]');
+      
+      if (queue.length > 0 && this.firestore) {
+        console.log(`🔄 Processing ${queue.length} queued anonymous events...`);
+        
+        for (const event of queue) {
+          try {
+            // Add events with migrated user ID
+            await addDoc(collection(this.firestore, COLLECTIONS.EVENTS), {
+              ...event,
+              userId: newUserId,
+              originalAnonymousId: anonymousId,
+              migrated: true,
+              migratedAt: new Date().toISOString(),
+              timestamp: serverTimestamp()
+            });
+          } catch (error) {
+            console.warn('Failed to migrate event:', error);
+          }
+        }
+        
+        // Clear the queue
+        localStorage.removeItem(queueKey);
+        
+        // Process summaries
+        this.processAnonymousSummaries(newUserId, anonymousId);
+      }
+      
+      // Update user ID for future events
+      this.userId = newUserId;
+      this.isAnonymous = false;
+      
+      console.log('✅ User migrated successfully');
+      
+    } catch (error) {
+      console.error('Failed to migrate user:', error);
+    }
+  }
+
+  private async processAnonymousSummaries(newUserId: string, anonymousId: string): Promise<void> {
+    try {
+      // Get all summary keys
+      const summaryKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('anon_summary_')) {
+          summaryKeys.push(key);
+        }
+      }
+      
+      // Process each summary
+      for (const key of summaryKeys) {
+        const summary = JSON.parse(localStorage.getItem(key) || '{}');
+        
+        // Store summary in Firestore
+        if (this.firestore && summary.total > 0) {
+          await addDoc(collection(this.firestore, 'anonymous_summaries'), {
+            date: key.replace('anon_summary_', ''),
+            originalAnonymousId: anonymousId,
+            newUserId: newUserId,
+            summary: summary,
+            migratedAt: new Date().toISOString(),
+            timestamp: serverTimestamp()
+          });
+        }
+        
+        // Remove from localStorage
+        localStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn('Failed to process anonymous summaries:', error);
     }
   }
 
@@ -202,9 +434,10 @@ export class FirebaseAnalyticsService {
         templateType: eventData.templateType,
         format: eventData.format,
         fieldsCount: eventData.fieldsCount,
-        resumeId: eventData.resumeId
+        resumeId: eventData.resumeId,
+        is_anonymous: this.isAnonymous
       },
-      consentGiven: localStorage.getItem('gdpr_consent') === 'accepted',
+      consentGiven: !this.isAnonymous,
       dataProcessingLocation: 'IN'
     });
 
@@ -212,7 +445,8 @@ export class FirebaseAnalyticsService {
       try {
         await addDoc(collection(this.firestore, COLLECTIONS.RESUME_EVENTS), {
           ...event,
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
+          is_anonymous: this.isAnonymous
         });
       } catch (error) {
         console.error('Error tracking resume event:', error);
@@ -237,9 +471,10 @@ export class FirebaseAnalyticsService {
         jobId: eventData.jobId,
         company: eventData.company,
         method: eventData.applicationMethod,
-        status: eventData.status
+        status: eventData.status,
+        is_anonymous: this.isAnonymous
       },
-      consentGiven: localStorage.getItem('gdpr_consent') === 'accepted',
+      consentGiven: !this.isAnonymous,
       dataProcessingLocation: 'IN'
     });
 
@@ -247,7 +482,8 @@ export class FirebaseAnalyticsService {
       try {
         await addDoc(collection(this.firestore, COLLECTIONS.JOB_EVENTS), {
           ...event,
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
+          is_anonymous: this.isAnonymous
         });
       } catch (error) {
         console.error('Error tracking job event:', error);
@@ -272,9 +508,10 @@ export class FirebaseAnalyticsService {
         postSlug: eventData.postSlug,
         category: eventData.category,
         readDuration: eventData.readDuration,
-        searchTerm: eventData.searchTerm
+        searchTerm: eventData.searchTerm,
+        is_anonymous: this.isAnonymous
       },
-      consentGiven: localStorage.getItem('gdpr_consent') === 'accepted',
+      consentGiven: !this.isAnonymous,
       dataProcessingLocation: 'IN'
     });
 
@@ -282,7 +519,8 @@ export class FirebaseAnalyticsService {
       try {
         await addDoc(collection(this.firestore, COLLECTIONS.BLOG_EVENTS), {
           ...event,
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
+          is_anonymous: this.isAnonymous
         });
       } catch (error) {
         console.error('Error tracking blog event:', error);
@@ -302,10 +540,12 @@ export class FirebaseAnalyticsService {
     };
 
     try {
+      // Always track funnel steps
       if (this.firestore) {
         await addDoc(collection(this.firestore, COLLECTIONS.FUNNELS), {
           ...funnelStep,
-          timestamp: serverTimestamp()
+          timestamp: serverTimestamp(),
+          is_anonymous: this.isAnonymous
         });
       }
 
@@ -318,9 +558,10 @@ export class FirebaseAnalyticsService {
         metadata: {
           stepNumber,
           timeToStep: funnelStep.timeToStep,
+          is_anonymous: this.isAnonymous,
           ...metadata
         },
-        consentGiven: localStorage.getItem('gdpr_consent') === 'accepted',
+        consentGiven: !this.isAnonymous,
         dataProcessingLocation: 'IN'
       });
     } catch (error) {
@@ -348,7 +589,8 @@ export class FirebaseAnalyticsService {
       const fallbackData = {
         ...data,
         timestamp: new Date().toISOString(),
-        isFallback: true
+        isFallback: true,
+        is_anonymous: this.isAnonymous
       };
       
       localStorage.setItem(key, JSON.stringify(fallbackData));
@@ -406,6 +648,43 @@ export class FirebaseAnalyticsService {
 
   getSessionId(): string {
     return this.sessionId;
+  }
+
+  isUserAnonymous(): boolean {
+    return this.isAnonymous;
+  }
+
+  getUserType(): string {
+    return this.isAnonymous ? 'anonymous' : 'consented';
+  }
+
+  // Method to get anonymous user stats
+  getAnonymousStats(): {
+    totalEvents: number;
+    totalPageViews: number;
+    sessionDuration: number;
+    userId: string;
+  } {
+    const today = new Date().toISOString().split('T')[0];
+    const summaryKey = `anon_summary_${today}`;
+    
+    try {
+      const summary = JSON.parse(localStorage.getItem(summaryKey) || '{}');
+      
+      return {
+        totalEvents: summary.total || 0,
+        totalPageViews: summary.Page ? summary.Page.page_view || 0 : 0,
+        sessionDuration: 0, // Can be calculated from timestamps
+        userId: this.userId
+      };
+    } catch (error) {
+      return {
+        totalEvents: 0,
+        totalPageViews: 0,
+        sessionDuration: 0,
+        userId: this.userId
+      };
+    }
   }
 }
 

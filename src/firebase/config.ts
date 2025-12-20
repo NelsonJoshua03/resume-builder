@@ -1,4 +1,4 @@
-// src/firebase/config.ts - PRODUCTION READY VERSION
+// src/firebase/config.ts - PRODUCTION READY VERSION WITH ANONYMOUS TRACKING
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -123,8 +123,8 @@ export const initializeFirebase = async (): Promise<{
       console.error('❌ Firestore initialization error:', firestoreError?.code, firestoreError?.message);
     }
 
-    // Initialize Analytics
-    if (typeof window !== 'undefined' && app && hasConsent) {
+    // Initialize Analytics - ALWAYS INITIALIZE (for both consented and anonymous users)
+    if (typeof window !== 'undefined' && app) {
       try {
         const analyticsSupported = await isSupported();
         console.log('📊 Analytics supported:', analyticsSupported);
@@ -132,16 +132,39 @@ export const initializeFirebase = async (): Promise<{
         if (analyticsSupported && app) {
           analytics = getAnalytics(app);
           
-          // Set user properties
+          // Always set user properties (with anonymized data for anonymous users)
           if (analytics) {
+            const isAnonymous = !hasConsent;
+            
             setUserProperties(analytics, {
               environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
               app_version: '1.0.0',
               platform: 'web',
-              domain: window.location.hostname
+              domain: window.location.hostname,
+              user_type: hasConsent ? 'consented' : 'anonymous',
+              tracking_enabled: 'true'
             });
+            
+            // Set user ID based on consent
+            if (hasConsent) {
+              // Use localStorage ID for consented users
+              let userId = localStorage.getItem('firebase_user_id');
+              if (!userId) {
+                userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                localStorage.setItem('firebase_user_id', userId);
+              }
+              setUserId(analytics, userId);
+            } else {
+              // Use sessionStorage ID for anonymous users
+              let userId = sessionStorage.getItem('firebase_anonymous_id');
+              if (!userId) {
+                userId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                sessionStorage.setItem('firebase_anonymous_id', userId);
+              }
+              setUserId(analytics, `anonymous_${userId}`);
+            }
           }
-          console.log('✅ Analytics initialized');
+          console.log('✅ Analytics initialized (Anonymous tracking enabled)');
         }
       } catch (analyticsError: any) {
         console.error('❌ Analytics initialization error:', analyticsError?.code, analyticsError?.message);
@@ -201,18 +224,21 @@ export const getAuthInstance = (): Auth | null => {
 
 export const getPerformanceInstance = () => performance;
 
-// Helper to log events
+// Helper to log events - MODIFIED TO WORK WITH ANONYMOUS USERS
 export const logAnalyticsEvent = (eventName: string, params?: any): void => {
-  const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-  
-  if (!hasConsent) {
-    return;
-  }
-
+  // Always log events, consent is handled in the analytics.ts file
   if (analytics) {
     try {
-      logEvent(analytics, eventName, params);
-      console.log(`📊 Analytics Event: ${eventName}`, params);
+      // Add anonymous flag if no consent
+      const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+      const eventParams = {
+        ...params,
+        is_anonymous: !hasConsent,
+        user_type: hasConsent ? 'consented' : 'anonymous'
+      };
+      
+      logEvent(analytics, eventName, eventParams);
+      console.log(`📊 Analytics Event: ${eventName}`, eventParams);
     } catch (error) {
       console.warn('Failed to log analytics event:', error);
     }
@@ -223,6 +249,7 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
 export const getFirebaseStatus = () => {
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
   const configValid = isConfigValid();
+  const isAnonymous = !hasConsent;
   
   return {
     app: !!app,
@@ -231,6 +258,7 @@ export const getFirebaseStatus = () => {
     auth: !!auth,
     performance: !!performance,
     gdprConsent: hasConsent,
+    isAnonymous: isAnonymous,
     configValid: configValid,
     projectId: firebaseConfig.projectId,
     environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
@@ -298,7 +326,8 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
           projectId: firebaseConfig.projectId,
           firestore: true,
           analytics: !!analytics,
-          auth: !!auth
+          auth: !!auth,
+          anonymous_tracking_enabled: true
         }
       };
     } catch (error: any) {
@@ -346,18 +375,35 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
 
 // Reinitialize with consent
 export const reinitializeFirebaseWithConsent = async () => {
-  analytics = null;
-  
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+  
   if (hasConsent && app) {
     try {
-      const analyticsSupported = await isSupported();
-      if (analyticsSupported && app) {
-        analytics = getAnalytics(app);
-        console.log('✅ Analytics reinitialized with consent');
+      // Update user ID from anonymous to consented
+      if (analytics) {
+        // Get current user ID
+        const currentUserId = localStorage.getItem('firebase_user_id') || 
+                              `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Migrate from anonymous to consented
+        const previousAnonymousId = sessionStorage.getItem('firebase_anonymous_id');
+        if (previousAnonymousId) {
+          localStorage.setItem('previous_anonymous_id', previousAnonymousId);
+          sessionStorage.removeItem('firebase_anonymous_id');
+        }
+        
+        // Update Firebase Analytics user ID
+        setUserId(analytics, currentUserId);
+        setUserProperties(analytics, {
+          user_type: 'consented',
+          migrated_from_anonymous: !!previousAnonymousId,
+          previous_anonymous_id: previousAnonymousId || 'none'
+        });
+        
+        console.log('✅ Analytics reinitialized with consent (user migrated from anonymous)');
       }
     } catch (error) {
-      console.error('Failed to reinitialize analytics:', error);
+      console.error('Failed to reinitialize analytics with consent:', error);
     }
   }
   
@@ -370,21 +416,23 @@ export const isFirebaseReady = (): boolean => {
 
 // Auto-initialize when consent is given
 if (typeof window !== 'undefined') {
-  // Initialize immediately if consent already given
-  const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-  if (hasConsent) {
-    setTimeout(() => {
-      console.log('🔄 Auto-initializing Firebase with consent...');
-      initializeFirebase();
-    }, 1000);
-  }
+  // Initialize immediately (for both anonymous and consented users)
+  setTimeout(() => {
+    console.log('🔄 Auto-initializing Firebase (anonymous tracking enabled)...');
+    initializeFirebase();
+  }, 1000);
   
   // Listen for consent changes
   window.addEventListener('storage', (e) => {
     if (e.key === 'gdpr_consent' && e.newValue === 'accepted') {
       setTimeout(() => {
         console.log('🔄 Reinitializing Firebase after consent change...');
-        initializeFirebase();
+        reinitializeFirebaseWithConsent();
+        
+        // Also trigger a page refresh to start fresh with consented tracking
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       }, 1000);
     }
   });

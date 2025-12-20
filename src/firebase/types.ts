@@ -18,6 +18,7 @@ export interface UserEvent {
   // GDPR compliance fields
   consentGiven: boolean;
   dataProcessingLocation: 'IN'; // India
+  isAnonymous?: boolean; // ADD THIS
 }
 
 export interface PageViewEvent {
@@ -31,6 +32,7 @@ export interface PageViewEvent {
   duration: number; // in seconds
   scrollDepth: number; // 0-100 percentage
   deviceType: 'mobile' | 'tablet' | 'desktop';
+  isAnonymous?: boolean; // ADD THIS
 }
 
 export interface ResumeEvent {
@@ -49,6 +51,7 @@ export interface ResumeEvent {
   };
   resumeId?: string;
   metadata?: Record<string, any>;
+  isAnonymous?: boolean; // ADD THIS
 }
 
 export interface JobApplicationEvent {
@@ -62,6 +65,7 @@ export interface JobApplicationEvent {
   applicationMethod: 'direct' | 'email' | 'linkedin' | 'company_portal';
   status?: 'applied' | 'pending' | 'rejected' | 'accepted' | 'viewed' | 'saved';
   metadata?: Record<string, any>;
+  isAnonymous?: boolean; // ADD THIS
 }
 
 export interface BlogEngagementEvent {
@@ -75,6 +79,7 @@ export interface BlogEngagementEvent {
   readDuration?: number; // in seconds
   scrollPercentage?: number;
   searchTerm?: string;
+  isAnonymous?: boolean; // ADD THIS
 }
 
 export interface UserProfile {
@@ -89,6 +94,7 @@ export interface UserProfile {
     screenResolution: string;
     language: string;
     deviceType: 'mobile' | 'tablet' | 'desktop';
+    isAnonymous?: boolean; // ADD THIS
   };
   // GDPR compliance
   consentGiven: boolean;
@@ -97,6 +103,7 @@ export interface UserProfile {
     analytics: boolean;
     personalization: boolean;
     marketing: boolean;
+    
   };
   // Anonymous tracking ID for non-authenticated users
   anonymousId?: string;
@@ -114,6 +121,7 @@ export interface DailyAnalytics {
   conversions: number;
   bounceRate: number;
   avgSessionDuration: number;
+  isAnonymous?: boolean; // ADD THIS
   topPages: Array<{
     pagePath: string;
     views: number;
@@ -132,6 +140,7 @@ export interface FunnelStep {
   timestamp: Date;
   timeToStep: number; // seconds from funnel start
   metadata?: Record<string, any>;
+  isAnonymous?: boolean; // ADD THIS
 }
 
 // Collection names
