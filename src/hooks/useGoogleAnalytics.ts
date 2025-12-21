@@ -36,6 +36,17 @@ export const useGoogleAnalytics = () => {
     }
   }, []);
 
+  // ============ EXIT INTENT TRACKING ============
+  const trackExitIntent = useCallback((action: string, timeOnPage: number, additionalParams: Record<string, any> = {}) => {
+    trackEvent('exit_intent_detected', {
+      action: action,
+      time_on_page: timeOnPage,
+      ...additionalParams,
+      event_category: 'User Behavior',
+      event_label: action
+    });
+  }, [trackEvent]);
+
   // ============ RESUME BUILDER EVENTS ============
   const trackResumeGeneration = useCallback((templateType: string, format: string = 'pdf', status: string = 'started') => {
     trackEvent('resume_generation', {
@@ -458,6 +469,9 @@ export const useGoogleAnalytics = () => {
     // Core tracking
     trackEvent,
     trackPageView,
+    
+    // Exit Intent Tracking - NEW
+    trackExitIntent,
     
     // Resume Builder
     trackResumeGeneration,

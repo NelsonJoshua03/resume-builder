@@ -1,4 +1,4 @@
-// src/hooks/useFirebaseAnalytics.ts - UPDATED WITH PROPER TYPES AND ALL METHODS
+// src/hooks/useFirebaseAnalytics.ts - UPDATED WITH ALL METHODS INCLUDING trackFirebaseCTAClick
 import { useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { firebaseAnalytics } from '../firebase/analytics';
@@ -30,34 +30,33 @@ export const useFirebaseAnalytics = () => {
   }, [location]);
 
   // ✅ FIXED: trackEvent method with proper typing
-  // Update trackEvent method to work with anonymous users:
-const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
-  try {
-    // Get consent status
-    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-    
-    // Prepare complete event data
-    const completeEventData = {
-      eventName: eventData.eventName,
-      eventCategory: eventData.eventCategory,
-      eventLabel: eventData.eventLabel,
-      pagePath: eventData.pagePath || window.location.pathname,
-      pageTitle: eventData.pageTitle || document.title,
-      eventValue: eventData.eventValue,
-      metadata: {
-        ...eventData.metadata,
-        is_anonymous: !hasConsent
-      },
-      // These will be added by firebaseAnalytics.trackEvent
-      consentGiven: hasConsent,
-      dataProcessingLocation: 'IN' as const
-    };
+  const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
+    try {
+      // Get consent status
+      const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+      
+      // Prepare complete event data
+      const completeEventData = {
+        eventName: eventData.eventName,
+        eventCategory: eventData.eventCategory,
+        eventLabel: eventData.eventLabel,
+        pagePath: eventData.pagePath || window.location.pathname,
+        pageTitle: eventData.pageTitle || document.title,
+        eventValue: eventData.eventValue,
+        metadata: {
+          ...eventData.metadata,
+          is_anonymous: !hasConsent
+        },
+        // These will be added by firebaseAnalytics.trackEvent
+        consentGiven: hasConsent,
+        dataProcessingLocation: 'IN' as const
+      };
 
-    await firebaseAnalytics.trackEvent(completeEventData);
-  } catch (error) {
-    console.error('Firebase tracking error:', error);
-  }
-}, []);
+      await firebaseAnalytics.trackEvent(completeEventData);
+    } catch (error) {
+      console.error('Firebase tracking error:', error);
+    }
+  }, []);
 
   // ✅ FIXED: trackFirebaseEvent method (string parameters)
   const trackFirebaseEvent = useCallback(async (
@@ -81,6 +80,48 @@ const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
       console.error('Firebase tracking error:', error);
     }
   }, [trackEvent]);
+
+  // ✅ ADDED: Exit Intent tracking method
+  const trackExitIntent = useCallback(async (
+    timeOnPage: number,
+    intentType: string,
+    metadata?: Record<string, any>
+  ) => {
+    try {
+      await trackFirebaseEvent(
+        'exit_intent_detected',
+        'User Behavior',
+        intentType,
+        {
+          timeOnPage,
+          intentType,
+          pagePath: window.location.pathname,
+          pageTitle: document.title,
+          ...metadata
+        }
+      );
+    } catch (error) {
+      console.error('Firebase exit intent tracking error:', error);
+    }
+  }, [trackFirebaseEvent]);
+
+  // ✅ ADDED: trackFirebaseCTAClick method (alias for trackCTAClick)
+  const trackFirebaseCTAClick = useCallback(async (
+    ctaName: string,
+    location: string,
+    page: string
+  ) => {
+    try {
+      await trackFirebaseEvent(
+        'cta_click',
+        'Conversion',
+        ctaName,
+        { location, page }
+      );
+    } catch (error) {
+      console.error('Firebase CTA click tracking error:', error);
+    }
+  }, [trackFirebaseEvent]);
 
   // Resume Builder tracking
   const trackResumeGeneration = useCallback(async (
@@ -135,7 +176,7 @@ const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
     );
   }, [trackFirebaseEvent]);
 
-  // CTA Click tracking
+  // CTA Click tracking (original method)
   const trackCTAClick = useCallback(async (
     ctaName: string,
     location: string,
@@ -512,6 +553,10 @@ const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
     trackEvent,
     trackFirebaseEvent,
     trackPageView,
+    trackExitIntent,
+    
+    // ✅ ADDED: trackFirebaseCTAClick method
+    trackFirebaseCTAClick,
     
     // Resume Builder
     trackResumeGeneration,
@@ -542,7 +587,7 @@ const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
     
     // User Interactions
     trackButtonClick,
-    trackCTAClick,
+    trackCTAClick, // Original method
     trackFunnelStep,
     trackSocialShare,
     trackSignup,
