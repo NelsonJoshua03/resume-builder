@@ -1,5 +1,17 @@
 {
   "posts": [
+    {
+  "id": 22,
+  "slug": "electrical-engineering-fresher-story-resume-guide-india",
+  "title": "An Electrical Engineer's Journey: From Classroom to Career - My Fresher Story & Resume Guide",
+  "excerpt": "My journey from an electrical engineering classroom to landing my first job at a top MNC. Discover untapped career paths and learn how to build a resume that actually gets calls.",
+  "category": "industry-specific",
+  "date": "2025-12-22",
+  "readTime": "6 min read",
+  "author": "Rahul Sharma",
+  "authorBio": "Electrical Engineering graduate now working at Schneider Electric, mentor to 50+ freshers",
+  "contentFile": "electrical-engineering-fresher-story-resume-guide-india.md"
+},
   {
     "id": 20,
     "slug": "load-performance-testing-fresher-walkin-drive-mumbai-aqm-technologies-resume-guide",
