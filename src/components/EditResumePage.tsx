@@ -1,6 +1,7 @@
-// EditResumePage.tsx - COMPLETE WITH FIREBASE ANALYTICS (TYPE FIXED)
+// EditResumePage.tsx - COMPLETE WITH FIREBASE ANALYTICS AND ENHANCED SEO
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useResume } from './ResumeContext';
 import PersonalInfo from './PersonalInfo';
 import Experience from './Experience';
@@ -15,6 +16,130 @@ import SEO from './SEO';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import type { PersonalInfoData } from './types';
+
+// Structured Data Components (included inline to avoid import errors)
+const StructuredDataComponent = ({ type, data }: { type: string; data: any }) => (
+  <Helmet>
+    <script type="application/ld+json">
+      {JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": type,
+        ...data
+      })}
+    </script>
+  </Helmet>
+);
+
+const WebsiteSchema = ({ url, name, description }: { url: string; name: string; description: string }) => (
+  <StructuredDataComponent
+    type="Website"
+    data={{
+      "name": name,
+      "url": url,
+      "description": description,
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": `${url}/search?q={search_term_string}`
+        },
+        "query-input": "required name=search_term_string"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "CareerCraft India",
+        "logo": "https://careercraft.in/logos/careercraft-logo-square.png"
+      }
+    }}
+  />
+);
+
+const OrganizationSchema = () => (
+  <StructuredDataComponent
+    type="Organization"
+    data={{
+      "name": "CareerCraft India",
+      "url": "https://careercraft.in",
+      "logo": "https://careercraft.in/logos/careercraft-logo-square.png",
+      "description": "India's premier career platform offering free ATS-optimized resume builder and job portal services",
+      "email": "contact@careercraft.in",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "IN"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/in/career-coach-expert-2a47a0399",
+        "https://www.instagram.com/career_craft_india/"
+      ],
+      "founder": {
+        "@type": "Person",
+        "name": "CareerCraft Team"
+      },
+      "foundingDate": "2024",
+      "areaServed": "IN",
+      "knowsAbout": [
+        "Resume Writing",
+        "ATS Optimization",
+        "Job Search India",
+        "Career Counseling",
+        "Interview Preparation"
+      ]
+    }}
+  />
+);
+
+const FAQSchema = ({ faqs }: { faqs: Array<{ question: string; answer: string }> }) => (
+  <StructuredDataComponent
+    type="FAQPage"
+    data={{
+      "mainEntity": faqs.map(faq => ({
+        "@type": "Question",
+        "name": faq.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": faq.answer
+        }
+      }))
+    }}
+  />
+);
+
+const BreadcrumbSchema = ({ items }: { items: Array<{ name: string; item: string }> }) => (
+  <StructuredDataComponent
+    type="BreadcrumbList"
+    data={{
+      "itemListElement": items.map((item, index) => ({
+        "@type": "ListItem",
+        "position": index + 1,
+        "name": item.name,
+        "item": item.item
+      }))
+    }}
+  />
+);
+
+const HowToSchema = ({ name, description, steps }: { name: string; description: string; steps: Array<{ name: string; text: string }> }) => (
+  <StructuredDataComponent
+    type="HowTo"
+    data={{
+      "name": name,
+      "description": description,
+      "step": steps.map((step, index) => ({
+        "@type": "HowToStep",
+        "position": index + 1,
+        "name": step.name,
+        "text": step.text,
+        "image": `https://careercraft.in/images/step${index + 1}.png`
+      })),
+      "estimatedCost": {
+        "@type": "MonetaryAmount",
+        "currency": "INR",
+        "value": "0"
+      },
+      "timeRequired": "PT15M"
+    }}
+  />
+);
 
 const EditResumePage = () => {
   const {
@@ -78,6 +203,62 @@ const EditResumePage = () => {
   const lastSectionSwitchTime = useRef<number>(Date.now());
   const sectionEnterTime = useRef<number>(Date.now());
   const editSessionId = useRef<string>(`edit_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+
+  // FAQ Data for Structured Data
+  const faqData = [
+    {
+      question: "How do I edit my resume on CareerCraft?",
+      answer: "Simply navigate to each section (Personal Information, Experience, Education, Skills, Projects, Awards) and fill in your details. You can upload an existing resume or start fresh. All changes are saved automatically."
+    },
+    {
+      question: "Is editing my resume free on CareerCraft?",
+      answer: "Yes! CareerCraft offers 100% free resume editing with no hidden charges. You can edit all sections, customize templates, and download unlimited times for free."
+    },
+    {
+      question: "Can I upload my existing resume to edit?",
+      answer: "Yes! Use our file upload feature to import your existing resume (PDF, DOC, DOCX). We'll extract the information and pre-fill the forms for easy editing."
+    },
+    {
+      question: "How do I rearrange sections in my resume?",
+      answer: "Use the 'Reorder' section to drag and drop sections into your preferred order. This helps you highlight your most relevant experience first."
+    },
+    {
+      question: "Will my edited resume pass through ATS systems?",
+      answer: "Absolutely! All CareerCraft templates are optimized for Applicant Tracking Systems used by Indian companies like TCS, Infosys, Wipro, and more."
+    },
+    {
+      question: "How do I save my edited resume?",
+      answer: "Your changes are saved automatically as you type. You can also click the 'Save Changes' button to manually save. Then proceed to download your resume in PDF format."
+    }
+  ];
+
+  // HowTo Steps for Resume Editing
+  const howToSteps = [
+    {
+      name: "Start Editing",
+      text: "Begin by filling in your personal information including name, email, phone, and professional title."
+    },
+    {
+      name: "Add Work Experience",
+      text: "Detail your work history with company names, job titles, dates, and key achievements. Use action verbs and quantify results."
+    },
+    {
+      name: "Include Education",
+      text: "Add your educational background with institutions, degrees, dates, and any academic achievements or honors."
+    },
+    {
+      name: "List Skills & Projects",
+      text: "Add relevant technical and soft skills. Include projects with descriptions of your role and contributions."
+    },
+    {
+      name: "Customize & Optimize",
+      text: "Reorder sections, customize colors, and optimize content with keywords from your target job description."
+    },
+    {
+      name: "Preview & Download",
+      text: "Preview your resume, choose a template, and download as PDF. Your edited resume is ready to apply!"
+    }
+  ];
 
   // Track page view on mount - DUAL TRACKING
   useEffect(() => {
@@ -677,11 +858,66 @@ const EditResumePage = () => {
   return (
     <>
       <SEO
-        title="Edit Resume - Update Your CV Information | CareerCraft"
-        description="Update your resume information including personal details, work experience, education, skills, projects, and awards. Create the perfect CV for your job applications."
-        keywords="edit resume, update CV, resume information, work experience, education details, skills update, project information, awards and achievements"
+        title="📝 Edit Resume Online - Free Resume Editor & CV Maker | CareerCraft.in"
+        description="Edit and customize your resume instantly with CareerCraft's free online editor. Update personal details, work experience, education, skills, projects, awards. ATS-optimized templates for Indian job market. 100% Free • No Signup Required"
+        keywords="edit resume online, free resume editor, update CV details, customize resume, resume builder India, ATS resume editor, professional CV editing, Indian job resume, fresher resume editing, experienced resume update"
         canonicalUrl="https://careercraft.in/edit"
+        ogImage="https://careercraft.in/images/og-edit-resume.jpg"
+        type="website"
+        author="CareerCraft India"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          "name": "CareerCraft Resume Editor",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web Browser",
+          "description": "Free online resume editor for Indian job seekers. Edit and customize your CV with ATS-optimized templates.",
+          "url": "https://careercraft.in/edit",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR"
+          },
+          "areaServed": {
+            "@type": "Country",
+            "name": "India"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.7",
+            "ratingCount": "1200",
+            "bestRating": "5",
+            "worstRating": "1"
+          }
+        }}
       />
+      
+      {/* Structured Data Components */}
+      <OrganizationSchema />
+      <WebsiteSchema 
+        url="https://careercraft.in"
+        name="CareerCraft - India's Career Platform"
+        description="India's premier career platform offering free ATS-optimized resume builder and job portal services"
+      />
+      <FAQSchema faqs={faqData} />
+      <BreadcrumbSchema items={[
+        { name: "Home", item: "https://careercraft.in" },
+        { name: "Resume Builder", item: "https://careercraft.in/builder" },
+        { name: "Edit Resume", item: "https://careercraft.in/edit" }
+      ]} />
+      <HowToSchema
+        name="How to Edit and Optimize Your Resume with CareerCraft"
+        description="Complete step-by-step guide to editing your resume for maximum impact in Indian job market"
+        steps={howToSteps}
+      />
+
+      {/* Hreflang tags for international users */}
+      <Helmet>
+        <link rel="alternate" href="https://careercraft.in/edit" hrefLang="en-IN" />
+        <link rel="alternate" href="https://careercraft.in/edit" hrefLang="en" />
+        <link rel="alternate" href="https://careercraft.in/edit" hrefLang="x-default" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+      </Helmet>
       
       <div className="min-h-screen bg-gray-50 py-2 md:py-6">
         <div className="container mx-auto px-2 md:px-4 max-w-6xl">
