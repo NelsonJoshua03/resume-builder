@@ -1,3 +1,4 @@
+
 // src/components/BlogPost.tsx - COMPLETE WITH FIREBASE ANALYTICS
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';

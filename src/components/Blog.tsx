@@ -1,4 +1,5 @@
-// [file name]: Blog.tsx - FIXED VERSION
+
+// src/components/Blog.tsx - COMPLETE WITH FIREBASE ANALYTICS
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
@@ -52,64 +53,11 @@ const sendToBothGA = (eventName: string, params: any = {}) => {
   }
 };
 
-// Default blog data in case fetch fails
-const DEFAULT_BLOG_POSTS: BlogPost[] = [
-  {
-    id: 1,
-    title: "How to Create an ATS-Friendly Resume for Indian Job Market",
-    excerpt: "Learn the secrets to crafting resumes that pass through Applicant Tracking Systems used by Indian companies like TCS, Infosys, and Wipro.",
-    category: "ats-optimization",
-    date: "2024-01-15",
-    readTime: "5 min",
-    slug: "ats-friendly-resume-india",
-    author: "CareerCraft Team",
-    authorBio: "Indian Career Experts with 10+ years experience",
-    contentFile: "ats-resume-guide.md"
-  },
-  {
-    id: 2,
-    title: "Top 10 Resume Mistakes Indian Freshers Make (And How to Fix Them)",
-    excerpt: "Avoid these common mistakes that prevent freshers from getting interview calls in competitive Indian job markets.",
-    category: "fresh-graduate",
-    date: "2024-01-10",
-    readTime: "7 min",
-    slug: "fresher-resume-mistakes",
-    author: "Rahul Sharma",
-    authorBio: "HR Manager at Tech Mahindra",
-    contentFile: "fresher-mistakes.md"
-  },
-  {
-    id: 3,
-    title: "Engineering Resume Template for Mechanical Engineers in India",
-    excerpt: "Specialized resume format that highlights technical skills and projects for mechanical engineering roles in manufacturing and automotive sectors.",
-    category: "industry-specific",
-    date: "2024-01-05",
-    readTime: "6 min",
-    slug: "mechanical-engineer-resume",
-    author: "Priya Patel",
-    authorBio: "Career Consultant for Engineering Students",
-    contentFile: "mechanical-engineer.md"
-  },
-  {
-    id: 4,
-    title: "How to Write a Cover Letter That Gets Noticed by Indian Recruiters",
-    excerpt: "Indian recruiters look for specific elements in cover letters. Learn what they are and how to include them effectively.",
-    category: "resume-tips",
-    date: "2024-01-01",
-    readTime: "8 min",
-    slug: "cover-letter-india",
-    author: "Ankit Verma",
-    authorBio: "Talent Acquisition Lead at Amazon India",
-    contentFile: "cover-letter-guide.md"
-  }
-];
-
 const Blog: React.FC = () => {
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [usingFallback, setUsingFallback] = useState(false);
   
   // Google Analytics hooks
   const { trackPageView, trackBlogView, trackButtonClick, trackCTAClick } = useGoogleAnalytics();
@@ -184,115 +132,84 @@ const Blog: React.FC = () => {
     };
   }, []);
 
+  // Helper function to get the correct URL based on environment
+  const getBlogDataUrl = () => {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      return '/blog-data.json';
+    } else {
+      return 'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main/public/blog-data.json?t=' + Date.now();
+    }
+  };
+
   useEffect(() => {
     const fetchBlogPosts = async () => {
       try {
-        // Try primary source first (GitHub)
-        const primaryUrl = 'https://raw.githubusercontent.com/NelsonJoshua03/resume-builder/main/public/blog-data.json';
-        const fallbackUrl = '/blog-data.json'; // Local fallback
+        const dataUrl = getBlogDataUrl();
+        console.log('📡 Fetching blog data from:', dataUrl);
         
-        console.log('📡 Attempting to fetch blog data from GitHub...');
+        const response = await fetch(dataUrl);
         
-        // Try GitHub with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
-        try {
-          const response = await fetch(`${primaryUrl}?t=${Date.now()}`, {
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ Blog data loaded from GitHub:', data.posts.length, 'posts');
-            setBlogPosts(data.posts);
-            setUsingFallback(false);
-            
-            // Track successful GitHub fetch
-            trackEvent({
-              eventName: 'blog_data_loaded',
-              eventCategory: 'Blog',
-              eventLabel: 'github_success',
-              pagePath: '/blog',
-              pageTitle: 'CareerCraft Blog',
-              metadata: {
-                source: 'github',
-                post_count: data.posts.length,
-                load_time: Date.now()
-              }
-            });
-          } else {
-            throw new Error(`GitHub fetch failed: ${response.status}`);
-          }
-        } catch (githubError) {
-          console.log('GitHub fetch failed, trying local fallback:', githubError);
-          
-          // Try local fallback
-          try {
-            const localResponse = await fetch(fallbackUrl);
-            if (localResponse.ok) {
-              const data = await localResponse.json();
-              console.log('✅ Blog data loaded from local:', data.posts.length, 'posts');
-              setBlogPosts(data.posts);
-              setUsingFallback(true);
-              
-              trackEvent({
-                eventName: 'blog_data_loaded',
-                eventCategory: 'Blog',
-                eventLabel: 'local_fallback',
-                pagePath: '/blog',
-                pageTitle: 'CareerCraft Blog',
-                metadata: {
-                  source: 'local',
-                  post_count: data.posts.length,
-                  github_error: githubError instanceof Error ? githubError.message : 'Unknown'
-                }
-              });
-            } else {
-              throw new Error('Local fetch also failed');
-            }
-          } catch (localError) {
-            console.log('Both sources failed, using default posts');
-            setBlogPosts(DEFAULT_BLOG_POSTS);
-            setUsingFallback(true);
-            
-            trackEvent({
-              eventName: 'blog_data_loaded',
-              eventCategory: 'Blog',
-              eventLabel: 'hardcoded_fallback',
-              pagePath: '/blog',
-              pageTitle: 'CareerCraft Blog',
-              metadata: {
-                source: 'hardcoded',
-                post_count: DEFAULT_BLOG_POSTS.length,
-                errors: {
-                  github: githubError instanceof Error ? githubError.message : 'Unknown',
-                  local: localError instanceof Error ? localError.message : 'Unknown'
-                }
-              }
-            });
-          }
+        if (!response.ok) {
+          throw new Error('Failed to load blog posts');
         }
         
+        const data = await response.json();
+        console.log('📝 Loaded blog posts:', data.posts.length);
+        setBlogPosts(data.posts);
         setLoading(false);
+        
+        // Track blog loaded event - SEND TO BOTH PROPERTIES
+        sendToBothGA('blog_loaded', {
+          post_count: data.posts.length,
+          event_category: 'Blog',
+          event_label: 'blog_page_loaded'
+        });
+        
+        // Track via Firebase Analytics
+        trackEvent({
+          eventName: 'blog_posts_loaded',
+          eventCategory: 'Blog',
+          eventLabel: `${data.posts.length}_posts_loaded`,
+          pagePath: '/blog',
+          pageTitle: 'CareerCraft Blog',
+          metadata: {
+            post_count: data.posts.length,
+            categories_count: Object.keys(blogCategories).length,
+            total_read_time: data.posts.reduce((acc: number, post: BlogPost) => {
+              const time = parseInt(post.readTime) || 0;
+              return acc + time;
+            }, 0)
+          }
+        });
         
       } catch (err) {
-        console.error('Critical error loading blog posts:', err);
-        setBlogPosts(DEFAULT_BLOG_POSTS);
-        setUsingFallback(true);
+        console.error('Error loading blog posts:', err);
+        setError('Failed to load blog posts. Please try again later.');
         setLoading(false);
         
+        // Track error event - SEND TO BOTH PROPERTIES
+        sendToBothGA('exception', {
+          description: 'Blog load error',
+          fatal: false
+        });
+        
+        // Also track via hooks
+        trackButtonClick('blog_load_error', 'error', 'blog');
+        trackFirebaseButtonClick('blog_load_error', 'error', '/blog');
+        
+        // Firebase error tracking
         trackEvent({
-          eventName: 'blog_load_critical_error',
+          eventName: 'blog_load_error',
           eventCategory: 'Errors',
-          eventLabel: 'critical_fallback',
+          eventLabel: 'blog_load_failed',
           pagePath: '/blog',
           pageTitle: 'CareerCraft Blog',
           metadata: {
             error: err instanceof Error ? err.message : 'Unknown error',
-            fallback_used: true
+            url: getBlogDataUrl(),
+            timestamp: new Date().toISOString()
           }
         });
       }
@@ -324,8 +241,7 @@ const Blog: React.FC = () => {
         author: post.author,
         read_time: post.readTime,
         date: post.date,
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
-        using_fallback: usingFallback
+        user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
       }
     });
     
@@ -359,8 +275,7 @@ const Blog: React.FC = () => {
         category: category,
         category_name: blogCategories[category as keyof typeof blogCategories] || category,
         selected_posts_count: category === 'all' ? blogPosts.length : blogPosts.filter(p => p.category === category).length,
-        action: category === 'all' ? 'show_all' : 'filter_by_category',
-        using_fallback: usingFallback
+        action: category === 'all' ? 'show_all' : 'filter_by_category'
       }
     });
     
@@ -395,8 +310,7 @@ const Blog: React.FC = () => {
         search_query: query,
         results_count: results.length,
         search_type: 'blog_search',
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
-        using_fallback: usingFallback
+        user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
       }
     });
   };
@@ -413,6 +327,23 @@ const Blog: React.FC = () => {
             <FiBookOpen className="w-8 h-8 mx-auto mb-4 text-blue-500" />
             Loading latest blog posts...
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="text-red-600 mb-4">{error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 mx-auto"
+          >
+            <FiRefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -462,15 +393,6 @@ const Blog: React.FC = () => {
             <p className="text-xl text-gray-600 mb-8">
               Expert advice, tips, and insights to help Indian professionals create the perfect resume and land dream jobs.
             </p>
-            
-            {usingFallback && (
-              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800 text-sm">
-                  <FiRefreshCw className="inline-block mr-2" />
-                  Using local blog data. Some content may be limited.
-                </p>
-              </div>
-            )}
             
             {/* E-E-A-T Trust Signals */}
             <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
@@ -651,7 +573,7 @@ const Blog: React.FC = () => {
             </Link>
           </div>
 
-          {/* Analytics Status Indicator */}
+          {/* Analytics Status Indicator (Development Only) */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h4 className="font-semibold text-gray-700 mb-2">📊 Analytics Tracking Active</h4>
@@ -662,11 +584,7 @@ const Blog: React.FC = () => {
                 </div>
                 <div className="flex items-center">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span>Firebase Analytics: {typeof window.firebaseMock !== 'undefined' ? 'Mock Mode' : 'Active'}</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                  <span>Blog Data Source: {usingFallback ? 'Fallback' : 'GitHub'}</span>
+                  <span>Firebase Analytics: Real-time tracking active</span>
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
                   Tracking: Page views, clicks, category filters, searches, scroll depth
