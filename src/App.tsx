@@ -1,6 +1,4 @@
-// src/App.tsx - UPDATED WITH ANONYMOUS TRACKING
-// [file name]: App.tsx - UPDATED (removed debug components)
-// src/App.tsx - CLEANED VERSION WITHOUT DEBUG COMPONENTS
+// src/App.tsx - UPDATED WITHOUT GDPR CONSENT
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -32,9 +30,6 @@ import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import EditResumePage from './components/EditResumePage';
 
-// Firebase Components
-import GDPRConsent from './components/GDPRConsent';
-
 // Analytics Dashboard Components (Admin only)
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import LocalAnalyticsDashboard from './components/LocalAnalyticsDashboard';
@@ -54,7 +49,7 @@ import { anonymousTracking } from './firebase/anonymousTracking';
 import { useEffect } from 'react';
 
 function App() {
-  // Initialize Firebase and anonymous tracking on app start
+  // Initialize Firebase on app start (no consent required)
   useEffect(() => {
     try {
       initializeFirebase();
@@ -66,20 +61,6 @@ function App() {
       setTimeout(() => {
         firebaseSyncService.checkAndSync();
       }, 2000);
-      
-      // Listen for consent changes
-      const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === 'gdpr_consent' && e.newValue === 'accepted') {
-          console.log('🎉 User gave consent, migrating anonymous data...');
-          window.location.reload(); // Reload to start fresh with consented tracking
-        }
-      };
-      
-      window.addEventListener('storage', handleStorageChange);
-      
-      return () => {
-        window.removeEventListener('storage', handleStorageChange);
-      };
       
     } catch (error) {
       console.error('Firebase initialization error:', error);
@@ -94,7 +75,6 @@ function App() {
       }}>
         <ResumeProvider>
           <GoogleAnalytics />
-          <GDPRConsent />
           <Layout>
             <Routes>
               {/* Main Pages */}

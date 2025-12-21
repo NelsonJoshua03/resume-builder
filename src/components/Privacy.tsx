@@ -9,17 +9,12 @@ const Privacy: React.FC = () => {
     trackButtonClick('privacy_email_click', emailType, 'privacy_page');
   };
 
-  // Remove unused handleExternalLinkClick function
-  // const handleExternalLinkClick = (linkType: string) => {
-  //   trackButtonClick('privacy_external_link', linkType, 'privacy_page');
-  // };
-
   return (
     <>
       <SEO
         title="Privacy Policy - CareerCraft.in | India's Career Platform"
-        description="CareerCraft.in privacy policy. We respect your privacy and do not store your personal data. Your resume information stays on your device. Compliant with Indian data protection laws and IT Act."
-        keywords="privacy policy India, data protection, privacy-focused career platform, no data storage, Indian data laws, IT Act compliance, resume privacy India"
+        description="CareerCraft.in privacy policy. We respect your privacy and are transparent about data usage. Your resume information is processed locally on your device."
+        keywords="privacy policy India, data protection, privacy-focused career platform, Indian data laws, IT Act compliance, resume privacy India"
         canonicalUrl="https://careercraft.in/privacy"
       />
 
@@ -32,13 +27,13 @@ const Privacy: React.FC = () => {
             <section>
               <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Information We Collect</h2>
               <p className="text-gray-600 mb-4">
-                CareerCraft.in is committed to protecting your privacy. We designed our career platform with privacy in mind for Indian users:
+                CareerCraft.in is committed to protecting your privacy. We designed our career platform with user privacy in mind:
               </p>
               <ul className="list-disc list-inside text-gray-600 space-y-2">
                 <li>We do not require registration or personal accounts</li>
                 <li>Your resume data is processed locally in your browser</li>
                 <li>We do not store your resume information on our servers</li>
-                <li>We only collect anonymous usage statistics to improve our service for Indian job seekers</li>
+                <li>We collect anonymous usage statistics to improve our service</li>
                 <li>We comply with Indian data protection regulations and IT Act</li>
               </ul>
             </section>
@@ -47,30 +42,32 @@ const Privacy: React.FC = () => {
               <h2 className="text-2xl font-bold text-gray-800 mb-4">2. How We Use Information</h2>
               <p className="text-gray-600">
                 Any information you enter into the resume builder remains on your device. 
-                We use anonymous analytics to understand how Indian users interact with our platform 
-                and make improvements to the user experience specifically for the Indian job market.
+                We use anonymous analytics to understand how users interact with our platform 
+                and make improvements to the user experience.
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">3. Third-Party Services</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">3. Analytics & Tracking</h2>
               <p className="text-gray-600 mb-4">
-                We use the following third-party services that comply with Indian data protection standards:
+                We use analytics services to understand how our website is being used:
               </p>
               <ul className="list-disc list-inside text-gray-600 space-y-2">
-                <li>Google Analytics (anonymous usage data for Indian traffic)</li>
-                <li>Google AdSense (contextual advertising for Indian users)</li>
-                <li>Netlify (secure hosting services)</li>
-                <li>Font Awesome (icons and UI elements)</li>
+                <li>Google Analytics (anonymous usage data)</li>
+                <li>Firebase Analytics (user interaction tracking)</li>
+                <li>Page view tracking to improve content</li>
+                <li>Feature usage analytics for service improvement</li>
               </ul>
+              <p className="text-gray-600 mt-4">
+                All analytics data is aggregated and anonymized. We do not collect personally identifiable information through analytics.
+              </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">4. Your Rights Under Indian Law</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">4. Your Data Rights</h2>
               <p className="text-gray-600">
-                As an Indian user, you have the right to access, correct, or delete any personal information. 
-                Since we don't store your personal data on our servers, you maintain full control 
-                over your information at all times, in compliance with Indian IT Act and data protection principles.
+                You maintain full control over your information. Since we don't store your personal data on our servers, 
+                you can clear your browser data at any time to remove all information.
               </p>
             </section>
 
@@ -93,16 +90,7 @@ const Privacy: React.FC = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">7. International Data Transfers</h2>
-              <p className="text-gray-600">
-                As a privacy-focused platform for Indian users, we minimize data transfers outside India.
-                Our hosting and services are configured to serve Indian users with minimal data crossing borders,
-                in compliance with Indian data localization principles.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">8. Contact Us</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">7. Contact Us</h2>
               <p className="text-gray-600">
                 If you have any questions about this Privacy Policy, please contact us at:
                 <br />
@@ -117,31 +105,7 @@ const Privacy: React.FC = () => {
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">9. Data Protection Officer</h2>
-              <p className="text-gray-600">
-                For any privacy-specific concerns from Indian users, please contact our Data Protection Officer at:
-                <br />
-                <a 
-                  href="mailto:dpo@careercraft.in" 
-                  className="text-blue-600 hover:underline"
-                  onClick={() => handleEmailClick('dpo_contact')}
-                >
-                  dpo@careercraft.in
-                </a>
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">10. Updates to Privacy Policy</h2>
-              <p className="text-gray-600">
-                We may update this privacy policy to reflect changes in Indian data protection laws or our services.
-                We will notify users of any material changes through our platform. Continued use of CareerCraft.in
-                after changes constitutes acceptance of the updated policy.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">11. Grievance Officer</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">8. Grievance Officer</h2>
               <p className="text-gray-600">
                 As required under Indian IT Act, we have appointed a Grievance Officer. Contact at:
                 <br />
@@ -154,6 +118,15 @@ const Privacy: React.FC = () => {
                 </a>
                 <br />
                 Response time: Within 24 hours on working days
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">9. Updates to Privacy Policy</h2>
+              <p className="text-gray-600">
+                We may update this privacy policy to reflect changes in data protection laws or our services.
+                We will notify users of any material changes through our platform. Continued use of CareerCraft.in
+                after changes constitutes acceptance of the updated policy.
               </p>
             </section>
           </div>

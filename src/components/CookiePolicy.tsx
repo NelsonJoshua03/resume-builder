@@ -13,8 +13,8 @@ const CookiePolicy: React.FC = () => {
     <>
       <SEO
         title="Cookie Policy - CareerCraft.in | India's Career Platform"
-        description="CareerCraft.in cookie policy. Learn how we use cookies to improve your experience on our career platform for Indian users. Compliant with Indian data protection regulations."
-        keywords="cookie policy India, website cookies, privacy cookies, career platform cookies, Indian data protection, GDPR India, cookie consent"
+        description="CareerCraft.in cookie policy. Learn how we use cookies to improve your experience on our career platform."
+        keywords="cookie policy India, website cookies, privacy cookies, career platform cookies, Indian data protection"
         canonicalUrl="https://careercraft.in/cookies"
       />
 
@@ -29,7 +29,6 @@ const CookiePolicy: React.FC = () => {
               <p className="text-gray-600">
                 Cookies are small text files that are stored on your device when you visit our website. 
                 They help us provide you with a better experience by remembering your preferences and understanding how you use our site.
-                CareerCraft.in uses cookies to enhance your career platform experience for Indian job seekers.
               </p>
             </section>
 
@@ -37,24 +36,18 @@ const CookiePolicy: React.FC = () => {
               <h2 className="text-2xl font-bold text-gray-800 mb-4">How We Use Cookies</h2>
               <ul className="list-disc list-inside text-gray-600 space-y-2">
                 <li><strong>Essential Cookies:</strong> Required for the basic functionality of our career platform and resume builder</li>
-                <li><strong>Analytics Cookies:</strong> Help us understand how Indian job seekers interact with our website</li>
+                <li><strong>Analytics Cookies:</strong> Help us understand how users interact with our website</li>
                 <li><strong>Preference Cookies:</strong> Remember your resume templates and job search preferences</li>
-                <li><strong>Security Cookies:</strong> Protect your data and ensure safe browsing for Indian users</li>
                 <li><strong>Performance Cookies:</strong> Monitor website performance and improve user experience</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Third-Party Cookies</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Analytics Cookies</h2>
               <p className="text-gray-600 mb-4">
-                We use Google Analytics to analyze website traffic from Indian users. These cookies collect information in an anonymous form
-                to help us improve our services for the Indian job market. We also use cookies for:
+                We use Google Analytics and Firebase Analytics to understand website usage patterns. 
+                These cookies collect information in an anonymous form to help us improve our services.
               </p>
-              <ul className="list-disc list-inside text-gray-600 space-y-2">
-                <li>Google AdSense for displaying relevant ads to Indian users</li>
-                <li>Social media platforms for sharing content</li>
-                <li>Performance monitoring tools</li>
-              </ul>
             </section>
 
             <section>
@@ -75,23 +68,6 @@ const CookiePolicy: React.FC = () => {
                 >
                   aboutcookies.org
                 </a>
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Compliance with Indian Regulations</h2>
-              <p className="text-gray-600">
-                Our cookie policy complies with Indian IT Act and data protection regulations. We respect your privacy
-                and provide transparent information about our cookie usage. By using CareerCraft.in, you consent to our
-                use of cookies as described in this policy.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Updates to Cookie Policy</h2>
-              <p className="text-gray-600">
-                We may update this cookie policy to reflect changes in technology, legislation, or our services.
-                We encourage Indian users to review this policy periodically to stay informed about how we use cookies.
               </p>
             </section>
 
