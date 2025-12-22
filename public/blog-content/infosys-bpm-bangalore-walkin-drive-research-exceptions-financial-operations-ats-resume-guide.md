@@ -1,7 +1,7 @@
 Infosys BPM Bangalore Walk-in Drive for Research & Exceptions - How to Apply with ATS Resume
 📅 Walk-in on Dec 30 | 🎓 B.Com/BBA/MBA/M.Com | 💼 Financial Operations | 🌙 Night Shift | 📍 Electronic City, Bangalore
 
-Looking for finance BPO roles in Bangalore? Infosys BPM's walk-in drive for Research and Exceptions roles offers excellent opportunities for commerce graduates. Here's your complete guide to applying with an ATS-optimized resume using CareerCraft's free builder.
+Looking for finance BPO roles in Bangalore? Infosys BPM's walk-in drive for Research and Exceptions roles offers excellent opportunities for commerce graduates. Here's your complete guide to applying with an ATS-optimized resume using CareerCraft's free builder at https://careercraft.in/builder.
 
 🚀 Job Opportunity: Research & Exceptions - Financial Operations
 Company: Infosys BPM (Global BPO Leader)
@@ -75,7 +75,7 @@ Skills Section: Separate technical (financial processes) and soft skills (analyt
 
 Shift Availability: Clearly state "Available for US/Night Shifts"
 
-4. Use CareerCraft's Resume Builder:
+4. Use CareerCraft's Resume Builder at https://careercraft.in/builder:
 Go to CareerCraft Resume Builder
 
 Select "Professional" or "ATS Optimized" template
@@ -135,7 +135,7 @@ Career Path:
 Senior Process Executive → Process Specialist → Team Lead → Process Manager → Domain Specialist
 
 🚀 How to Create Your ATS Resume in 5 Minutes
-Visit CareerCraft.in and click "Build Free Resume"
+Visit CareerCraft.in/builder and click "Build Free Resume"
 
 Select Template: Choose "Professional" template (best for financial roles)
 
@@ -192,4 +192,5 @@ Follow up with the contact person if needed
 
 🌟 Good luck with your walk-in interview! Create your professional resume now and take the next step in your financial career.
 
-*P.S. CareerCraft's resume builder is 100% free - no signup required. Create, download, and walk-in with confidence to Infosys BPM!*
+*P.S. CareerCraft's resume builder at https://careercraft.in/builder is 100% free - no signup required. Create, download, and walk-in with confidence to Infosys BPM!*
+
