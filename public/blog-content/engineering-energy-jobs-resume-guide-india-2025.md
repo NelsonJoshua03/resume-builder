@@ -6,7 +6,7 @@ This comprehensive guide will show you exactly how to create an **ATS-optimized 
 
 ## Why Engineering Resumes Need Special Attention
 
-<div data-align="center">
+
 
 **Indian energy companies use stricter ATS filters** than IT companies. Your resume must pass through:
 
@@ -15,7 +15,6 @@ This comprehensive guide will show you exactly how to create an **ATS-optimized 
 3. **Project experience matching** (oil & gas, refining, petrochemical)
 4. **Safety compliance checking** (LOTO procedures, HS&E standards)
 
-</div>
 
 ## Section 1: Technical Skills Formatting That Gets Noticed
 
@@ -62,13 +61,13 @@ INTERN | TechnipFMC Quality Department
 
 Section 3: Project Experience That Stands Out
 
-<div data-align="center">
+
 Project Type	Keywords to Include	Indian Company Examples
 Refinery Projects	Crude distillation, FCCU, Hydrocracker	Reliance, IOCL, BPCL
 Pipeline Projects	Cross-country pipeline, Pigging, SCADA	GAIL, ONGC, Technip
 Power Plant Projects	HRSG, Turbine, BOP, Balance of Plant	GE, Siemens, BHEL
 Offshore Projects	Jacket structures, FPSO, Subsea	ONGC, Aker, McDermott
-</div>
+
 
 Section 4: Certifications That Matter Most
 Must-Have for Indian Engineering Jobs:
@@ -172,10 +171,9 @@ Don't waste time with generic templates. Our ATS-Optimized and Professional temp
 
 📊 Success Story: "Using CareerCraft's ATS template, I got interview calls from 3 of the 5 companies I applied to, including Reliance and Quest Global. The keyword optimization made all the difference!" - Arjun S., Mechanical Engineer placed at GE Vernova
 
-<div data-align="center">
 🚀 Build Your Engineering Resume Now • 📋 Download Sample Templates
 
-</div>
+
 Expert Tip from Indian Recruiter: "We scan for specific project experience first. List your projects with duration, budget, and your specific role. Generic descriptions get auto-rejected in our ATS." - Priya Sharma, HR Manager at Indian Energy MNC
 
 Need personalized review? Book a free resume critique session with our Indian engineering career experts.
