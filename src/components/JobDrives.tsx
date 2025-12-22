@@ -1,4 +1,4 @@
-// src/components/JobDrives.tsx - UPDATED WITH FIREBASE INTEGRATION
+// src/components/JobDrives.tsx - UPDATED WITH FIREBASE INTEGRATION AND PROPER SORTING
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -16,12 +16,10 @@ import {
   ExternalLink,
   Filter,
   RefreshCw,
-  Copy,
   Facebook,
   Twitter,
   Linkedin,
   MessageCircle,
-  Mail,
   X,
   ArrowRight,
   Eye,
@@ -29,7 +27,9 @@ import {
   TrendingUp,
   CalendarDays,
   Search,
-  Users
+  Users,
+  Sparkles,
+  TrendingDown
 } from 'lucide-react';
 
 interface DriveFilters {
@@ -51,16 +51,16 @@ const JobDrives: React.FC = () => {
   const [featuredFilter, setFeaturedFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
-  const [copySuccess, setCopySuccess] = useState(false);
   const [showNewsletterSignup, setShowNewsletterSignup] = useState(false);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [expandedDrives, setExpandedDrives] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<'all' | 'today' | 'featured' | 'upcoming'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'today' | 'featured' | 'upcoming' | 'latest'>('latest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todayDrivesCount, setTodayDrivesCount] = useState(0);
   const [featuredDrivesCount, setFeaturedDrivesCount] = useState(0);
   const [upcomingDrivesCount, setUpcomingDrivesCount] = useState(0);
+  const [latestDrivesCount, setLatestDrivesCount] = useState(0);
 
   // Analytics hooks
   const { 
@@ -107,7 +107,7 @@ const JobDrives: React.FC = () => {
     loadDrivesFromFirebase();
   }, []);
 
-  // Load drives from Firebase
+  // Load drives from Firebase and sort by latest posted date
   const loadDrivesFromFirebase = async () => {
     setLoading(true);
     setError(null);
@@ -116,11 +116,20 @@ const JobDrives: React.FC = () => {
       console.log('🔄 Loading drives from Firebase...');
       const result = await firebaseDriveService.getDrives({}, 1, 1000); // Get all drives
       
-      // Sort by created date (newest first)
+      // Sort by created date (newest first) - FIXED SORTING
       const sortedDrives = result.drives.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
-        return dateB - dateA; // Descending order
+        // First try to use createdAt timestamp
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 
+                     (a.addedTimestamp || new Date(a.date).getTime());
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 
+                     (b.addedTimestamp || new Date(b.date).getTime());
+        
+        // If dates are the same, sort by title for consistency
+        if (dateB === dateA) {
+          return a.title.localeCompare(b.title);
+        }
+        
+        return dateB - dateA; // Descending order (newest first)
       });
       
       setDrives(sortedDrives);
@@ -131,20 +140,40 @@ const JobDrives: React.FC = () => {
       const featuredCount = sortedDrives.filter(d => d.featured).length;
       const upcomingCount = sortedDrives.filter(d => new Date(d.date) > new Date() && d.date !== today).length;
       
+      // Latest drives (posted in last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const latestCount = sortedDrives.filter(d => {
+        const driveDate = d.createdAt ? new Date(d.createdAt) : 
+                         (d.addedTimestamp ? new Date(d.addedTimestamp) : new Date(d.date));
+        return driveDate >= sevenDaysAgo;
+      }).length;
+      
       setTodayDrivesCount(todayCount);
       setFeaturedDrivesCount(featuredCount);
       setUpcomingDrivesCount(upcomingCount);
+      setLatestDrivesCount(latestCount);
       
       setLastUpdated(new Date().toLocaleString('en-IN'));
-      console.log(`✅ Loaded ${sortedDrives.length} drives from Firebase`);
+      console.log(`✅ Loaded ${sortedDrives.length} drives from Firebase, sorted by latest`);
       
     } catch (error) {
       console.error('Error loading drives from Firebase:', error);
       setError('Failed to load drives. Please try again.');
       
-      // Fallback to localStorage
-      const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
-      setDrives(savedDrives);
+      // Fallback to localStorage with proper sorting
+      try {
+        const savedDrives = JSON.parse(localStorage.getItem('jobDrives') || '[]');
+        // Sort localStorage drives by addedTimestamp or date
+        const sortedLocalDrives = savedDrives.sort((a: any, b: any) => {
+          const dateA = a.addedTimestamp || new Date(a.date).getTime();
+          const dateB = b.addedTimestamp || new Date(b.date).getTime();
+          return dateB - dateA; // Descending order
+        });
+        setDrives(sortedLocalDrives);
+      } catch (localError) {
+        console.error('Error loading from localStorage:', localError);
+      }
     } finally {
       setLoading(false);
     }
@@ -222,6 +251,13 @@ const JobDrives: React.FC = () => {
     // Tab-specific filtering
     const isToday = drive.date === new Date().toISOString().split('T')[0];
     const isUpcoming = new Date(drive.date) > new Date() && !isToday;
+    const isLatest = () => {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const driveDate = drive.createdAt ? new Date(drive.createdAt) : 
+                       (drive.addedTimestamp ? new Date(drive.addedTimestamp) : new Date(drive.date));
+      return driveDate >= sevenDaysAgo;
+    };
     
     if (activeTab === 'today') {
       return matchesSearch && matchesLocation && matchesCategory && matchesDriveType && matchesFeatured && isToday;
@@ -229,8 +265,11 @@ const JobDrives: React.FC = () => {
       return matchesSearch && matchesLocation && matchesCategory && matchesDriveType && matchesFeatured && drive.featured;
     } else if (activeTab === 'upcoming') {
       return matchesSearch && matchesLocation && matchesCategory && matchesDriveType && matchesFeatured && isUpcoming;
+    } else if (activeTab === 'latest') {
+      return matchesSearch && matchesLocation && matchesCategory && matchesDriveType && matchesFeatured && isLatest();
     }
     
+    // 'all' tab
     return matchesSearch && matchesLocation && matchesCategory && matchesDriveType && matchesFeatured;
   });
 
@@ -342,7 +381,7 @@ const JobDrives: React.FC = () => {
     setCategoryFilter('all');
     setDriveTypeFilter('all');
     setFeaturedFilter('all');
-    setActiveTab('all');
+    setActiveTab('latest');
     
     // Track with both systems
     trackGoogleButtonClick('clear_filters', 'filters', 'job_drives');
@@ -394,42 +433,6 @@ const JobDrives: React.FC = () => {
   const closeShareModal = () => {
     setShowShareModal(false);
     setSelectedDrive(null);
-    setCopySuccess(false);
-  };
-
-  // Copy link to clipboard
-  const copyToClipboard = () => {
-    if (selectedDrive) {
-      const driveUrl = `${window.location.origin}/job-drives?drive=${selectedDrive.id}`;
-      navigator.clipboard.writeText(driveUrl);
-      setCopySuccess(true);
-      
-      // Track with both systems
-      trackGoogleButtonClick('copy_drive_link', 'share_modal', 'job_drives');
-      trackFirebaseButtonClick('copy_drive_link', 'share_modal', '/job-drives');
-      
-      // Social share tracking
-      trackGoogleSocialShare('copy_link', 'job_drive', selectedDrive.id || 'unknown');
-      trackFirebaseSocialShare('copy_link', 'job_drive', selectedDrive.id || 'unknown');
-      
-      // Firebase copy event
-      const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
-      trackFirebaseEvent(
-        'job_drive_link_copied',
-        'Social Sharing',
-        'copy_link',
-        {
-          drive_id: selectedDrive.id,
-          drive_title: selectedDrive.title,
-          company: selectedDrive.company,
-          platform: 'copy_link',
-          user_id: userId,
-          timestamp: new Date().toISOString()
-        }
-      );
-      
-      setTimeout(() => setCopySuccess(false), 2000);
-    }
   };
 
   // Platform-specific sharing functions
@@ -464,15 +467,6 @@ const JobDrives: React.FC = () => {
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
       handleSocialShare('whatsapp');
-    }
-  };
-
-  const shareViaEmail = () => {
-    if (selectedDrive) {
-      const subject = `Job Drive: ${selectedDrive.title} at ${selectedDrive.company}`;
-      const body = `Check out this job drive on CareerCraft:\n\nDrive: ${selectedDrive.title}\nCompany: ${selectedDrive.company}\nLocation: ${selectedDrive.location}\nDate: ${new Date(selectedDrive.date).toLocaleDateString()}\nTime: ${selectedDrive.time}\n\nView details: ${shareUrl}`;
-      window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
-      handleSocialShare('email');
     }
   };
 
@@ -558,7 +552,7 @@ const JobDrives: React.FC = () => {
   };
 
   // Handle tab change
-  const handleTabChange = (tab: 'all' | 'today' | 'featured' | 'upcoming') => {
+  const handleTabChange = (tab: 'all' | 'today' | 'featured' | 'upcoming' | 'latest') => {
     setActiveTab(tab);
     
     // Track with both systems
@@ -591,6 +585,26 @@ const JobDrives: React.FC = () => {
       return `${day}/${month}/${year}`;
     } catch {
       return dateString;
+    }
+  };
+
+  // Format time ago for posted date
+  const getTimeAgo = (date: Date | string | number) => {
+    const now = new Date();
+    const past = new Date(date);
+    const diffMs = now.getTime() - past.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 60) {
+      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    } else {
+      return formatDate(date.toString());
     }
   };
 
@@ -735,7 +749,7 @@ const JobDrives: React.FC = () => {
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Latest Walk-in Drives in India</h1>
           <p className="text-lg max-w-3xl mx-auto mb-6">
             Fresh immediate hiring opportunities with direct company interviews
-            <span className="block text-sm text-green-200 mt-2">Loaded from Firebase • Updated: {lastUpdated}</span>
+            <span className="block text-sm text-green-200 mt-2">Sorted by newest first • Updated: {lastUpdated}</span>
           </p>
           
           {/* Search Form */}
@@ -803,7 +817,7 @@ const JobDrives: React.FC = () => {
                   <div>
                     <label className="block text-sm text-gray-700 mb-1 text-left">Drive Type</label>
                     <select
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                       value={driveTypeFilter}
                       onChange={(e) => setDriveTypeFilter(e.target.value)}
                     >
@@ -829,29 +843,42 @@ const JobDrives: React.FC = () => {
           </form>
 
           {/* Stats */}
-          <div className="mt-6 grid grid-cols-4 gap-3 max-w-3xl mx-auto">
+          <div className="mt-6 grid grid-cols-5 gap-2 max-w-4xl mx-auto">
             <div 
-              className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              onClick={() => handleTabChange('latest')}
+            >
+              <div className="text-xl font-bold">{latestDrivesCount}</div>
+              <div className="text-green-100 text-xs flex items-center justify-center gap-1">
+                <Sparkles size={10} />
+                Latest
+              </div>
+            </div>
+            <div 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
               onClick={() => handleTabChange('all')}
             >
               <div className="text-xl font-bold">{drives.length}</div>
               <div className="text-green-100 text-xs">Total</div>
             </div>
             <div 
-              className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
               onClick={() => handleTabChange('today')}
             >
               <div className="text-xl font-bold">{todayDrivesCount}</div>
               <div className="text-green-100 text-xs">Today</div>
             </div>
             <div 
-              className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
               onClick={() => handleTabChange('upcoming')}
             >
               <div className="text-xl font-bold">{upcomingDrivesCount}</div>
               <div className="text-green-100 text-xs">Upcoming</div>
             </div>
-            <div className="bg-white/20 backdrop-blur-sm px-3 py-2 rounded-lg text-center">
+            <div 
+              className="bg-white/20 backdrop-blur-sm px-2 py-2 rounded-lg text-center cursor-pointer hover:bg-white/30 transition-colors" 
+              onClick={() => handleTabChange('featured')}
+            >
               <div className="text-xl font-bold">{featuredDrivesCount}</div>
               <div className="text-green-100 text-xs">Featured</div>
             </div>
@@ -896,10 +923,11 @@ const JobDrives: React.FC = () => {
                       {activeTab === 'today' && "Today's Walk-in Drives"}
                       {activeTab === 'upcoming' && 'Upcoming Walk-in Drives'}
                       {activeTab === 'featured' && 'Featured Drives'}
+                      {activeTab === 'latest' && 'Latest Posted Drives'}
                       <span className="text-gray-600 text-base ml-2">({filteredDrives.length})</span>
                     </h2>
                     <p className="text-gray-600 text-xs mt-1">
-                      Sorted by newest • Updated: {lastUpdated}
+                      Sorted by newest first • Updated: {lastUpdated}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -916,10 +944,11 @@ const JobDrives: React.FC = () => {
                 {/* Tabs */}
                 <div className="flex flex-wrap gap-1 mb-4">
                   <button
-                    onClick={() => handleTabChange('all')}
-                    className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${activeTab === 'all' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                    onClick={() => handleTabChange('latest')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-all flex items-center gap-1 ${activeTab === 'latest' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                   >
-                    All ({drives.length})
+                    <Sparkles size={14} />
+                    Latest ({latestDrivesCount})
                   </button>
                   <button
                     onClick={() => handleTabChange('today')}
@@ -941,6 +970,12 @@ const JobDrives: React.FC = () => {
                   >
                     <Star size={14} />
                     Featured ({featuredDrivesCount})
+                  </button>
+                  <button
+                    onClick={() => handleTabChange('all')}
+                    className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${activeTab === 'all' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    All ({drives.length})
                   </button>
                 </div>
               </div>
@@ -1236,8 +1271,56 @@ const DriveCard: React.FC<{
     }
   };
 
+  // Get time ago for posted date
+  const getPostedTimeAgo = () => {
+    if (drive.createdAt) {
+      const postedDate = new Date(drive.createdAt);
+      const now = new Date();
+      const diffMs = now.getTime() - postedDate.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      
+      if (diffMins < 60) {
+        return `${diffMins}m ago`;
+      } else if (diffHours < 24) {
+        return `${diffHours}h ago`;
+      } else if (diffDays < 7) {
+        return `${diffDays}d ago`;
+      } else {
+        return formatDate(drive.createdAt.toString());
+      }
+    } else if (drive.addedTimestamp) {
+      const postedDate = new Date(drive.addedTimestamp);
+      const now = new Date();
+      const diffMs = now.getTime() - postedDate.getTime();
+      const diffDays = Math.floor(diffMs / 86400000);
+      return `${diffDays}d ago`;
+    }
+    return '';
+  };
+
+  // Check if drive is newly posted (less than 24 hours)
+  const isNewDrive = () => {
+    if (drive.createdAt) {
+      const postedDate = new Date(drive.createdAt);
+      const now = new Date();
+      const diffMs = now.getTime() - postedDate.getTime();
+      const diffHours = Math.floor(diffMs / 3600000);
+      return diffHours < 24;
+    }
+    return false;
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200">
+    <div className="bg-white rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 relative">
+      {/* NEW badge for recently posted drives */}
+      {isNewDrive() && (
+        <div className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
+          NEW
+        </div>
+      )}
+      
       {/* Drive Header */}
       <div className="p-4 border-b border-gray-100">
         <div className="flex justify-between items-start mb-2">
@@ -1265,17 +1348,26 @@ const DriveCard: React.FC<{
             <Calendar size={12} className="mr-1" />
             <span>{formatDate(drive.date)}</span>
           </div>
-          {isToday && (
-            <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs">
-              TODAY
-            </span>
-          )}
-          {drive.featured && (
-            <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs ml-1">
-              FEATURED
-            </span>
-          )}
+          <div className="flex items-center gap-1">
+            {isToday && (
+              <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-xs">
+                TODAY
+              </span>
+            )}
+            {drive.featured && (
+              <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs">
+                FEATURED
+              </span>
+            )}
+          </div>
         </div>
+        
+        {/* Posted time info */}
+        {getPostedTimeAgo() && (
+          <div className="mt-1 text-xs text-gray-500">
+            <span className="bg-gray-100 px-2 py-0.5 rounded">Posted {getPostedTimeAgo()}</span>
+          </div>
+        )}
       </div>
 
       {/* Drive Content */}
@@ -1317,13 +1409,13 @@ const DriveCard: React.FC<{
             {drive.registrations !== undefined && (
               <span className="flex items-center">
                 <Users size={10} className="mr-1" />
-                {drive.registrations} registrations
+                {drive.registrations} registered
               </span>
             )}
           </div>
           {drive.createdAt && (
             <span className="text-xs text-gray-400">
-              Added {formatDate(drive.createdAt.toString())}
+              {getPostedTimeAgo()}
             </span>
           )}
         </div>
@@ -1411,6 +1503,16 @@ const DriveCard: React.FC<{
                 </span>
               )}
             </div>
+
+            {/* Drive Type */}
+            {drive.driveType && (
+              <div className="mb-3">
+                <h4 className="text-xs font-semibold text-gray-800 mb-1">Drive Type:</h4>
+                <span className="inline-block bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs">
+                  {drive.driveType}
+                </span>
+              </div>
+            )}
 
             {/* Additional Action Buttons */}
             <div className="flex gap-2">
