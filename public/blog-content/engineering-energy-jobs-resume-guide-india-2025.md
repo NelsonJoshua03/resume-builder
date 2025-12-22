@@ -1,74 +1,60 @@
-# How to Tailor Your Resume for Engineering & Energy Sector Jobs in India (2024 Guide)
+How to Tailor Your Resume for Engineering & Energy Sector Jobs in India (2024 Guide)
+The Indian engineering and energy sector is booming with opportunities from companies like Quest Global, Reliance Industries, TechnipFMC, GE Vernova, and Hitachi Energy. Our recent job drives show 50+ openings for Static Engineers, Piping Designers, Field Executives, and Maintenance Engineers. But here's the reality: 80% of applications get rejected by ATS systems before human review.
 
-The Indian engineering and energy sector is booming with opportunities from companies like **Quest Global, Reliance Industries, TechnipFMC, GE Vernova, and Hitachi Energy**. Our recent job drives show 50+ openings for Static Engineers, Piping Designers, Field Executives, and Maintenance Engineers. But here's the reality: **80% of applications get rejected by ATS systems** before human review.
+This comprehensive guide will show you exactly how to create an ATS-optimized resume specifically for Indian engineering and energy companies.
 
-This comprehensive guide will show you exactly how to create an **ATS-optimized resume specifically for Indian engineering and energy companies**.
+Why Engineering Resumes Need Special Attention
+Indian energy companies use stricter ATS filters than IT companies. Your resume must pass through:
 
-## Why Engineering Resumes Need Special Attention
+Keyword scanning for technical terms (ASME, API 650, PV Elite, HRSG)
 
+Qualification verification (GPA requirements, specific certifications)
 
+Project experience matching (oil & gas, refining, petrochemical)
 
-**Indian energy companies use stricter ATS filters** than IT companies. Your resume must pass through:
+Safety compliance checking (LOTO procedures, HS&E standards)
 
-1. **Keyword scanning** for technical terms (ASME, API 650, PV Elite, HRSG)
-2. **Qualification verification** (GPA requirements, specific certifications)
-3. **Project experience matching** (oil & gas, refining, petrochemical)
-4. **Safety compliance checking** (LOTO procedures, HS&E standards)
-
-
-## Section 1: Technical Skills Formatting That Gets Noticed
-
-### For Static Engineers (Quest Global, John Cockerill):
-```javascript
-// CORRECT FORMAT:
+Section 1: Technical Skills Formatting That Gets Noticed
+For Static Engineers (Quest Global, John Cockerill):
+text
 Technical Skills:
 • Pressure Vessel Design: ASME Section VIII, API 650
 • Analysis Software: PV Elite, COMPRESS, AutoPIPE
 • Standards: API 510, API 653, TEMA Standards
 • Materials: Carbon Steel, Stainless Steel, Alloy 20
-
-// WRONG FORMAT:
-Skills: PV Elite, ASME, API codes, vessel design
-
 For Piping Design Engineers:
-
+text
 Piping Design Skills:
 • 3D Modeling: AutoCAD Plant 3D, PDMS, SP3D
 • Isometric Drawings: ISO generation, BOM creation
 • Codes: ASME B31.3, B31.4, B31.8
 • Equipment: HRSG, Boilers, Heat Exchangers
-
 Section 2: Experience Section Optimization
 Bad Example (Generic):
-
+text
 • Worked on engineering projects
 • Designed some equipment
 • Followed safety procedures
-
 Excellent Example (ATS-Optimized):
-
+text
 STATIC ENGINEER | Oil & Gas Project
 • Designed 15+ pressure vessels using ASME Section VIII Div.1 for LNG terminal project
 • Reduced material costs by 12% through optimized thickness calculations in PV Elite
 • Ensured 100% compliance with API 650 for storage tank designs
 • Collaborated with 5+ global teams on refinery expansion projects
-
+For Fresh Graduates (Entry Level Roles):
+text
 INTERN | TechnipFMC Quality Department
 • Verified 200+ supplier manufacturing records using SAP/Intelex
 • Identified and resolved 15+ non-conformance issues monthly
 • Maintained 99.8% quality compliance for oil & gas components
 • Assisted in implementing ISO 9001:2015 audit procedures
-
 Section 3: Project Experience That Stands Out
-
-
 Project Type	Keywords to Include	Indian Company Examples
 Refinery Projects	Crude distillation, FCCU, Hydrocracker	Reliance, IOCL, BPCL
 Pipeline Projects	Cross-country pipeline, Pigging, SCADA	GAIL, ONGC, Technip
 Power Plant Projects	HRSG, Turbine, BOP, Balance of Plant	GE, Siemens, BHEL
 Offshore Projects	Jacket structures, FPSO, Subsea	ONGC, Aker, McDermott
-
-
 Section 4: Certifications That Matter Most
 Must-Have for Indian Engineering Jobs:
 ASME Certification - Pressure Vessel, Piping Design
@@ -89,7 +75,6 @@ Fresher/Intern (0-2 years)	ATS Optimized	Simple, single-column, maximum compatib
 Design Engineers (3-5 years)	Two Column	Showcases technical skills prominently
 Senior Engineers/Managers	Executive	Professional, corporate appearance
 Field/Service Engineers	Professional	Clean layout with project highlights
-
 Section 6: 7 Critical Keywords for Indian Energy Sector ATS
 Include these exact phrases in your resume:
 
@@ -173,8 +158,8 @@ Don't waste time with generic templates. Our ATS-Optimized and Professional temp
 
 🚀 Build Your Engineering Resume Now • 📋 Download Sample Templates
 
-
 Expert Tip from Indian Recruiter: "We scan for specific project experience first. List your projects with duration, budget, and your specific role. Generic descriptions get auto-rejected in our ATS." - Priya Sharma, HR Manager at Indian Energy MNC
 
 Need personalized review? Book a free resume critique session with our Indian engineering career experts.
 
+Keywords for SEO: engineering resume India, energy sector jobs resume, ATS resume for engineers India, oil and gas resume template, fresher engineering resume India, Static Engineer resume Quest Global, Piping Design resume India, Field Executive resume Reliance, Maintenance Engineer resume oil & gas, technipfmc resume format, how to write resume for engineering jobs in India, ATS optimized resume for Indian companies, engineering fresher resume with projects, resume format for oil and gas industry India, mechanical engineering resume template India
