@@ -480,18 +480,65 @@ const MobilePDFGenerator = ({
           
           checkNewPage(15);
           
-          const skillsText = resumeData.skills.map((skill: any) => skill.name).join('  •  ');
-          const lines = pdf.splitTextToSize(skillsText, contentWidth);
+          // Group skills into chunks of 2 for better formatting
+          const skillsList = resumeData.skills.map((skill: any) => skill.name);
+          const chunkSize = 2;
           
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(40, 40, 40);
+          // Calculate column positions for perfect alignment
+          const bulletX = margin + 2;
+          const textX = margin + 6;
+          const columnWidth = (contentWidth - 20) / 2; // Divide content width for two columns with spacing
+          const secondColumnStart = margin + columnWidth + 10;
           
-          lines.forEach((line: string) => {
-            checkNewPage(4.5);
-            pdf.text(line, margin, yPosition);
-            yPosition += 4.5;
-          });
+          for (let i = 0; i < skillsList.length; i += chunkSize) {
+            const chunk = skillsList.slice(i, i + chunkSize);
+            
+            // Always check for new page before adding skills
+            checkNewPage(5);
+            
+            // Set font for all skills
+            pdf.setFontSize(10);
+            pdf.setTextColor(40, 40, 40);
+            
+            // First skill (always in first column)
+            if (chunk[0]) {
+              pdf.setFont('helvetica', 'bold');
+              pdf.text('•', bulletX, yPosition);
+              pdf.setFont('helvetica', 'normal');
+              pdf.text(chunk[0], textX, yPosition);
+            }
+            
+            // Second skill (in second column if exists)
+            if (chunk[1]) {
+              // Check if skill fits in second column
+              const skillWidth = pdf.getTextWidth(chunk[1]);
+              const maxWidth = columnWidth - 10; // Leave some padding
+              
+              if (skillWidth <= maxWidth) {
+                // Skill fits, place in second column
+                const secondBulletX = secondColumnStart;
+                const secondTextX = secondColumnStart + 4;
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('•', secondBulletX, yPosition);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(chunk[1], secondTextX, yPosition);
+              } else {
+                // Skill too long, move to next line
+                yPosition += 5;
+                checkNewPage(5);
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('•', bulletX, yPosition);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(chunk[1], textX, yPosition);
+              }
+            }
+            
+            // Move to next line for next pair
+            yPosition += 5;
+          }
+          
           addSpacing(4);
         }
       };
@@ -983,7 +1030,19 @@ const MobilePDFGenerator = ({
           pdf.setFontSize(8);
           pdf.setFont('helvetica', 'normal');
           
-          resumeData.skills.forEach((skill: any) => {
+          // Group skills into pairs for two-column layout
+          const skillsList = resumeData.skills.map((skill: any) => skill.name);
+          const chunkSize = 2;
+          
+          // Calculate positions for consistent alignment
+          const bulletX = margin + 5;
+          const textX = margin + 9;
+          const columnWidth = leftColumnWidth - 15; // Account for margins
+          const secondColumnStart = margin + 5 + (columnWidth / 2) + 10;
+          
+          for (let i = 0; i < skillsList.length; i += chunkSize) {
+            const chunk = skillsList.slice(i, i + chunkSize);
+            
             if (currentLeftY > pageHeight - 20) {
               pdf.addPage();
               pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
@@ -992,14 +1051,53 @@ const MobilePDFGenerator = ({
               currentLeftY = margin;
             }
             
-            const skillLine = `• ${skill.name}`;
-            pdf.text(skillLine, margin + 5, currentLeftY);
+            // First skill
+            if (chunk[0]) {
+              pdf.setFont('helvetica', 'bold');
+              pdf.text('•', bulletX, currentLeftY);
+              pdf.setFont('helvetica', 'normal');
+              pdf.text(chunk[0], textX, currentLeftY);
+            }
+            
+            // Second skill
+            if (chunk[1]) {
+              // Check if skill fits in second column
+              const skillWidth = pdf.getTextWidth(chunk[1]);
+              const maxWidth = (columnWidth / 2) - 5;
+              
+              if (skillWidth <= maxWidth) {
+                // Skill fits, place in second column
+                const secondBulletX = secondColumnStart;
+                const secondTextX = secondColumnStart + 4;
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('•', secondBulletX, currentLeftY);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(chunk[1], secondTextX, currentLeftY);
+              } else {
+                // Skill too long, move to next line
+                currentLeftY += 4;
+                if (currentLeftY > pageHeight - 20) {
+                  pdf.addPage();
+                  pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
+                  pdf.rect(0, 0, margin + leftColumnWidth, pageHeight, 'F');
+                  pdf.setTextColor(255, 255, 255);
+                  currentLeftY = margin;
+                }
+                
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('•', bulletX, currentLeftY);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(chunk[1], textX, currentLeftY);
+              }
+            }
+            
             currentLeftY += 4;
-          });
+          }
         }
         
         if (resumeData.education && resumeData.education.length > 0) {
-          let currentLeftY = leftY + (resumeData.skills ? resumeData.skills.length * 4 + 20 : 0);
+          let currentLeftY = leftY + (resumeData.skills ? Math.ceil(resumeData.skills.length / 2) * 4 + 20 : 0);
           if (currentLeftY > pageHeight - 40) {
             pdf.addPage();
             pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
