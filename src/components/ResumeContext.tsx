@@ -1,7 +1,17 @@
-// ResumeContext.tsx - FIXED VERSION WITH ALL TYPE ERRORS RESOLVED
+// ResumeContext.tsx - UPDATED WITH SECTION TITLE RENAMING AND REMOVAL
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { FC, ReactNode } from 'react';
-import type { ResumeData, PersonalInfoData, Skill, SectionItem, Experience, Education, Project, Award, CustomField } from './types';
+import type { 
+  ResumeData, 
+  PersonalInfoData, 
+  Skill, 
+  SectionItem, 
+  Experience, 
+  Education, 
+  Project, 
+  Award, 
+  CustomField 
+} from './types';
 
 interface ResumeContextType {
   resumeData: ResumeData;
@@ -18,9 +28,11 @@ interface ResumeContextType {
   updateProject: (id: number, field: string, value: any) => void;
   addProject: () => number;
   removeProject: (id: number) => void;
+  clearProjects: () => void;
   updateAward: (id: number, field: string, value: string) => void;
   addAward: () => number;
   removeAward: (id: number) => void;
+  clearAwards: () => void;
   updateCustomField: (id: number, field: string, value: string) => void;
   changeCustomFieldType: (id: number, type: 'text' | 'textarea' | 'date' | 'url') => void;
   addCustomField: () => number;
@@ -33,6 +45,16 @@ interface ResumeContextType {
   // Add tracking methods
   trackResumeUpdate: (action: string, section: string, details?: any) => void;
   getResumeCompletion: () => number;
+  // NEW: Section title renaming and removal
+  updateSectionTitle: (sectionId: string, newTitle: string) => void;
+  removeSection: (sectionId: string) => void;
+  // NEW: Section titles storage - FIXED TYPE to match implementation
+  sectionTitles: {
+    skills?: string;
+    awards?: string;
+    projects?: string;
+    [key: string]: string | undefined;
+  };
 }
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
@@ -123,7 +145,13 @@ const initialResumeData: ResumeData = {
     { name: 'AWS', proficiency: 'Beginner' }
   ],
   selectedTemplate: 'creative',
-  customColors: {}
+  customColors: {},
+  // Initialize section titles
+  sectionTitles: {
+    skills: 'Skills',
+    awards: 'Awards & Achievements',
+    projects: 'Projects & Portfolio'
+  }
 };
 
 export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -132,13 +160,23 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return saved ? JSON.parse(saved) : initialResumeData;
   });
 
+  const [sectionTitles, setSectionTitles] = useState<{
+    skills?: string;
+    awards?: string;
+    projects?: string;
+    [key: string]: string | undefined;
+  }>(() => {
+    const saved = localStorage.getItem('resumeSectionTitles');
+    return saved ? JSON.parse(saved) : initialResumeData.sectionTitles;
+  });
+
   const [sectionOrder, setSectionOrder] = useState<SectionItem[]>([
     { id: 'summary', label: 'Professional Summary', enabled: true, order: 0 },
     { id: 'experience', label: 'Work Experience', enabled: true, order: 1 },
     { id: 'education', label: 'Education', enabled: true, order: 2 },
-    { id: 'projects', label: 'Projects', enabled: true, order: 3 },
+    { id: 'projects', label: 'Projects & Portfolio', enabled: true, order: 3 },
     { id: 'skills', label: 'Skills', enabled: true, order: 4 },
-    { id: 'awards', label: 'Awards', enabled: true, order: 5 },
+    { id: 'awards', label: 'Awards & Achievements', enabled: true, order: 5 },
     { id: 'custom', label: 'Additional Sections', enabled: true, order: 6 }
   ]);
 
@@ -147,7 +185,6 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'string') return value.length;
     if (Array.isArray(value)) {
-      // For arrays, join them and get length
       return value.filter(item => item != null).join('').length;
     }
     if (typeof value === 'number') return value.toString().length;
@@ -208,6 +245,7 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     
     // Also track user flow
     const userFlowEvent = {
+      type: 'user_flow',
       eventName: 'user_flow',
       eventCategory: 'User Navigation',
       eventLabel: 'resume_editing',
@@ -283,7 +321,14 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Save to localStorage whenever resumeData changes
   React.useEffect(() => {
-    localStorage.setItem('resumeData', JSON.stringify(resumeData));
+    // Update resumeData with current sectionTitles
+    const updatedResumeData = {
+      ...resumeData,
+      sectionTitles
+    };
+    
+    localStorage.setItem('resumeData', JSON.stringify(updatedResumeData));
+    localStorage.setItem('resumeSectionTitles', JSON.stringify(sectionTitles));
     
     // Track resume save locally (will sync to Firebase later)
     const resumeId = localStorage.getItem('current_resume_id') || 'unknown';
@@ -300,7 +345,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
         experiences: resumeData.experiences.length,
         education: resumeData.education.length,
         skills: resumeData.skills.length,
-        projects: resumeData.projects.length
+        projects: resumeData.projects.length,
+        awards: resumeData.awards.length
       },
       timestamp: new Date().toISOString(),
       pagePath: window.location.pathname,
@@ -317,7 +363,7 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     } catch (error) {
       console.error('Failed to queue auto-save event:', error);
     }
-  }, [resumeData, getResumeCompletion]);
+  }, [resumeData, sectionTitles, getResumeCompletion]);
 
   // Track initial resume load
   React.useEffect(() => {
@@ -356,6 +402,124 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     
     localStorage.setItem('resume_loaded_before', 'true');
   }, []);
+
+  // NEW: Update section title
+  const updateSectionTitle = useCallback((sectionId: string, newTitle: string) => {
+    setSectionTitles(prev => {
+      const updated = {
+        ...prev,
+        [sectionId]: newTitle
+      };
+      
+      // Also update section order label if the section exists there
+      setSectionOrder(prevOrder => 
+        prevOrder.map(section => 
+          section.id === sectionId ? { ...section, label: newTitle } : section
+        )
+      );
+      
+      // Update resumeData with new section titles
+      setResumeData(prev => ({
+        ...prev,
+        sectionTitles: updated
+      }));
+      
+      trackResumeUpdate('section_title_updated', 'layout', {
+        section_id: sectionId,
+        old_title: prev[sectionId] || getDefaultSectionTitle(sectionId),
+        new_title: newTitle,
+        action: 'rename_section'
+      });
+      
+      return updated;
+    });
+  }, [trackResumeUpdate]);
+
+  // Helper function to get default section title
+  const getDefaultSectionTitle = (sectionId: string): string => {
+    switch(sectionId) {
+      case 'skills': return 'Skills';
+      case 'awards': return 'Awards & Achievements';
+      case 'projects': return 'Projects & Portfolio';
+      case 'summary': return 'Professional Summary';
+      case 'experience': return 'Work Experience';
+      case 'education': return 'Education';
+      case 'custom': return 'Additional Sections';
+      default: return sectionId;
+    }
+  };
+
+  // NEW: Remove section (clear data and disable)
+  const removeSection = useCallback((sectionId: string) => {
+    // Clear data for the section
+    switch(sectionId) {
+      case 'projects':
+        setResumeData(prev => ({
+          ...prev,
+          projects: []
+        }));
+        break;
+      case 'awards':
+        setResumeData(prev => ({
+          ...prev,
+          awards: []
+        }));
+        break;
+      default:
+        // For other sections, just disable them
+        break;
+    }
+    
+    // Disable the section in section order
+    setSectionOrder(prev => 
+      prev.map(section => 
+        section.id === sectionId ? { ...section, enabled: false } : section
+      )
+    );
+    
+    // Remove the custom title for this section
+    setSectionTitles(prev => {
+      const updated = { ...prev };
+      delete updated[sectionId];
+      return updated;
+    });
+    
+    trackResumeUpdate('section_removed', 'layout', {
+      section_id: sectionId,
+      action: 'remove_section',
+      sections_remaining: sectionOrder.filter(s => s.enabled && s.id !== sectionId).length
+    });
+  }, [sectionOrder, trackResumeUpdate]);
+
+  // NEW: Clear all projects
+  const clearProjects = useCallback(() => {
+    const projectCount = resumeData.projects.length;
+    setResumeData(prev => ({
+      ...prev,
+      projects: []
+    }));
+    
+    trackResumeUpdate('projects_cleared', 'projects', {
+      projects_removed: projectCount,
+      total_projects_now: 0,
+      completion_percentage: getResumeCompletion()
+    });
+  }, [resumeData.projects.length, trackResumeUpdate, getResumeCompletion]);
+
+  // NEW: Clear all awards
+  const clearAwards = useCallback(() => {
+    const awardCount = resumeData.awards.length;
+    setResumeData(prev => ({
+      ...prev,
+      awards: []
+    }));
+    
+    trackResumeUpdate('awards_cleared', 'awards', {
+      awards_removed: awardCount,
+      total_awards_now: 0,
+      completion_percentage: getResumeCompletion()
+    });
+  }, [resumeData.awards.length, trackResumeUpdate, getResumeCompletion]);
 
   const updateSelectedTemplate = (template: string) => {
     const previousTemplate = resumeData.selectedTemplate;
@@ -879,8 +1043,11 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const value = {
-    resumeData,
+  const value: ResumeContextType = {
+    resumeData: {
+      ...resumeData,
+      sectionTitles // Ensure sectionTitles is included in resumeData
+    },
     updatePersonalInfo,
     updateExperience,
     addExperience,
@@ -894,9 +1061,11 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     updateProject,
     addProject,
     removeProject,
+    clearProjects,
     updateAward,
     addAward,
     removeAward,
+    clearAwards,
     updateCustomField,
     changeCustomFieldType,
     addCustomField,
@@ -908,7 +1077,11 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     updateCustomColors,
     // Add tracking methods
     trackResumeUpdate,
-    getResumeCompletion
+    getResumeCompletion,
+    // NEW: Section title renaming and removal
+    updateSectionTitle,
+    removeSection,
+    sectionTitles
   };
 
   return (

@@ -152,6 +152,13 @@ export interface ResumeData {
       text: string;
     };
   };
+  // NEW: Optional section titles
+  sectionTitles?: {
+    skills?: string;
+    awards?: string;
+    projects?: string;
+    [key: string]: string | undefined;
+  };
 }
 
 // Section Order Types
@@ -226,6 +233,11 @@ export interface ProjectsProps extends FormComponentProps {
   onUpdate: (id: number, field: string, value: any) => void;
   onAdd: () => number;
   onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  // NEW: Section title renaming and removal
+  onRenameSection?: (newTitle: string) => void;
+  onRemoveSection?: () => void;
+  sectionTitle?: string;
 }
 
 // Awards
@@ -234,6 +246,11 @@ export interface AwardsProps extends FormComponentProps {
   onUpdate: (id: number, field: string, value: string) => void;
   onAdd: () => number;
   onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  // NEW: Section title renaming and removal
+  onRenameSection?: (newTitle: string) => void;
+  onRemoveSection?: () => void;
+  sectionTitle?: string;
 }
 
 // Skills
@@ -242,6 +259,10 @@ export interface SkillsProps extends FormComponentProps {
   onAdd: (skill: Skill) => void;
   onRemove: (index: number) => void;
   onUpdateProficiency: (index: number, proficiency: Skill['proficiency']) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  // NEW: Section title renaming
+  onRenameSection?: (newTitle: string) => void;
+  sectionTitle?: string;
 }
 
 // Custom Fields
@@ -371,9 +392,11 @@ export interface ResumeContextType {
   updateProject: (id: number, field: string, value: any) => void;
   addProject: () => number;
   removeProject: (id: number) => void;
+  clearProjects: () => void;
   updateAward: (id: number, field: string, value: string) => void;
   addAward: () => number;
   removeAward: (id: number) => void;
+  clearAwards: () => void;
   updateCustomField: (id: number, field: string, value: string) => void;
   changeCustomFieldType: (id: number, type: 'text' | 'textarea' | 'date' | 'url') => void;
   addCustomField: () => number;
@@ -708,6 +731,10 @@ export interface ProjectsProps extends FormComponentProps {
   onAdd: () => number;
   onRemove: (id: number) => void;
   onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  // NEW: Section title renaming and removal
+  onRenameSection?: (newTitle: string) => void;
+  onRemoveSection?: () => void;
+  sectionTitle?: string;
 }
 
 export interface AwardsProps extends FormComponentProps {
@@ -716,6 +743,10 @@ export interface AwardsProps extends FormComponentProps {
   onAdd: () => number;
   onRemove: (id: number) => void;
   onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  // NEW: Section title renaming and removal
+  onRenameSection?: (newTitle: string) => void;
+  onRemoveSection?: () => void;
+  sectionTitle?: string;
 }
 
 export interface SkillsProps extends FormComponentProps {
@@ -724,6 +755,9 @@ export interface SkillsProps extends FormComponentProps {
   onRemove: (index: number) => void;
   onUpdateProficiency: (index: number, proficiency: Skill['proficiency']) => void;
   onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  // NEW: Section title renaming
+  onRenameSection?: (newTitle: string) => void;
+  sectionTitle?: string;
 }
 
 export interface CustomFieldsProps extends FormComponentProps {

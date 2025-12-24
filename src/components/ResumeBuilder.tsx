@@ -1,7 +1,6 @@
-// ResumeBuilder.tsx - COMPLETE ENHANCED SEO VERSION WITH FIXED hreflang
+// ResumeBuilder.tsx - COMPLETE WITH CUSTOM SECTION TITLES AND DUAL ANALYTICS
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 import { useResume } from './ResumeContext';
 import TemplateSelector from './TemplateSelector';
 import FileUpload from './FileUpload';
@@ -303,279 +302,6 @@ const TemplateGridPreview = ({
   );
 };
 
-// SEO Structured Data Component
-const StructuredData = ({ data }: { data: any }) => (
-  <script type="application/ld+json">
-    {JSON.stringify(data)}
-  </script>
-);
-
-// Generate structured data for Resume Builder
-const generateStructuredData = (resumeData: any) => {
-  const baseUrl = 'https://careercraft.in';
-  const templatesCount = Object.keys(TEMPLATES).length;
-  const completedSections = getCompletedSectionsCount(resumeData);
-  
-  return [
-    // SoftwareApplication Schema
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "CareerCraft Resume Builder",
-      "description": "Free online ATS-optimized resume builder for Indian job seekers with 8+ professional templates",
-      "url": `${baseUrl}/builder`,
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web Browser",
-      "permissions": "browser",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "INR",
-        "availability": "https://schema.org/InStock"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.7",
-        "ratingCount": "150",
-        "bestRating": "5",
-        "worstRating": "1"
-      },
-      "featureList": [
-        "ATS-optimized templates",
-        "8+ professional designs",
-        "Instant PDF download",
-        "No signup required",
-        "Mobile-friendly",
-        "Color customization",
-        "Section reordering",
-        "File upload support"
-      ],
-      "screenshot": `${baseUrl}/screenshots/resume-builder-preview.jpg`,
-      "softwareVersion": "2.0",
-      "releaseNotes": "Enhanced ATS compatibility and mobile responsiveness",
-      "countriesSupported": "IN",
-      "areaServed": "IN",
-      "countryOfOrigin": "India",
-      "creator": {
-        "@type": "Organization",
-        "name": "CareerCraft India",
-        "url": baseUrl
-      },
-      "statistics": {
-        "@type": "QuantitativeValue",
-        "value": "50000",
-        "unitText": "Resumes Created"
-      }
-    },
-    // WebSite Schema
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "CareerCraft Resume Builder",
-      "url": `${baseUrl}/builder`,
-      "description": "Free ATS-optimized resume builder for Indian job market",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": `${baseUrl}/search?q={search_term_string}`,
-        "query-input": "required name=search_term_string"
-      },
-      "publisher": {
-        "@type": "Organization",
-        "name": "CareerCraft India",
-        "logo": `${baseUrl}/logos/careercraft-logo-square.png`
-      }
-    },
-    // Organization Schema
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "CareerCraft India",
-      "url": baseUrl,
-      "logo": `${baseUrl}/logos/careercraft-logo-square.png`,
-      "description": "India's premier career platform offering free ATS-optimized resume builder and job portal services",
-      "email": "contact@careercraft.in",
-      "address": {
-        "@type": "PostalAddress",
-        "addressCountry": "IN"
-      },
-      "sameAs": [
-        "https://www.linkedin.com/in/career-coach-expert-2a47a0399",
-        "https://www.instagram.com/career_craft_india/"
-      ],
-      "foundingDate": "2024",
-      "areaServed": "IN",
-      "knowsAbout": [
-        "Resume Writing",
-        "ATS Optimization",
-        "Job Search India",
-        "Career Counseling",
-        "Interview Preparation"
-      ]
-    },
-    // FAQ Schema
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Is CareerCraft Resume Builder really free?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, 100% free. No hidden charges, no signup required, no premium features locked behind paywalls."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Are the resumes ATS-friendly?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, all templates are optimized for Applicant Tracking Systems used by Indian companies like TCS, Infosys, Wipro, and Accenture."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How many templates are available?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "8+ professionally designed templates including Creative, Executive, Professional, Tech, ATS Optimized, and Two-Column layouts."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I download my resume as PDF?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, instant PDF download with one click. The PDF is print-ready and optimized for both digital and physical submission."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is my data safe and private?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Your data is stored locally in your browser. We don't save your resume information on our servers unless you explicitly choose to."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I customize colors and sections?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, full customization options including color schemes, section ordering, and layout adjustments are available."
-          }
-        }
-      ]
-    },
-    // HowTo Schema
-    {
-      "@context": "https://schema.org",
-      "@type": "HowTo",
-      "name": "How to Build a Professional Resume in 5 Minutes",
-      "description": "Step-by-step guide to create an ATS-optimized resume for Indian job market using CareerCraft Resume Builder",
-      "totalTime": "PT5M",
-      "estimatedCost": {
-        "@type": "MonetaryAmount",
-        "currency": "INR",
-        "value": "0"
-      },
-      "step": [
-        {
-          "@type": "HowToStep",
-          "position": "1",
-          "name": "Enter Personal Information",
-          "text": "Fill in your name, contact details, and professional summary"
-        },
-        {
-          "@type": "HowToStep",
-          "position": "2",
-          "name": "Add Work Experience",
-          "text": "List your previous job roles, responsibilities, and achievements"
-        },
-        {
-          "@type": "HowToStep",
-          "position": "3",
-          "name": "Include Education Details",
-          "text": "Add your educational qualifications, university, and year of passing"
-        },
-        {
-          "@type": "HowToStep",
-          "position": "4",
-          "name": "Select Skills",
-          "text": "Choose relevant skills from our database or add custom ones"
-        },
-        {
-          "@type": "HowToStep",
-          "position": "5",
-          "name": "Choose Template",
-          "text": "Select from 8+ ATS-optimized templates designed for Indian job market"
-        },
-        {
-          "@type": "HowToStep",
-          "position": "6",
-          "name": "Customize & Download",
-          "text": "Adjust colors, reorder sections, and download your professional resume as PDF"
-        }
-      ]
-    },
-    // Breadcrumb Schema
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": baseUrl
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Resume Builder",
-          "item": `${baseUrl}/builder`
-        }
-      ]
-    },
-    // WebPage Schema
-    {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      "name": "CareerCraft Resume Builder - Create ATS-Friendly Resume Online",
-      "description": "Free online resume builder with 8+ professional templates for Indian job market",
-      "url": `${baseUrl}/builder`,
-      "breadcrumb": {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Home",
-            "item": baseUrl
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Resume Builder",
-            "item": `${baseUrl}/builder`
-          }
-        ]
-      },
-      "mainEntity": {
-        "@type": "SoftwareApplication",
-        "name": "CareerCraft Resume Builder",
-        "applicationCategory": "BusinessApplication"
-      },
-      "datePublished": "2024-01-01T00:00:00+05:30",
-      "dateModified": new Date().toISOString(),
-      "publisher": {
-        "@type": "Organization",
-        "name": "CareerCraft India"
-      }
-    }
-  ];
-};
-
 const ResumeBuilder = () => {
   const { 
     resumeData, 
@@ -583,8 +309,10 @@ const ResumeBuilder = () => {
     handleSectionReorder, 
     handleFileUpload,
     updateSelectedTemplate,
-    updateCustomColors
+    updateCustomColors,
+    sectionTitles  // NEW: Get custom section titles
   } = useResume();
+  
   const [formKey, setFormKey] = useState(0);
   const resumeRef = useRef<HTMLDivElement>(null);
   const [isMobilePreview, setIsMobilePreview] = useState(false);
@@ -664,7 +392,7 @@ const ResumeBuilder = () => {
       {
         completion_percentage: completion,
         sections_completed: sectionsCompleted,
-        resume_id: resumeId,
+        resume_id: resumeId, // Using our generated resumeId
         user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
       },
       completion
@@ -802,65 +530,14 @@ const ResumeBuilder = () => {
     };
   };
 
-  // Generate structured data
-  const structuredData = generateStructuredData(resumeData);
-
   return (
     <>
-      {/* ENHANCED SEO WITH STRUCTURED DATA - FIXED hreflang -> hrefLang */}
       <SEO
-        title="🚀 Free Resume Builder - ATS-Friendly CV in 5 Minutes | CareerCraft"
-        description="Build professional, ATS-optimized resumes with 8+ templates. 100% Free • No Signup • Instant PDF Download • Trusted by 50,000+ Indian Job Seekers"
-        keywords="free resume builder online, ATS resume template, professional CV maker, Indian resume format, fresher resume builder, IT resume India, engineering CV template, download resume PDF, no signup resume maker, career craft, resume builder India, ATS friendly resume, job resume maker"
+        title="Free Resume Builder - Create ATS-Friendly CV Online | CareerCraft"
+        description="Build professional, ATS-optimized resumes with CareerCraft's free online builder. 8+ templates for engineers, developers, and professionals. Download PDF instantly."
+        keywords="free resume builder, online CV maker, ATS resume template, professional resume download, resume builder no sign up, create resume free, career craft"
         canonicalUrl="https://careercraft.in/builder"
-        ogImage="https://careercraft.in/og/resume-builder-preview.jpg"
-        structuredData={structuredData}
       />
-
-      {/* Additional Meta Tags for Resume Builder */}
-      <Helmet>
-        {/* Hreflang tags - FIXED: using hrefLang instead of hreflang */}
-        <link rel="alternate" href="https://careercraft.in/builder" hrefLang="en-in" />
-        <link rel="alternate" href="https://careercraft.in/builder" hrefLang="en" />
-        <link rel="alternate" href="https://careercraft.in/builder" hrefLang="x-default" />
-        
-        {/* Mobile-specific meta tags */}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        
-        {/* Twitter Card */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@CareerCraftIN" />
-        <meta name="twitter:creator" content="@CareerCraftIN" />
-        <meta name="twitter:title" content="🚀 Free Resume Builder - ATS-Friendly CV in 5 Minutes" />
-        <meta name="twitter:description" content="Build professional resumes instantly. No signup required. 8+ ATS templates." />
-        <meta name="twitter:image" content="https://careercraft.in/twitter/resume-builder-card.jpg" />
-        <meta name="twitter:image:alt" content="Resume Builder Preview with Templates" />
-        
-        {/* Additional SEO Meta Tags */}
-        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-        <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
-        
-        {/* PWA Meta Tags */}
-        <meta name="application-name" content="CareerCraft Resume Builder" />
-        <meta name="apple-mobile-web-app-title" content="CareerCraft" />
-        <meta name="theme-color" content="#2563eb" />
-        <meta name="msapplication-TileColor" content="#2563eb" />
-        
-        {/* Article meta tags */}
-        <meta property="article:published_time" content="2024-01-01T00:00:00+05:30" />
-        <meta property="article:modified_time" content={new Date().toISOString()} />
-        <meta property="article:author" content="CareerCraft India" />
-        <meta property="article:section" content="Career Tools" />
-        <meta property="article:tag" content="Resume Builder" />
-        <meta property="article:tag" content="ATS Resume" />
-        <meta property="article:tag" content="Indian Job Market" />
-        <meta property="article:tag" content="Free Resume Maker" />
-        <meta property="article:tag" content="Professional CV" />
-      </Helmet>
       
       {/* Success Download Prompt Modal */}
       {showDownloadPrompt && (
@@ -941,18 +618,9 @@ const ResumeBuilder = () => {
       
       <div className="min-h-screen bg-gray-50 py-4 md:py-8">
         <div className="mx-auto px-4 max-w-7xl">
-          {/* Hidden H1 for SEO Optimization */}
-          <h1 className="sr-only">
-            Free Resume Builder Online for Indian Job Market | ATS Optimized Templates | Instant PDF Download | CareerCraft
-          </h1>
-          
           <header className="text-center mb-6 md:mb-8">
-            <div className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
-              🚀 CareerCraft Resume Builder
-            </div>
-            <p className="text-gray-600 text-sm md:text-base">
-              Create <strong>ATS-optimized</strong> resumes for Indian job market in <strong>5 minutes</strong>
-            </p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">CareerCraft Resume Builder</h1>
+            <p className="text-gray-600 text-sm md:text-base">Create professional ATS-optimized resumes in minutes</p>
             
             <div className="mt-4 flex flex-wrap justify-center gap-2 md:gap-3">
               <Link

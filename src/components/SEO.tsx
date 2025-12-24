@@ -1,3 +1,4 @@
+
 import { Helmet } from 'react-helmet-async';
 
 interface SEOProps {
@@ -12,6 +13,132 @@ interface SEOProps {
   structuredData?: any;
 }
 
+// Component for Breadcrumb Schema
+export const BreadcrumbSchema = ({ items }: { items: Array<{ name: string; item: string }> }) => {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": items.map((item, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": item.name,
+      "item": item.item
+    }))
+  };
+
+  return (
+    <Helmet>
+      <script type="application/ld+json">
+        {JSON.stringify(schema)}
+      </script>
+    </Helmet>
+  );
+};
+
+// Component for Organization Schema
+export const OrganizationSchema = () => {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "CareerCraft India",
+    "url": "https://careercraft.in",
+    "logo": "https://careercraft.in/logos/careercraft-logo-square.png",
+    "description": "India's premier career platform offering free ATS-optimized resume builder and job portal services",
+    "email": "contact@careercraft.in",
+    "address": {
+      "@type": "PostalAddress",
+      "addressCountry": "IN"
+    },
+    "sameAs": [
+      "https://www.linkedin.com/in/career-coach-expert-2a47a0399",
+      "https://www.instagram.com/career_craft_india/"
+    ],
+    "founder": {
+      "@type": "Person",
+      "name": "CareerCraft Team"
+    },
+    "foundingDate": "2024",
+    "areaServed": "IN",
+    "knowsAbout": [
+      "Resume Writing",
+      "ATS Optimization",
+      "Job Search India",
+      "Career Counseling",
+      "Interview Preparation"
+    ]
+  };
+
+  return (
+    <Helmet>
+      <script type="application/ld+json">
+        {JSON.stringify(schema)}
+      </script>
+    </Helmet>
+  );
+};
+
+// Component for Website Schema
+export const WebsiteSchema = ({ url, name, description, searchUrl }: { 
+  url: string; 
+  name: string; 
+  description: string; 
+  searchUrl?: string 
+}) => {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "name": name,
+    "url": url,
+    "description": description,
+    "potentialAction": searchUrl ? {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": searchUrl
+      },
+      "query-input": "required name=search_term_string"
+    } : undefined,
+    "publisher": {
+      "@type": "Organization",
+      "name": "CareerCraft India",
+      "logo": "https://careercraft.in/logos/careercraft-logo-square.png"
+    }
+  };
+
+  return (
+    <Helmet>
+      <script type="application/ld+json">
+        {JSON.stringify(schema)}
+      </script>
+    </Helmet>
+  );
+};
+
+// Component for FAQ Schema
+export const FAQSchema = ({ faqs }: { faqs: Array<{ question: string; answer: string }> }) => {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+
+  return (
+    <Helmet>
+      <script type="application/ld+json">
+        {JSON.stringify(schema)}
+      </script>
+    </Helmet>
+  );
+};
+
+// Main SEO Component
 export default function SEO({ 
   title, 
   description, 

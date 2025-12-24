@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import type { SkillsProps, Skill } from './types';
 
-const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFieldInteraction }: SkillsProps) => {
+const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFieldInteraction, onRenameSection, sectionTitle }: SkillsProps) => {
   const [newSkill, setNewSkill] = useState('');
   const [newProficiency, setNewProficiency] = useState<Skill['proficiency']>('Intermediate');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [customTitle, setCustomTitle] = useState(sectionTitle || 'Skills');
 
   const formStyle = template?.formStyle || {
     sectionBg: 'bg-white shadow-md rounded-lg',
@@ -27,6 +29,11 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFiel
     }
   };
 
+  const handleTitleSave = () => {
+    setIsEditingTitle(false);
+    onRenameSection?.(customTitle);
+  };
+
   const proficiencyOptions: { value: Skill['proficiency']; label: string }[] = [
     { value: 'Beginner', label: 'Beginner' },
     { value: 'Intermediate', label: 'Intermediate' },
@@ -35,10 +42,46 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFiel
   ];
 
   return (
-    <div className={`p-6 mb-6 ${formStyle.sectionBg} border ${formStyle.borderColor} rounded-xl`}>
-      <h2 className={`text-2xl font-semibold mb-4 ${formStyle.headerColor} flex items-center`}>
-        <i className="fas fa-tools mr-2 text-blue-500"></i> Skills
-      </h2>
+    <div className={`p-6 mb-6 ${formStyle.sectionBg} border ${formStyle.borderColor} rounded-xl group`}>
+      <div className="flex items-center justify-between mb-4">
+        {isEditingTitle ? (
+          <div className="flex items-center gap-2">
+            <span className="text-red-500 text-xl">⚡</span>
+            <input
+              type="text"
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleTitleSave()}
+              onBlur={handleTitleSave}
+              className={`text-2xl font-semibold ${formStyle.headerColor} bg-transparent border-b ${formStyle.borderColor} focus:outline-none focus:border-blue-500`}
+              autoFocus
+            />
+            <button
+              onClick={handleTitleSave}
+              className="ml-2 p-1 text-green-600 hover:text-green-800"
+              title="Save title"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <h2 className={`text-2xl font-semibold ${formStyle.headerColor} flex items-center gap-2`}>
+            <span className="text-red-500">⚡</span>
+            {customTitle}
+            <button
+              onClick={() => setIsEditingTitle(true)}
+              className="p-1 text-gray-500 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Edit section title"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+              </svg>
+            </button>
+          </h2>
+        )}
+      </div>
       
       <div className="space-y-3 mb-4">
         {skills.map((skill, index) => (
@@ -66,7 +109,9 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFiel
                 onClick={() => onRemove(index)}
                 title="Remove skill"
               >
-                <i className="fas fa-times-circle"></i>
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
               </button>
             </div>
           </div>
@@ -107,7 +152,9 @@ const Skills = ({ skills, onAdd, onRemove, onUpdateProficiency, template, onFiel
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
           onClick={handleAddSkill}
         >
-          <i className="fas fa-plus"></i>
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
         </button>
       </div>
 

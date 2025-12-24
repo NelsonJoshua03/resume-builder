@@ -160,13 +160,18 @@ const EditResumePage = () => {
     updateProject,
     addProject,
     removeProject,
+    clearProjects,
     updateAward,
     addAward,
     removeAward,
+    clearAwards,
     updateCustomField,
     changeCustomFieldType,
     addCustomField,
-    removeCustomField
+    removeCustomField,
+    updateSectionTitle,
+    removeSection,
+    sectionTitles
   } = useResume();
 
   const { 
@@ -1369,6 +1374,9 @@ const EditResumePage = () => {
                       onFieldInteraction={(fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => 
                         trackFieldInteraction(fieldName, action, 'projects', value)
                       }
+                      onRenameSection={(newTitle) => updateSectionTitle('projects', newTitle)}
+                      onRemoveSection={() => removeSection('projects')}
+                      sectionTitle={sectionTitles?.projects || 'Projects & Portfolio'}
                     />
                   </div>
                 )}
@@ -1392,6 +1400,8 @@ const EditResumePage = () => {
                       onFieldInteraction={(fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => 
                         trackFieldInteraction(fieldName, action, 'skills', value)
                       }
+                      onRenameSection={(newTitle) => updateSectionTitle('skills', newTitle)}
+                      sectionTitle={sectionTitles?.skills || 'Skills'}
                     />
                   </div>
                 )}
@@ -1415,6 +1425,9 @@ const EditResumePage = () => {
                       onFieldInteraction={(fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => 
                         trackFieldInteraction(fieldName, action, 'awards', value)
                       }
+                      onRenameSection={(newTitle) => updateSectionTitle('awards', newTitle)}
+                      onRemoveSection={() => removeSection('awards')}
+                      sectionTitle={sectionTitles?.awards || 'Awards & Achievements'}
                     />
                   </div>
                 )}
@@ -1595,6 +1608,9 @@ const EditResumePage = () => {
                       onFieldInteraction={(fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => 
                         trackFieldInteraction(fieldName, action, 'projects', value)
                       }
+                      onRenameSection={(newTitle) => updateSectionTitle('projects', newTitle)}
+                      onRemoveSection={() => removeSection('projects')}
+                      sectionTitle={sectionTitles?.projects || 'Projects & Portfolio'}
                     />
                   </div>
 
@@ -1616,6 +1632,8 @@ const EditResumePage = () => {
                       onFieldInteraction={(fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => 
                         trackFieldInteraction(fieldName, action, 'skills', value)
                       }
+                      onRenameSection={(newTitle) => updateSectionTitle('skills', newTitle)}
+                      sectionTitle={sectionTitles?.skills || 'Skills'}
                     />
                   </div>
                 </div>
@@ -1639,6 +1657,9 @@ const EditResumePage = () => {
                       onFieldInteraction={(fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => 
                         trackFieldInteraction(fieldName, action, 'awards', value)
                       }
+                      onRenameSection={(newTitle) => updateSectionTitle('awards', newTitle)}
+                      onRemoveSection={() => removeSection('awards')}
+                      sectionTitle={sectionTitles?.awards || 'Awards & Achievements'}
                     />
                   </div>
 

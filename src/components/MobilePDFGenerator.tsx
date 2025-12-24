@@ -1,4 +1,4 @@
-// MobilePDFGenerator.tsx - FIXED FUNCTION CALLS
+// MobilePDFGenerator.tsx - COMPLETE WITH CUSTOM SECTION TITLES AND DUAL ANALYTICS
 import { useState } from 'react';
 import jsPDF from 'jspdf';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
@@ -40,6 +40,14 @@ const MobilePDFGenerator = ({
     trackResumeDownload: trackFirebaseResumeDownload,
     trackButtonClick: trackFirebaseButtonClick
   } = useFirebaseAnalytics();
+
+  // Helper function to get custom section titles
+  const getSectionTitle = (sectionId: string, defaultTitle: string) => {
+    if (resumeData.sectionTitles && resumeData.sectionTitles[sectionId]) {
+      return resumeData.sectionTitles[sectionId];
+    }
+    return defaultTitle;
+  };
 
   const trackDownload = async (fileName: string, resumeId?: string) => {
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
@@ -92,7 +100,6 @@ const MobilePDFGenerator = ({
     // 2. FIREBASE ANALYTICS TRACKING
     try {
       // Track resume download in Firebase
-      // ✅ FIXED: Type-safe personalInfo filtering
       const fieldsCount = {
         personalInfo: (['name', 'title', 'email', 'phone', 'summary', 'profilePicture'] as const)
           .filter(k => personalInfo[k] && 
@@ -189,7 +196,6 @@ const MobilePDFGenerator = ({
       let yPosition = margin;
       
       const primaryColor = template.colors?.primary || '#374151';
-      const circleInitialsColor = template.circleInitialsColor || primaryColor;
       
       // Helper to convert hex to RGB
       const hexToRgb = (hex: string) => {
@@ -214,7 +220,9 @@ const MobilePDFGenerator = ({
         checkNewPage();
       };
       
-      const addSectionHeader = (title: string, color?: string) => {
+      // Updated section header function to use custom titles
+      const addSectionHeader = (sectionId: string, defaultTitle: string, color?: string) => {
+        const title = getSectionTitle(sectionId, defaultTitle);
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
@@ -236,7 +244,8 @@ const MobilePDFGenerator = ({
         yPosition += 8;
       };
 
-      const addTechSectionHeader = (title: string) => {
+      const addTechSectionHeader = (sectionId: string, defaultTitle: string) => {
+        const title = getSectionTitle(sectionId, defaultTitle);
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
@@ -254,7 +263,8 @@ const MobilePDFGenerator = ({
         yPosition += 8;
       };
 
-      const addCreativeSectionHeader = (title: string) => {
+      const addCreativeSectionHeader = (sectionId: string, defaultTitle: string) => {
+        const title = getSectionTitle(sectionId, defaultTitle);
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
@@ -272,7 +282,8 @@ const MobilePDFGenerator = ({
         yPosition += 8;
       };
 
-      const addProfessionalSectionHeader = (title: string) => {
+      const addProfessionalSectionHeader = (sectionId: string, defaultTitle: string) => {
+        const title = getSectionTitle(sectionId, defaultTitle);
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
@@ -290,7 +301,8 @@ const MobilePDFGenerator = ({
         yPosition += 8;
       };
 
-      const addExecutiveSectionHeader = (title: string) => {
+      const addExecutiveSectionHeader = (sectionId: string, defaultTitle: string) => {
+        const title = getSectionTitle(sectionId, defaultTitle);
         checkNewPage(15);
         addSpacing(5);
         pdf.setFontSize(14);
@@ -353,15 +365,15 @@ const MobilePDFGenerator = ({
       const renderSummarySection = () => {
         if (personalInfo.summary && personalInfo.summary.length > 0) {
           if (template.layout === 'tech') {
-            addTechSectionHeader('PROFESSIONAL SUMMARY');
+            addTechSectionHeader('summary', 'PROFESSIONAL SUMMARY');
           } else if (template.layout === 'creative') {
-            addCreativeSectionHeader('PROFESSIONAL SUMMARY');
+            addCreativeSectionHeader('summary', 'PROFESSIONAL SUMMARY');
           } else if (template.layout === 'professional') {
-            addProfessionalSectionHeader('PROFESSIONAL SUMMARY');
+            addProfessionalSectionHeader('summary', 'PROFESSIONAL SUMMARY');
           } else if (template.layout === 'executive') {
-            addExecutiveSectionHeader('PROFESSIONAL SUMMARY');
+            addExecutiveSectionHeader('summary', 'PROFESSIONAL SUMMARY');
           } else {
-            addSectionHeader('PROFESSIONAL SUMMARY');
+            addSectionHeader('summary', 'PROFESSIONAL SUMMARY');
           }
           personalInfo.summary.forEach(item => {
             addBulletPoint(item);
@@ -373,15 +385,15 @@ const MobilePDFGenerator = ({
       const renderExperienceSection = () => {
         if (resumeData.experiences && resumeData.experiences.length > 0) {
           if (template.layout === 'tech') {
-            addTechSectionHeader('WORK EXPERIENCE');
+            addTechSectionHeader('experience', 'WORK EXPERIENCE');
           } else if (template.layout === 'creative') {
-            addCreativeSectionHeader('WORK EXPERIENCE');
+            addCreativeSectionHeader('experience', 'WORK EXPERIENCE');
           } else if (template.layout === 'professional') {
-            addProfessionalSectionHeader('WORK EXPERIENCE');
+            addProfessionalSectionHeader('experience', 'WORK EXPERIENCE');
           } else if (template.layout === 'executive') {
-            addExecutiveSectionHeader('WORK EXPERIENCE');
+            addExecutiveSectionHeader('experience', 'WORK EXPERIENCE');
           } else {
-            addSectionHeader('WORK EXPERIENCE');
+            addSectionHeader('experience', 'WORK EXPERIENCE');
           }
           
           resumeData.experiences.forEach((exp: any, index: number) => {
@@ -420,15 +432,15 @@ const MobilePDFGenerator = ({
       const renderEducationSection = () => {
         if (resumeData.education && resumeData.education.length > 0) {
           if (template.layout === 'tech') {
-            addTechSectionHeader('EDUCATION');
+            addTechSectionHeader('education', 'EDUCATION');
           } else if (template.layout === 'creative') {
-            addCreativeSectionHeader('EDUCATION');
+            addCreativeSectionHeader('education', 'EDUCATION');
           } else if (template.layout === 'professional') {
-            addProfessionalSectionHeader('EDUCATION');
+            addProfessionalSectionHeader('education', 'EDUCATION');
           } else if (template.layout === 'executive') {
-            addExecutiveSectionHeader('EDUCATION');
+            addExecutiveSectionHeader('education', 'EDUCATION');
           } else {
-            addSectionHeader('EDUCATION');
+            addSectionHeader('education', 'EDUCATION');
           }
           
           resumeData.education.forEach((edu: any) => {
@@ -467,76 +479,90 @@ const MobilePDFGenerator = ({
       const renderSkillsSection = () => {
         if (resumeData.skills && resumeData.skills.length > 0) {
           if (template.layout === 'tech') {
-            addTechSectionHeader('SKILLS');
+            addTechSectionHeader('skills', 'SKILLS');
           } else if (template.layout === 'creative') {
-            addCreativeSectionHeader('SKILLS');
+            addCreativeSectionHeader('skills', 'SKILLS');
           } else if (template.layout === 'professional') {
-            addProfessionalSectionHeader('SKILLS');
+            addProfessionalSectionHeader('skills', 'SKILLS');
           } else if (template.layout === 'executive') {
-            addExecutiveSectionHeader('SKILLS');
+            addExecutiveSectionHeader('skills', 'SKILLS');
           } else {
-            addSectionHeader('SKILLS');
+            addSectionHeader('skills', 'SKILLS');
           }
           
           checkNewPage(15);
           
-          // Group skills into chunks of 2 for better formatting
-          const skillsList = resumeData.skills.map((skill: any) => skill.name);
-          const chunkSize = 2;
-          
-          // Calculate column positions for perfect alignment
-          const bulletX = margin + 2;
-          const textX = margin + 6;
-          const columnWidth = (contentWidth - 20) / 2; // Divide content width for two columns with spacing
+          // Calculate column positions
+          const columnWidth = (contentWidth - 10) / 2;
+          const bulletX = margin + 2; // All bullet points at margin + 2
+          const textX = margin + 6; // Text starts at margin + 6 for first column
           const secondColumnStart = margin + columnWidth + 10;
+          const secondColumnTextX = secondColumnStart + 4; // Text starts at secondColumnStart + 4
           
-          for (let i = 0; i < skillsList.length; i += chunkSize) {
-            const chunk = skillsList.slice(i, i + chunkSize);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(40, 40, 40);
+          
+          // Split skills into pairs for two columns
+          for (let i = 0; i < resumeData.skills.length; i += 2) {
+            checkNewPage(5); // Check before adding each skill pair
             
-            // Always check for new page before adding skills
-            checkNewPage(5);
-            
-            // Set font for all skills
-            pdf.setFontSize(10);
-            pdf.setTextColor(40, 40, 40);
-            
-            // First skill (always in first column)
-            if (chunk[0]) {
+            // First column skill
+            const skill1 = resumeData.skills[i];
+            if (skill1) {
               pdf.setFont('helvetica', 'bold');
               pdf.text('•', bulletX, yPosition);
               pdf.setFont('helvetica', 'normal');
-              pdf.text(chunk[0], textX, yPosition);
+              
+              // Check if skill fits in first column
+              const skill1Width = pdf.getTextWidth(skill1.name);
+              if (skill1Width <= columnWidth - 6) {
+                pdf.text(skill1.name, textX, yPosition);
+              } else {
+                // Skill too long, put it on its own line
+                const lines = pdf.splitTextToSize(skill1.name, columnWidth - 6);
+                lines.forEach((line: string, idx: number) => {
+                  if (idx > 0) {
+                    checkNewPage(4.5);
+                  }
+                  pdf.text(line, textX, yPosition);
+                  yPosition += 4.5;
+                });
+                yPosition -= 4.5; // Adjust for the loop increment
+              }
             }
             
-            // Second skill (in second column if exists)
-            if (chunk[1]) {
-              // Check if skill fits in second column
-              const skillWidth = pdf.getTextWidth(chunk[1]);
-              const maxWidth = columnWidth - 10; // Leave some padding
+            // Second column skill
+            const skill2 = resumeData.skills[i + 1];
+            if (skill2) {
+              pdf.setFont('helvetica', 'bold');
+              pdf.text('•', secondColumnStart + 2, yPosition);
+              pdf.setFont('helvetica', 'normal');
               
-              if (skillWidth <= maxWidth) {
-                // Skill fits, place in second column
-                const secondBulletX = secondColumnStart;
-                const secondTextX = secondColumnStart + 4;
-                
-                pdf.setFont('helvetica', 'bold');
-                pdf.text('•', secondBulletX, yPosition);
-                pdf.setFont('helvetica', 'normal');
-                pdf.text(chunk[1], secondTextX, yPosition);
+              // Check if skill fits in second column
+              const skill2Width = pdf.getTextWidth(skill2.name);
+              if (skill2Width <= columnWidth - 4) {
+                pdf.text(skill2.name, secondColumnTextX, yPosition);
               } else {
                 // Skill too long, move to next line
                 yPosition += 5;
                 checkNewPage(5);
-                
                 pdf.setFont('helvetica', 'bold');
                 pdf.text('•', bulletX, yPosition);
                 pdf.setFont('helvetica', 'normal');
-                pdf.text(chunk[1], textX, yPosition);
+                const lines = pdf.splitTextToSize(skill2.name, contentWidth - 6);
+                lines.forEach((line: string, idx: number) => {
+                  if (idx > 0) {
+                    checkNewPage(4.5);
+                  }
+                  pdf.text(line, textX, yPosition);
+                  yPosition += 4.5;
+                });
+                yPosition -= 4.5; // Adjust for the loop increment
               }
             }
             
-            // Move to next line for next pair
-            yPosition += 5;
+            yPosition += 5; // Consistent line height between skill lines
           }
           
           addSpacing(4);
@@ -546,15 +572,15 @@ const MobilePDFGenerator = ({
       const renderProjectsSection = () => {
         if (resumeData.projects && resumeData.projects.length > 0) {
           if (template.layout === 'tech') {
-            addTechSectionHeader('PROJECTS');
+            addTechSectionHeader('projects', 'PROJECTS');
           } else if (template.layout === 'creative') {
-            addCreativeSectionHeader('PROJECTS');
+            addCreativeSectionHeader('projects', 'PROJECTS');
           } else if (template.layout === 'professional') {
-            addProfessionalSectionHeader('PROJECTS');
+            addProfessionalSectionHeader('projects', 'PROJECTS');
           } else if (template.layout === 'executive') {
-            addExecutiveSectionHeader('PROJECTS');
+            addExecutiveSectionHeader('projects', 'PROJECTS');
           } else {
-            addSectionHeader('PROJECTS');
+            addSectionHeader('projects', 'PROJECTS');
           }
           
           resumeData.projects.forEach((project: any) => {
@@ -594,15 +620,15 @@ const MobilePDFGenerator = ({
       const renderAwardsSection = () => {
         if (resumeData.awards && resumeData.awards.length > 0 && resumeData.awards[0].title) {
           if (template.layout === 'tech') {
-            addTechSectionHeader('AWARDS & HONORS');
+            addTechSectionHeader('awards', 'AWARDS & HONORS');
           } else if (template.layout === 'creative') {
-            addCreativeSectionHeader('AWARDS & HONORS');
+            addCreativeSectionHeader('awards', 'AWARDS & HONORS');
           } else if (template.layout === 'professional') {
-            addProfessionalSectionHeader('AWARDS & HONORS');
+            addProfessionalSectionHeader('awards', 'AWARDS & HONORS');
           } else if (template.layout === 'executive') {
-            addExecutiveSectionHeader('AWARDS & HONORS');
+            addExecutiveSectionHeader('awards', 'AWARDS & HONORS');
           } else {
-            addSectionHeader('AWARDS & HONORS');
+            addSectionHeader('awards', 'AWARDS & HONORS');
           }
           
           resumeData.awards.forEach((award: any) => {
@@ -644,15 +670,15 @@ const MobilePDFGenerator = ({
           resumeData.customFields.forEach((field: any) => {
             if (field.label && field.value) {
               if (template.layout === 'tech') {
-                addTechSectionHeader(`${field.label.toUpperCase()}`);
+                addTechSectionHeader('custom', field.label.toUpperCase());
               } else if (template.layout === 'creative') {
-                addCreativeSectionHeader(`${field.label.toUpperCase()}`);
+                addCreativeSectionHeader('custom', field.label.toUpperCase());
               } else if (template.layout === 'professional') {
-                addProfessionalSectionHeader(`${field.label.toUpperCase()}`);
+                addProfessionalSectionHeader('custom', field.label.toUpperCase());
               } else if (template.layout === 'executive') {
-                addExecutiveSectionHeader(`${field.label.toUpperCase()}`);
+                addExecutiveSectionHeader('custom', field.label.toUpperCase());
               } else {
-                addSectionHeader(`${field.label.toUpperCase()}`);
+                addSectionHeader('custom', field.label.toUpperCase());
               }
               
               pdf.setFontSize(10);
@@ -670,6 +696,7 @@ const MobilePDFGenerator = ({
         }
       };
 
+      // Template-specific personal info rendering functions
       const renderProfessionalPersonalInfo = () => {
         const rgb = hexToRgb(primaryColor);
         
@@ -754,7 +781,7 @@ const MobilePDFGenerator = ({
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
         
-        const circleInitialsRgb = hexToRgb(circleInitialsColor);
+        const circleInitialsRgb = hexToRgb(primaryColor);
         pdf.setTextColor(circleInitialsRgb.r, circleInitialsRgb.g, circleInitialsRgb.b);
         
         const initials = personalInfo.name.split(' ').map(n => n[0]).join('');
@@ -1019,30 +1046,21 @@ const MobilePDFGenerator = ({
         const rightColumnWidth = contentWidth - leftColumnWidth - 10;
         const sidebarColor = hexToRgb(primaryColor);
         
+        // Get custom title for skills
+        const skillsTitle = getSectionTitle('skills', 'SKILLS');
+        
         if (resumeData.skills && resumeData.skills.length > 0) {
           let currentLeftY = leftY;
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(255, 255, 255);
-          pdf.text('SKILLS', margin + 5, currentLeftY);
+          pdf.text(skillsTitle.toUpperCase(), margin + 5, currentLeftY);
           currentLeftY += 6;
           
           pdf.setFontSize(8);
           pdf.setFont('helvetica', 'normal');
           
-          // Group skills into pairs for two-column layout
-          const skillsList = resumeData.skills.map((skill: any) => skill.name);
-          const chunkSize = 2;
-          
-          // Calculate positions for consistent alignment
-          const bulletX = margin + 5;
-          const textX = margin + 9;
-          const columnWidth = leftColumnWidth - 15; // Account for margins
-          const secondColumnStart = margin + 5 + (columnWidth / 2) + 10;
-          
-          for (let i = 0; i < skillsList.length; i += chunkSize) {
-            const chunk = skillsList.slice(i, i + chunkSize);
-            
+          resumeData.skills.forEach((skill: any) => {
             if (currentLeftY > pageHeight - 20) {
               pdf.addPage();
               pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
@@ -1051,53 +1069,40 @@ const MobilePDFGenerator = ({
               currentLeftY = margin;
             }
             
-            // First skill
-            if (chunk[0]) {
-              pdf.setFont('helvetica', 'bold');
-              pdf.text('•', bulletX, currentLeftY);
-              pdf.setFont('helvetica', 'normal');
-              pdf.text(chunk[0], textX, currentLeftY);
-            }
+            checkNewPage(5);
             
-            // Second skill
-            if (chunk[1]) {
-              // Check if skill fits in second column
-              const skillWidth = pdf.getTextWidth(chunk[1]);
-              const maxWidth = (columnWidth / 2) - 5;
-              
-              if (skillWidth <= maxWidth) {
-                // Skill fits, place in second column
-                const secondBulletX = secondColumnStart;
-                const secondTextX = secondColumnStart + 4;
-                
-                pdf.setFont('helvetica', 'bold');
-                pdf.text('•', secondBulletX, currentLeftY);
-                pdf.setFont('helvetica', 'normal');
-                pdf.text(chunk[1], secondTextX, currentLeftY);
-              } else {
-                // Skill too long, move to next line
-                currentLeftY += 4;
-                if (currentLeftY > pageHeight - 20) {
-                  pdf.addPage();
-                  pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
-                  pdf.rect(0, 0, margin + leftColumnWidth, pageHeight, 'F');
-                  pdf.setTextColor(255, 255, 255);
-                  currentLeftY = margin;
+            // Apply consistent bullet and text positioning
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('•', margin + 2, currentLeftY);
+            pdf.setFont('helvetica', 'normal');
+            
+            // Check if skill fits in the sidebar column
+            const skillWidth = pdf.getTextWidth(skill.name);
+            if (skillWidth <= leftColumnWidth - 6) {
+              pdf.text(skill.name, margin + 6, currentLeftY);
+            } else {
+              // Skill too long, split into multiple lines
+              const lines = pdf.splitTextToSize(skill.name, leftColumnWidth - 6);
+              lines.forEach((line: string, idx: number) => {
+                if (idx > 0) {
+                  checkNewPage(4);
+                  // For subsequent lines, add bullet
+                  pdf.setFont('helvetica', 'bold');
+                  pdf.text('•', margin + 2, currentLeftY);
+                  pdf.setFont('helvetica', 'normal');
                 }
-                
-                pdf.setFont('helvetica', 'bold');
-                pdf.text('•', bulletX, currentLeftY);
-                pdf.setFont('helvetica', 'normal');
-                pdf.text(chunk[1], textX, currentLeftY);
-              }
+                pdf.text(line, margin + 6, currentLeftY);
+                currentLeftY += 4;
+              });
+              currentLeftY -= 4; // Adjust for the loop increment
             }
             
-            currentLeftY += 4;
-          }
+            currentLeftY += 5; // Consistent line height
+          });
         }
         
         if (resumeData.education && resumeData.education.length > 0) {
-          let currentLeftY = leftY + (resumeData.skills ? Math.ceil(resumeData.skills.length / 2) * 4 + 20 : 0);
+          let currentLeftY = leftY + (resumeData.skills ? resumeData.skills.length * 5 + 20 : 0);
           if (currentLeftY > pageHeight - 40) {
             pdf.addPage();
             pdf.setFillColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
@@ -1225,6 +1230,9 @@ const MobilePDFGenerator = ({
           });
         }
         
+        // Get custom project title
+        const projectsTitle = getSectionTitle('projects', 'PROJECTS');
+        
         if (resumeData.projects && resumeData.projects.length > 0 && enabledSections.find(s => s.id === 'projects')) {
           if (rightY > pageHeight - 30) {
             pdf.addPage();
@@ -1234,7 +1242,7 @@ const MobilePDFGenerator = ({
           pdf.setFontSize(13);
           pdf.setFont('helvetica', 'bold');
           pdf.setTextColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
-          pdf.text('PROJECTS', rightColumnX, rightY);
+          pdf.text(projectsTitle.toUpperCase(), rightColumnX, rightY);
           rightY += 2;
           
           pdf.setLineWidth(0.3);
@@ -1276,6 +1284,60 @@ const MobilePDFGenerator = ({
                       rightY += 4;
                     });
                   }
+                });
+              }
+              
+              rightY += 4;
+            }
+          });
+        }
+        
+        // Get custom awards title
+        const awardsTitle = getSectionTitle('awards', 'AWARDS & HONORS');
+        
+        if (resumeData.awards && resumeData.awards.length > 0 && enabledSections.find(s => s.id === 'awards')) {
+          if (rightY > pageHeight - 30) {
+            pdf.addPage();
+            rightY = margin;
+          }
+          
+          pdf.setFontSize(13);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(sidebarColor.r, sidebarColor.g, sidebarColor.b);
+          pdf.text(awardsTitle.toUpperCase(), rightColumnX, rightY);
+          rightY += 2;
+          
+          pdf.setLineWidth(0.3);
+          pdf.line(rightColumnX, rightY, rightColumnX + 60, rightY);
+          rightY += 6;
+          
+          resumeData.awards.forEach((award: any) => {
+            if (award.title) {
+              pdf.setFontSize(10);
+              pdf.setFont('helvetica', 'bold');
+              pdf.setTextColor(0, 0, 0);
+              pdf.text(award.title, rightColumnX, rightY);
+              rightY += 5;
+              
+              if (award.issuer || award.year) {
+                pdf.setFontSize(9);
+                pdf.setFont('helvetica', 'italic');
+                pdf.setTextColor(100, 100, 100);
+                pdf.text(`${award.issuer || ''}${award.issuer && award.year ? ' | ' : ''}${award.year || ''}`, rightColumnX, rightY);
+                rightY += 5;
+              }
+              
+              if (award.description) {
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(40, 40, 40);
+                const lines = pdf.splitTextToSize(award.description, rightColumnWidth);
+                lines.forEach((line: string) => {
+                  if (rightY > pageHeight - margin) {
+                    pdf.addPage();
+                    rightY = margin;
+                  }
+                  pdf.text(line, rightColumnX, rightY);
+                  rightY += 4;
                 });
               }
               

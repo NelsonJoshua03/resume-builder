@@ -1,4 +1,4 @@
-// ResumePreview.tsx - UPDATED WITH FIREBASE ANALYTICS
+// ResumePreview.tsx - UPDATED WITH FIREBASE ANALYTICS AND CUSTOM SECTION TITLES
 import { forwardRef, useEffect, useRef } from 'react';
 import type { ResumePreviewProps, SectionItem } from './types';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
@@ -18,6 +18,14 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
   const prevTemplateRef = useRef(template?.id || '');
   const viewCountRef = useRef(0);
   const scrollDepthRef = useRef(0);
+
+  // Helper function to get custom section titles
+  const getSectionTitle = (sectionId: string, defaultTitle: string) => {
+    if (data.sectionTitles && data.sectionTitles[sectionId]) {
+      return data.sectionTitles[sectionId];
+    }
+    return defaultTitle;
+  };
 
   // Track preview view and template changes
   useEffect(() => {
@@ -211,12 +219,12 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     </ul>
   );
 
-  // Section components
+  // Section components with custom titles
   const SummarySection = () => (
     personalInfo.summary.length > 0 && (
       <div className={`${template?.layout === 'ats' ? 'mb-6' : 'mb-6'}`}>
         <h3 className="text-lg font-semibold mb-2 pb-2 border-b border-gray-300">
-          Professional Summary
+          {getSectionTitle('summary', 'Professional Summary')}
         </h3>
         {template?.layout === 'ats' ? (
           <div className="text-sm space-y-2">
@@ -235,7 +243,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     experiences.length > 0 && (
       <div className={`${template?.layout === 'ats' ? 'mb-6' : 'mb-6'}`}>
         <h3 className="text-lg font-semibold mb-3 pb-2 border-b border-gray-300">
-          Work Experience
+          {getSectionTitle('experience', 'Work Experience')}
         </h3>
         {experiences.map((exp, index) => (
           <div key={index} className="mb-4 last:mb-0">
@@ -257,7 +265,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     education.length > 0 && (
       <div className={`${template?.layout === 'ats' ? 'mb-6' : 'mb-6'}`}>
         <h3 className="text-lg font-semibold mb-3 pb-2 border-b border-gray-300">
-          Education
+          {getSectionTitle('education', 'Education')}
         </h3>
         {education.map((edu, index) => (
           <div key={index} className="mb-3 last:mb-0">
@@ -277,7 +285,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     projects.length > 0 && (
       <div className={`${template?.layout === 'ats' ? 'mb-6' : 'mb-6'}`}>
         <h3 className="text-lg font-semibold mb-3 pb-2 border-b border-gray-300">
-          Projects
+          {getSectionTitle('projects', 'Projects')}
         </h3>
         {projects.map((project, index) => (
           <div key={index} className="mb-5 last:mb-0">
@@ -318,7 +326,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     awards.length > 0 && (
       <div className={`${template?.layout === 'ats' ? 'mb-6' : 'mb-6'}`}>
         <h3 className="text-lg font-semibold mb-3 pb-2 border-b border-gray-300">
-          Awards
+          {getSectionTitle('awards', 'Awards')}
         </h3>
         {awards.map((award, index) => (
           <div key={index} className="mb-3 last:mb-0">
@@ -335,7 +343,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
     skills.length > 0 && (
       <div className={`${template?.layout === 'ats' ? 'mb-6' : 'mb-6'}`}>
         <h3 className="text-lg font-semibold mb-3 pb-2 border-b border-gray-300">
-          Skills
+          {getSectionTitle('skills', 'Skills')}
         </h3>
         <div className="flex flex-wrap gap-2">
           {skills.map((skill, index) => (
@@ -532,172 +540,182 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(({
   );
 
   // Two Column Template (Modern Layout)
-  const renderTwoColumnTemplate = () => (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden" style={{ color: customColors?.text || template?.colors?.text }}>
-      <div className="flex flex-col md:flex-row">
-        {/* Left Column - Sidebar */}
-        <div className="md:w-1/3 p-6 text-white" style={{ backgroundColor: customColors?.primary || template?.colors?.primary }}>
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold mb-2">{personalInfo.name}</h1>
-            <h2 className="text-lg opacity-90">{personalInfo.title}</h2>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold mb-2 flex items-center">
-                Contact
-              </h3>
-              <p className="text-sm opacity-90">{personalInfo.email}</p>
-              <p className="text-sm opacity-90">{personalInfo.phone}</p>
+  const renderTwoColumnTemplate = () => {
+    // Get custom titles for two column template
+    const skillsTitle = getSectionTitle('skills', 'SKILLS');
+    const projectsTitle = getSectionTitle('projects', 'PROJECTS');
+    const awardsTitle = getSectionTitle('awards', 'AWARDS');
+    const summaryTitle = getSectionTitle('summary', 'PROFESSIONAL SUMMARY');
+    const experienceTitle = getSectionTitle('experience', 'WORK EXPERIENCE');
+    const educationTitle = getSectionTitle('education', 'EDUCATION');
+    
+    return (
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden" style={{ color: customColors?.text || template?.colors?.text }}>
+        <div className="flex flex-col md:flex-row">
+          {/* Left Column - Sidebar */}
+          <div className="md:w-1/3 p-6 text-white" style={{ backgroundColor: customColors?.primary || template?.colors?.primary }}>
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold mb-2">{personalInfo.name}</h1>
+              <h2 className="text-lg opacity-90">{personalInfo.title}</h2>
             </div>
-
-            {/* Skills in sidebar */}
-            {skills.length > 0 && (
+            
+            <div className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2 flex items-center">
-                  Skills
+                  Contact
                 </h3>
-                <div className="flex flex-wrap gap-1">
-                  {skills.map((skill, index) => (
-                    <span 
-                      key={index} 
-                      className="px-2 py-1 text-xs border border-white rounded-full opacity-90 hover:opacity-100 cursor-pointer transition-opacity"
-                      onClick={() => {
-                        trackFirebaseEvent(
-                          'sidebar_skill_clicked',
-                          'Resume Preview',
-                          skill.name,
-                          {
-                            template_id: template?.id,
-                            skill_name: skill.name,
-                            location: 'sidebar'
-                          }
-                        );
-                      }}
-                    >
-                      {skill.name}
-                    </span>
+                <p className="text-sm opacity-90">{personalInfo.email}</p>
+                <p className="text-sm opacity-90">{personalInfo.phone}</p>
+              </div>
+
+              {/* Skills in sidebar */}
+              {skills.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center">
+                    {skillsTitle}
+                  </h3>
+                  <div className="flex flex-wrap gap-1">
+                    {skills.map((skill, index) => (
+                      <span 
+                        key={index} 
+                        className="px-2 py-1 text-xs border border-white rounded-full opacity-90 hover:opacity-100 cursor-pointer transition-opacity"
+                        onClick={() => {
+                          trackFirebaseEvent(
+                            'sidebar_skill_clicked',
+                            'Resume Preview',
+                            skill.name,
+                            {
+                              template_id: template?.id,
+                              skill_name: skill.name,
+                              location: 'sidebar'
+                            }
+                          );
+                        }}
+                      >
+                        {skill.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Education in sidebar */}
+              {education.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center">
+                    {educationTitle}
+                  </h3>
+                  {education.map((edu, index) => (
+                    <div key={index} className="mb-3 last:mb-0">
+                      <p className="text-sm font-medium">{edu.degree}</p>
+                      <p className="text-xs opacity-90">{edu.institution}</p>
+                      <p className="text-xs opacity-90">{edu.year}</p>
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Education in sidebar */}
-            {education.length > 0 && (
-              <div>
-                <h3 className="font-semibold mb-2 flex items-center">
-                  Education
-                </h3>
-                {education.map((edu, index) => (
-                  <div key={index} className="mb-3 last:mb-0">
-                    <p className="text-sm font-medium">{edu.degree}</p>
-                    <p className="text-xs opacity-90">{edu.institution}</p>
-                    <p className="text-xs opacity-90">{edu.year}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Right Column - Main Content */}
-        <div className="md:w-2/3 p-6">
-          <div className="space-y-6">
-            {/* Professional Summary */}
-            {personalInfo.summary.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>
-                  Professional Summary
-                </h3>
-                <div className="text-sm space-y-2">
-                  {personalInfo.summary.map((point, index) => (
-                    <p key={index}>{point}</p>
+          {/* Right Column - Main Content */}
+          <div className="md:w-2/3 p-6">
+            <div className="space-y-6">
+              {/* Professional Summary */}
+              {personalInfo.summary.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2" style={applyCustomStyles('accent')}>
+                    {summaryTitle}
+                  </h3>
+                  <div className="text-sm space-y-2">
+                    {personalInfo.summary.map((point, index) => (
+                      <p key={index}>{point}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Experience */}
+              {experiences.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
+                    {experienceTitle}
+                  </h3>
+                  {experiences.map((exp, index) => (
+                    <div key={index} className="mb-4 last:mb-0">
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-semibold">{exp.title}</h4>
+                        <span className="text-xs text-gray-600">{exp.period}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">{exp.company}</p>
+                      <BulletList items={exp.description} />
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Experience */}
-            {experiences.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                  Work Experience
-                </h3>
-                {experiences.map((exp, index) => (
-                  <div key={index} className="mb-4 last:mb-0">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-semibold">{exp.title}</h4>
-                      <span className="text-xs text-gray-600">{exp.period}</span>
+              {/* Projects */}
+              {projects.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
+                    {projectsTitle}
+                  </h3>
+                  {projects.map((project, index) => (
+                    <div key={index} className="mb-4 last:mb-0">
+                      <div className="flex justify-between items-start">
+                        <h4 className="font-semibold">{project.name}</h4>
+                        {project.link && (
+                          <a 
+                            href={project.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-sm hover:text-blue-600 transition-colors"
+                            style={{color: customColors?.primary || template?.colors?.primary}}
+                            onClick={() => {
+                              trackFirebaseEvent(
+                                'project_link_clicked',
+                                'Resume Preview',
+                                project.name,
+                                {
+                                  template_id: template?.id,
+                                  project_name: project.name,
+                                  link: project.link,
+                                  location: 'two_column'
+                                }
+                              );
+                            }}
+                          >
+                            View
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">{project.period}</p>
+                      <BulletList items={project.description} />
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">{exp.company}</p>
-                    <BulletList items={exp.description} />
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
-            {/* Projects */}
-            {projects.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                  Projects
-                </h3>
-                {projects.map((project, index) => (
-                  <div key={index} className="mb-4 last:mb-0">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-semibold">{project.name}</h4>
-                      {project.link && (
-                        <a 
-                          href={project.link} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-sm hover:text-blue-600 transition-colors"
-                          style={{color: customColors?.primary || template?.colors?.primary}}
-                          onClick={() => {
-                            trackFirebaseEvent(
-                              'project_link_clicked',
-                              'Resume Preview',
-                              project.name,
-                              {
-                                template_id: template?.id,
-                                project_name: project.name,
-                                link: project.link,
-                                location: 'two_column'
-                              }
-                            );
-                          }}
-                        >
-                          View
-                        </a>
-                      )}
+              {/* Awards */}
+              {awards.length > 0 && awards[0].title && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
+                    {awardsTitle}
+                  </h3>
+                  {awards.map((award, index) => (
+                    <div key={index} className="mb-3 last:mb-0">
+                      <h4 className="font-semibold">{award.title}</h4>
+                      <p className="text-sm text-gray-600">{award.issuer} • {award.year}</p>
+                      <p className="text-sm">{award.description}</p>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">{project.period}</p>
-                    <BulletList items={project.description} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Awards */}
-            {awards.length > 0 && awards[0].title && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3" style={applyCustomStyles('accent')}>
-                  Awards
-                </h3>
-                {awards.map((award, index) => (
-                  <div key={index} className="mb-3 last:mb-0">
-                    <h4 className="font-semibold">{award.title}</h4>
-                    <p className="text-sm text-gray-600">{award.issuer} • {award.year}</p>
-                    <p className="text-sm">{award.description}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Render different layouts based on template
   const renderTemplate = () => {
