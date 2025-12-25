@@ -1,5 +1,5 @@
-// ResumeContext.tsx - UPDATED WITH SECTION TITLE RENAMING AND REMOVAL
-import React, { createContext, useContext, useState, useCallback } from 'react';
+// ResumeContext.tsx - Complete fixed imports
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { FC, ReactNode } from 'react';
 import type { 
   ResumeData, 
@@ -10,8 +10,17 @@ import type {
   Education, 
   Project, 
   Award, 
-  CustomField 
+  CustomField,
+  ResumeMetadata,
+  ProfessionalResume
 } from './types';
+import { isAdmin } from '../utils/adminAuth';
+import { 
+  saveProfessionalResume, 
+  updateProfessionalResume,
+  getProfessionalResume
+} from '../firebase/professionalResumes';
+import { serverTimestamp } from 'firebase/firestore'; // Fixed import location
 
 interface ResumeContextType {
   resumeData: ResumeData;
@@ -55,6 +64,21 @@ interface ResumeContextType {
     projects?: string;
     [key: string]: string | undefined;
   };
+  // NEW: Professional resume functions
+  isProfessionalMode: boolean;
+  currentProfessionalResumeId: string | null;
+  clientInfo: {
+    email: string;
+    name?: string;
+    phone?: string;
+    notes?: string;
+  } | null;
+  setProfessionalMode: (mode: boolean) => void;
+  setClientInfo: (info: { email: string; name?: string; phone?: string; notes?: string }) => void;
+  saveToProfessionalDatabase: () => Promise<{ success: boolean; id?: string; error?: string }>;
+  loadProfessionalResume: (resumeId: string) => Promise<{ success: boolean; data?: ProfessionalResume; error?: string }>;
+  updateProfessionalResumeData: (updates: Partial<ProfessionalResume>) => Promise<{ success: boolean; error?: string }>;
+  clearProfessionalData: () => void;
 }
 
 const ResumeContext = createContext<ResumeContextType | undefined>(undefined);
@@ -151,6 +175,14 @@ const initialResumeData: ResumeData = {
     skills: 'Skills',
     awards: 'Awards & Achievements',
     projects: 'Projects & Portfolio'
+  },
+  // NEW: Professional resume metadata
+  metadata: {
+    isProfessionalResume: false,
+    storageType: 'local_only',
+    createdBy: 'user',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 };
 
@@ -167,7 +199,7 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     [key: string]: string | undefined;
   }>(() => {
     const saved = localStorage.getItem('resumeSectionTitles');
-    return saved ? JSON.parse(saved) : initialResumeData.sectionTitles;
+    return saved ? JSON.parse(saved) : initialResumeData.sectionTitles || {};
   });
 
   const [sectionOrder, setSectionOrder] = useState<SectionItem[]>([
@@ -179,6 +211,47 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     { id: 'awards', label: 'Awards & Achievements', enabled: true, order: 5 },
     { id: 'custom', label: 'Additional Sections', enabled: true, order: 6 }
   ]);
+
+  // NEW: Professional resume states
+  const [isProfessionalMode, setIsProfessionalMode] = useState<boolean>(false);
+  const [currentProfessionalResumeId, setCurrentProfessionalResumeId] = useState<string | null>(null);
+  const [clientInfo, setClientInfoState] = useState<{
+    email: string;
+    name?: string;
+    phone?: string;
+    notes?: string;
+  } | null>(null);
+
+  // Initialize professional mode from URL or localStorage
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const resumeId = urlParams.get('resumeId');
+    const clientEmail = urlParams.get('clientEmail');
+    const adminMode = urlParams.get('adminMode') === 'true';
+    
+    if (adminMode && isAdmin()) {
+      setIsProfessionalMode(true);
+      
+      if (resumeId) {
+        setCurrentProfessionalResumeId(resumeId);
+        // Load professional resume if ID is provided
+        loadProfessionalResume(resumeId);
+      }
+      
+      if (clientEmail) {
+        setClientInfoState({
+          email: clientEmail,
+          name: urlParams.get('clientName') || undefined
+        });
+      }
+    }
+    
+    // Check localStorage for professional mode
+    const savedProfessionalMode = localStorage.getItem('is_professional_mode') === 'true';
+    if (savedProfessionalMode && isAdmin()) {
+      setIsProfessionalMode(true);
+    }
+  }, []);
 
   // Helper function to safely get string length
   const getStringLength = (value: any): number => {
@@ -224,7 +297,9 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       screenResolution: `${window.screen.width}x${window.screen.height}`,
       language: navigator.language,
       consentGiven: localStorage.getItem('gdpr_consent') === 'accepted',
-      dataProcessingLocation: 'IN' as const
+      dataProcessingLocation: 'IN' as const,
+      isProfessional: isProfessionalMode,
+      clientEmail: clientInfo?.email || 'none'
     };
     
     console.log(`📝 Resume update: ${action} in ${section}`, details);
@@ -254,7 +329,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
         to: action,
         action: section,
         resumeId: resumeId,
-        userId: userId
+        userId: userId,
+        isProfessional: isProfessionalMode
       },
       timestamp: new Date().toISOString()
     };
@@ -266,7 +342,7 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     } catch (error) {
       console.error('Failed to queue user flow event:', error);
     }
-  }, []);
+  }, [isProfessionalMode, clientInfo]);
 
   // Calculate resume completion percentage
   const getResumeCompletion = useCallback((): number => {
@@ -320,25 +396,34 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }, [resumeData]);
 
   // Save to localStorage whenever resumeData changes
-  React.useEffect(() => {
+  useEffect(() => {
     // Update resumeData with current sectionTitles
-    const updatedResumeData = {
+    const updatedResumeData: ResumeData = {
       ...resumeData,
-      sectionTitles
+      sectionTitles,
+      metadata: {
+        ...resumeData.metadata,
+        isProfessionalResume: isProfessionalMode,
+        storageType: isProfessionalMode ? 'professional_database' : 'local_only',
+        updatedAt: new Date().toISOString()
+      }
     };
     
-    localStorage.setItem('resumeData', JSON.stringify(updatedResumeData));
-    localStorage.setItem('resumeSectionTitles', JSON.stringify(sectionTitles));
+    // Only save to localStorage for regular users or as backup for professionals
+    if (!isProfessionalMode || localStorage.getItem('allow_professional_backup') === 'true') {
+      localStorage.setItem('resumeData', JSON.stringify(updatedResumeData));
+      localStorage.setItem('resumeSectionTitles', JSON.stringify(sectionTitles));
+    }
     
     // Track resume save locally (will sync to Firebase later)
-    const resumeId = localStorage.getItem('current_resume_id') || 'unknown';
+    const resumeId = currentProfessionalResumeId || localStorage.getItem('current_resume_id') || 'unknown';
     const completion = getResumeCompletion();
     
     const autoSaveEvent = {
       type: 'resume_auto_saved',
       eventName: 'resume_auto_saved',
       eventCategory: 'Resume Editing',
-      eventLabel: 'auto_save',
+      eventLabel: isProfessionalMode ? 'professional_auto_save' : 'user_auto_save',
       resumeId: resumeId,
       completion_percentage: completion,
       sections_count: {
@@ -348,12 +433,18 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
         projects: resumeData.projects.length,
         awards: resumeData.awards.length
       },
+      isProfessional: isProfessionalMode,
+      clientEmail: clientInfo?.email || 'none',
       timestamp: new Date().toISOString(),
       pagePath: window.location.pathname,
       pageTitle: document.title
     };
     
-    console.log('💾 Resume auto-saved', { completion: `${completion}%` });
+    console.log('💾 Resume auto-saved', { 
+      completion: `${completion}%`,
+      isProfessional: isProfessionalMode,
+      clientEmail: clientInfo?.email || 'none'
+    });
     
     // Queue for Firebase sync
     try {
@@ -363,22 +454,24 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     } catch (error) {
       console.error('Failed to queue auto-save event:', error);
     }
-  }, [resumeData, sectionTitles, getResumeCompletion]);
+  }, [resumeData, sectionTitles, isProfessionalMode, clientInfo, getResumeCompletion, currentProfessionalResumeId]);
 
   // Track initial resume load
-  React.useEffect(() => {
-    const resumeId = localStorage.getItem('current_resume_id') || 'unknown';
+  useEffect(() => {
+    const resumeId = currentProfessionalResumeId || localStorage.getItem('current_resume_id') || 'unknown';
     const completion = getResumeCompletion();
     
     const loadEvent = {
       type: 'resume_loaded',
       eventName: 'resume_loaded',
       eventCategory: 'Resume Context',
-      eventLabel: 'resume_data_loaded',
+      eventLabel: isProfessionalMode ? 'professional_resume_loaded' : 'user_resume_loaded',
       resumeId: resumeId,
       completion_percentage: completion,
       template: resumeData.selectedTemplate,
       source: 'resume_context_initial_load',
+      isProfessional: isProfessionalMode,
+      clientEmail: clientInfo?.email || 'none',
       timestamp: new Date().toISOString(),
       pagePath: window.location.pathname,
       pageTitle: document.title,
@@ -388,7 +481,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     console.log('📄 Resume loaded from context', { 
       resumeId: resumeId.substring(0, 10),
       template: resumeData.selectedTemplate,
-      completion: `${completion}%` 
+      completion: `${completion}%`,
+      isProfessional: isProfessionalMode
     });
     
     // Queue for Firebase sync
@@ -428,12 +522,13 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
         section_id: sectionId,
         old_title: prev[sectionId] || getDefaultSectionTitle(sectionId),
         new_title: newTitle,
-        action: 'rename_section'
+        action: 'rename_section',
+        isProfessional: isProfessionalMode
       });
       
       return updated;
     });
-  }, [trackResumeUpdate]);
+  }, [trackResumeUpdate, isProfessionalMode]);
 
   // Helper function to get default section title
   const getDefaultSectionTitle = (sectionId: string): string => {
@@ -487,9 +582,10 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     trackResumeUpdate('section_removed', 'layout', {
       section_id: sectionId,
       action: 'remove_section',
-      sections_remaining: sectionOrder.filter(s => s.enabled && s.id !== sectionId).length
+      sections_remaining: sectionOrder.filter(s => s.enabled && s.id !== sectionId).length,
+      isProfessional: isProfessionalMode
     });
-  }, [sectionOrder, trackResumeUpdate]);
+  }, [sectionOrder, trackResumeUpdate, isProfessionalMode]);
 
   // NEW: Clear all projects
   const clearProjects = useCallback(() => {
@@ -502,9 +598,10 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     trackResumeUpdate('projects_cleared', 'projects', {
       projects_removed: projectCount,
       total_projects_now: 0,
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
-  }, [resumeData.projects.length, trackResumeUpdate, getResumeCompletion]);
+  }, [resumeData.projects.length, trackResumeUpdate, getResumeCompletion, isProfessionalMode]);
 
   // NEW: Clear all awards
   const clearAwards = useCallback(() => {
@@ -517,10 +614,218 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     trackResumeUpdate('awards_cleared', 'awards', {
       awards_removed: awardCount,
       total_awards_now: 0,
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
-  }, [resumeData.awards.length, trackResumeUpdate, getResumeCompletion]);
+  }, [resumeData.awards.length, trackResumeUpdate, getResumeCompletion, isProfessionalMode]);
 
+  // NEW: Set professional mode
+  const setProfessionalMode = useCallback((mode: boolean) => {
+    setIsProfessionalMode(mode);
+    localStorage.setItem('is_professional_mode', mode.toString());
+    
+    if (mode) {
+      // When entering professional mode, update metadata
+      setResumeData(prev => ({
+        ...prev,
+        metadata: {
+          ...prev.metadata,
+          isProfessionalResume: true,
+          storageType: 'professional_database',
+          updatedAt: new Date().toISOString()
+        }
+      }));
+    }
+  }, []);
+
+  // NEW: Set client info
+  const setClientInfo = useCallback((info: { email: string; name?: string; phone?: string; notes?: string }) => {
+    setClientInfoState(info);
+    
+    // Store client info in localStorage for persistence
+    localStorage.setItem('current_client_info', JSON.stringify(info));
+    
+    trackResumeUpdate('client_info_set', 'professional', {
+      client_email: info.email,
+      client_name: info.name || 'unknown',
+      isProfessional: true
+    });
+  }, [trackResumeUpdate]);
+
+  // NEW: Save to professional database - FIXED: Now properly handles metadata
+  const saveToProfessionalDatabase = useCallback(async () => {
+    if (!clientInfo || !clientInfo.email) {
+      return { success: false, error: 'Client email is required' };
+    }
+    
+    if (!isAdmin()) {
+      return { success: false, error: 'Admin access required' };
+    }
+    
+    try {
+      // Prepare resume data with metadata
+      const resumeToSave = {
+        ...resumeData,
+        metadata: {
+          ...resumeData.metadata,
+          isProfessionalResume: true,
+          storageType: 'professional_database',
+          updatedAt: new Date().toISOString(),
+          createdBy: 'careercraft_admin'
+        }
+      };
+      
+      let result;
+      
+      if (currentProfessionalResumeId) {
+        // Update existing professional resume
+        // First, get the current resume to preserve metadata
+        const currentResume = await getProfessionalResume(currentProfessionalResumeId);
+        
+        if (currentResume.success && currentResume.data) {
+          result = await updateProfessionalResume(currentProfessionalResumeId, {
+            resumeData: resumeToSave,
+            clientInfo,
+            metadata: {
+              ...currentResume.data.metadata,
+              lastEditedBy: 'admin',
+              updatedAt: serverTimestamp(),
+              version: (currentResume.data.metadata?.version || 0) + 1
+            }
+          });
+        } else {
+          result = { success: false, error: 'Could not load existing resume' };
+        }
+        
+        if (result.success) {
+          trackResumeUpdate('professional_resume_updated', 'professional', {
+            resume_id: currentProfessionalResumeId,
+            client_email: clientInfo.email,
+            action: 'update'
+          });
+          
+          return { success: true, id: currentProfessionalResumeId };
+        }
+      } else {
+        // Create new professional resume
+        result = await saveProfessionalResume(resumeToSave, clientInfo);
+        
+        if (result.success && result.id) {
+          setCurrentProfessionalResumeId(result.id);
+          
+          trackResumeUpdate('professional_resume_created', 'professional', {
+            resume_id: result.id,
+            client_email: clientInfo.email,
+            action: 'create'
+          });
+          
+          // Store reference in localStorage
+          localStorage.setItem('current_professional_resume_id', result.id);
+          localStorage.setItem(`pro_ref_${clientInfo.email}`, result.id);
+          
+          return { success: true, id: result.id };
+        }
+      }
+      
+      return result;
+      
+    } catch (error: any) {
+      console.error('Failed to save to professional database:', error);
+      return { success: false, error: error.message || 'Unknown error' };
+    }
+  }, [resumeData, clientInfo, currentProfessionalResumeId, trackResumeUpdate]);
+
+  // NEW: Load professional resume
+  const loadProfessionalResume = useCallback(async (resumeId: string) => {
+    if (!isAdmin()) {
+      return { success: false, error: 'Admin access required' };
+    }
+    
+    try {
+      const result = await getProfessionalResume(resumeId);
+      
+      if (result.success && result.data) {
+        // Set the resume data
+        setResumeData(result.data.resumeData);
+        
+        // Set client info
+        setClientInfoState(result.data.clientInfo);
+        
+        // Set professional resume ID
+        setCurrentProfessionalResumeId(resumeId);
+        setProfessionalMode(true);
+        
+        // Update section titles if present
+        if (result.data.resumeData.sectionTitles) {
+          setSectionTitles(result.data.resumeData.sectionTitles);
+        }
+        
+        // Store in localStorage for backup
+        localStorage.setItem('current_professional_resume_id', resumeId);
+        localStorage.setItem('current_client_info', JSON.stringify(result.data.clientInfo));
+        
+        trackResumeUpdate('professional_resume_loaded', 'professional', {
+          resume_id: resumeId,
+          client_email: result.data.clientInfo.email,
+          action: 'load'
+        });
+        
+        return { success: true, data: result.data };
+      }
+      
+      return result;
+      
+    } catch (error: any) {
+      console.error('Failed to load professional resume:', error);
+      return { success: false, error: error.message };
+    }
+  }, [setProfessionalMode, trackResumeUpdate]);
+
+  // NEW: Update professional resume data
+  const updateProfessionalResumeData = useCallback(async (updates: Partial<ProfessionalResume>) => {
+    if (!currentProfessionalResumeId) {
+      return { success: false, error: 'No professional resume ID' };
+    }
+    
+    if (!isAdmin()) {
+      return { success: false, error: 'Admin access required' };
+    }
+    
+    try {
+      const result = await updateProfessionalResume(currentProfessionalResumeId, updates);
+      
+      if (result.success) {
+        trackResumeUpdate('professional_resume_data_updated', 'professional', {
+          resume_id: currentProfessionalResumeId,
+          updates: Object.keys(updates),
+          action: 'update_data'
+        });
+      }
+      
+      return result;
+      
+    } catch (error: any) {
+      console.error('Failed to update professional resume data:', error);
+      return { success: false, error: error.message };
+    }
+  }, [currentProfessionalResumeId, trackResumeUpdate]);
+
+  // NEW: Clear professional data
+  const clearProfessionalData = useCallback(() => {
+    setCurrentProfessionalResumeId(null);
+    setClientInfoState(null);
+    setProfessionalMode(false);
+    
+    localStorage.removeItem('current_professional_resume_id');
+    localStorage.removeItem('current_client_info');
+    localStorage.removeItem('is_professional_mode');
+    
+    trackResumeUpdate('professional_data_cleared', 'professional', {
+      action: 'clear_data'
+    });
+  }, [setProfessionalMode, trackResumeUpdate]);
+
+  // Existing functions (same as before, but with isProfessionalMode tracking)
   const updateSelectedTemplate = (template: string) => {
     const previousTemplate = resumeData.selectedTemplate;
     
@@ -534,7 +839,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       to_template: template,
       previous_template: previousTemplate,
       template_name: template,
-      change_type: 'manual_selection'
+      change_type: 'manual_selection',
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -552,7 +858,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       colors: Object.keys(colors),
       color_values: colors,
       action: 'color_customization',
-      is_custom: true
+      is_custom: true,
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -574,7 +881,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       previous_value_length: previousValueLength,
       is_array: Array.isArray(value),
       completion_percentage: getResumeCompletion(),
-      field_type: field === 'summary' ? 'array' : 'string'
+      field_type: field === 'summary' ? 'array' : 'string',
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -596,7 +904,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       previous_value_length: getStringLength(previousValue),
       total_experiences: resumeData.experiences.length,
       completion_percentage: getResumeCompletion(),
-      is_description: field === 'description'
+      is_description: field === 'description',
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -621,7 +930,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       total_experiences: resumeData.experiences.length + 1,
       action: 'add_new_experience',
       completion_percentage: getResumeCompletion(),
-      position: resumeData.experiences.length + 1
+      position: resumeData.experiences.length + 1,
+      isProfessional: isProfessionalMode
     });
     
     return newId;
@@ -640,7 +950,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       experience_company: removedExp?.company || 'unknown',
       total_experiences: resumeData.experiences.length - 1,
       action: 'remove_experience',
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -661,7 +972,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       value_length: value.length,
       previous_value_length: getPreviousValueAsString(previousValue).length,
       total_education: resumeData.education.length,
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -686,7 +998,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       total_education: resumeData.education.length + 1,
       action: 'add_new_education',
       completion_percentage: getResumeCompletion(),
-      position: resumeData.education.length + 1
+      position: resumeData.education.length + 1,
+      isProfessional: isProfessionalMode
     });
     
     return newId;
@@ -705,7 +1018,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       education_institution: removedEdu?.institution || 'unknown',
       total_education: resumeData.education.length - 1,
       action: 'remove_education',
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -721,7 +1035,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
         skill_proficiency: skill.proficiency,
         total_skills: resumeData.skills.length + 1,
         completion_percentage: getResumeCompletion(),
-        skill_category: getSkillCategory(skill.name)
+        skill_category: getSkillCategory(skill.name),
+        isProfessional: isProfessionalMode
       });
     }
   };
@@ -738,7 +1053,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       skill_proficiency: removedSkill?.proficiency || 'unknown',
       total_skills: resumeData.skills.length - 1,
       completion_percentage: getResumeCompletion(),
-      skill_index: index
+      skill_index: index,
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -758,7 +1074,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       old_proficiency: oldProficiency || 'unknown',
       new_proficiency: proficiency,
       completion_percentage: getResumeCompletion(),
-      proficiency_change: `${oldProficiency} → ${proficiency}`
+      proficiency_change: `${oldProficiency} → ${proficiency}`,
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -780,7 +1097,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       previous_value_length: getStringLength(previousValue),
       total_projects: resumeData.projects.length,
       completion_percentage: getResumeCompletion(),
-      is_technologies: field === 'technologies'
+      is_technologies: field === 'technologies',
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -806,7 +1124,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       total_projects: resumeData.projects.length + 1,
       action: 'add_new_project',
       completion_percentage: getResumeCompletion(),
-      position: resumeData.projects.length + 1
+      position: resumeData.projects.length + 1,
+      isProfessional: isProfessionalMode
     });
     
     return newId;
@@ -824,7 +1143,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       project_name: removedProj?.name || 'unknown',
       total_projects: resumeData.projects.length - 1,
       action: 'remove_project',
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -845,7 +1165,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       value_length: value.length,
       previous_value_length: getPreviousValueAsString(previousValue).length,
       total_awards: resumeData.awards.length,
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -870,7 +1191,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       total_awards: resumeData.awards.length + 1,
       action: 'add_new_award',
       completion_percentage: getResumeCompletion(),
-      position: resumeData.awards.length + 1
+      position: resumeData.awards.length + 1,
+      isProfessional: isProfessionalMode
     });
     
     return newId;
@@ -888,7 +1210,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       award_title: removedAward?.title || 'unknown',
       total_awards: resumeData.awards.length - 1,
       action: 'remove_award',
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -909,7 +1232,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       value_length: value.length,
       previous_value_length: getPreviousValueAsString(previousValue).length,
       total_custom_fields: resumeData.customFields.length,
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -930,7 +1254,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       new_type: type,
       total_custom_fields: resumeData.customFields.length,
       completion_percentage: getResumeCompletion(),
-      type_change: `${previousType} → ${type}`
+      type_change: `${previousType} → ${type}`,
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -954,7 +1279,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       total_custom_fields: resumeData.customFields.length + 1,
       action: 'add_new_custom_field',
       completion_percentage: getResumeCompletion(),
-      position: resumeData.customFields.length + 1
+      position: resumeData.customFields.length + 1,
+      isProfessional: isProfessionalMode
     });
     
     return newId;
@@ -972,7 +1298,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       custom_field_label: removedField?.label || 'unknown',
       total_custom_fields: resumeData.customFields.length - 1,
       action: 'remove_custom_field',
-      completion_percentage: getResumeCompletion()
+      completion_percentage: getResumeCompletion(),
+      isProfessional: isProfessionalMode
     });
   };
 
@@ -987,7 +1314,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       has_personal_info: !!parsedData.personalInfo,
       has_experience: !!parsedData.experiences && parsedData.experiences.length > 0,
       has_education: !!parsedData.education && parsedData.education.length > 0,
-      has_skills: !!parsedData.skills && parsedData.skills.length > 0
+      has_skills: !!parsedData.skills && parsedData.skills.length > 0,
+      isProfessional: isProfessionalMode
     });
     
     // Track button click locally
@@ -999,6 +1327,7 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       button_name: 'upload_resume_file',
       section: 'resume_import',
       page: '/edit',
+      isProfessional: isProfessionalMode,
       timestamp: new Date().toISOString()
     };
     
@@ -1019,7 +1348,8 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       enabled_sections: reorderedSections.filter(s => s.enabled).length,
       order_changed: true,
       completion_percentage: getResumeCompletion(),
-      new_order: reorderedSections.map(s => ({ id: s.id, order: s.order }))
+      new_order: reorderedSections.map(s => ({ id: s.id, order: s.order })),
+      isProfessional: isProfessionalMode
     });
     
     // Track button click locally
@@ -1031,6 +1361,7 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       button_name: 'reorder_sections',
       section: 'resume_customization',
       page: '/edit',
+      isProfessional: isProfessionalMode,
       timestamp: new Date().toISOString()
     };
     
@@ -1081,7 +1412,17 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     // NEW: Section title renaming and removal
     updateSectionTitle,
     removeSection,
-    sectionTitles
+    sectionTitles,
+    // NEW: Professional resume functions
+    isProfessionalMode,
+    currentProfessionalResumeId,
+    clientInfo,
+    setProfessionalMode,
+    setClientInfo,
+    saveToProfessionalDatabase,
+    loadProfessionalResume,
+    updateProfessionalResumeData,
+    clearProfessionalData
   };
 
   return (

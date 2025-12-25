@@ -33,6 +33,13 @@
                            https://raw.githubusercontent.com
                            https://cdn.jsdelivr.net;">
     
+    <!-- Admin Password for React App -->
+    <script>
+      // Set environment variables for React app
+      window.REACT_APP_ADMIN_PASSWORD = 'YOUR_SECURE_ADMIN_PASSWORD_2025';
+      console.log('Admin password loaded from index.html');
+    </script>
+    
     <!-- Google Verification -->
     <meta name="google-site-verification" content="72ogLK0F0xw0H23swyyhs8idWOcyyv7hr1-zAMZ9v7w" />
     
@@ -115,15 +122,15 @@
       import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
       import { getPerformance } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-performance.js';
 
-      // Your web app's Firebase configuration
+      // Your web app's Firebase configuration - UPDATED with correct project ID
       const firebaseConfig = {
-        apiKey: "AIzaSyA6JjC8qYgQ6q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6",
-        authDomain: "careercraft-in.firebaseapp.com",
-        projectId: "careercraft-in",
-        storageBucket: "careercraft-in.appspot.com",
-        messagingSenderId: "1234567890",
-        appId: "1:1234567890:web:1234567890",
-        measurementId: "G-1234567890"
+        apiKey: "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU",
+        authDomain: "careercraft-36711.firebaseapp.com",
+        projectId: "careercraft-36711",
+        storageBucket: "careercraft-36711.firebasestorage.app",
+        messagingSenderId: "455791585830",
+        appId: "1:455791585830:web:6fd2f3ee52efd8cf4514e7",
+        measurementId: "G-WSKZJDJW77"
       };
 
       // Initialize Firebase
@@ -135,6 +142,8 @@
         const performance = getPerformance(app);
         
         console.log('✅ Firebase initialized successfully in index.html');
+        console.log('Firebase Project ID:', firebaseConfig.projectId);
+        console.log('Firebase App Name:', app.name);
         
         // Set global variables for app to use
         window.firebaseApp = app;
@@ -148,6 +157,7 @@
         }
       } catch (error) {
         console.error('❌ Firebase initialization failed in index.html:', error);
+        console.error('Firebase Config:', firebaseConfig);
       }
     </script>
 
@@ -170,7 +180,7 @@
       });
       
       // Track for https://www.careercraft.in
-      gtag('config', 'G-WSKZJDJW77', {
+      gtag('config', 'G-WSKZJDJWJW', {
         'allow_google_signals': false,
         'allow_ad_personalization_signals': false,
         'cookie_domain': 'auto',
@@ -182,6 +192,7 @@
       
       // Debug info
       console.log('Google Analytics initialized for:', window.location.hostname);
+      console.log('Admin password available:', !!window.REACT_APP_ADMIN_PASSWORD);
     </script>
     
     <!-- Preload critical resources -->
@@ -294,6 +305,7 @@
           <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">CareerCraft India</h1>
           <p style="opacity: 0.8;">Loading your career journey...</p>
           <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 1rem;" id="firebase-status">Initializing Firebase...</p>
+          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 0.5rem;" id="admin-status">Checking admin access...</p>
         </div>
       </div>
     </div>
@@ -303,6 +315,20 @@
     
     <!-- Firebase Debug Script -->
     <script>
+      // Check if admin password is loaded
+      setTimeout(() => {
+        const adminStatusElement = document.getElementById('admin-status');
+        if (adminStatusElement) {
+          if (window.REACT_APP_ADMIN_PASSWORD) {
+            adminStatusElement.textContent = 'Admin password: Loaded ✓';
+            adminStatusElement.style.color = '#4ade80';
+          } else {
+            adminStatusElement.textContent = 'Admin password: Not loaded ✗';
+            adminStatusElement.style.color = '#f87171';
+          }
+        }
+      }, 500);
+      
       // Firebase initialization status
       setTimeout(() => {
         const statusElement = document.getElementById('firebase-status');
@@ -360,13 +386,43 @@
       });
 
       // Debug info
-      console.log('=== CareerCraft Debug Info ===');
-      console.log('URL:', window.location.href);
-      console.log('Hostname:', window.location.hostname);
-      console.log('Environment:', window.location.hostname.includes('localhost') ? 'development' : 'production');
-      console.log('Firebase App:', window.firebaseApp ? '✅ Loaded' : '❌ Not loaded');
-      console.log('GDPR Consent:', localStorage.getItem('gdpr_consent') || 'Not set');
-      console.log('============================');
+      setTimeout(() => {
+        console.log('=== CareerCraft Debug Info ===');
+        console.log('URL:', window.location.href);
+        console.log('Hostname:', window.location.hostname);
+        console.log('Environment:', window.location.hostname.includes('localhost') ? 'development' : 'production');
+        console.log('Firebase App:', window.firebaseApp ? '✅ Loaded' : '❌ Not loaded');
+        console.log('GDPR Consent:', localStorage.getItem('gdpr_consent') || 'Not set');
+        console.log('Admin Password Available:', !!window.REACT_APP_ADMIN_PASSWORD);
+        console.log('LocalStorage Admin:', localStorage.getItem('is_admin') || 'Not logged in');
+        console.log('SessionStorage Admin:', sessionStorage.getItem('is_admin') || 'Not logged in');
+        console.log('============================');
+      }, 1500);
+
+      // Quick admin login for development
+      if (window.location.hostname.includes('localhost')) {
+        window.enableAdminMode = function() {
+          const password = 'YOUR_SECURE_ADMIN_PASSWORD_2025';
+          console.log('Enabling admin mode with password:', password.substring(0, 3) + '***');
+          
+          // Store in localStorage
+          localStorage.setItem('is_admin', 'true');
+          localStorage.setItem('admin_login_time', Date.now().toString());
+          
+          // Store in sessionStorage
+          sessionStorage.setItem('is_admin', 'true');
+          
+          // Generate a token
+          const token = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_careercraft`;
+          localStorage.setItem('careercraft_admin_token', token);
+          
+          console.log('Admin mode enabled! Token:', token.substring(0, 20) + '...');
+          alert('✅ Admin mode enabled!\nYou can now access /admin/dashboard');
+        };
+        
+        console.log('🛠️ Development mode detected');
+        console.log('Use window.enableAdminMode() to enable admin access');
+      }
     </script>
   </body>
 </html>

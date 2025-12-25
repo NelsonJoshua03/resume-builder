@@ -13,6 +13,8 @@ import SectionOrderCustomizer from './SectionOrderCustomizer';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import type { TemplatesMap } from './types';
+import { isAdmin } from '../utils/adminAuth';
+import { getProfessionalResume } from '../firebase/professionalResumes';
 
 // Enhanced template configuration with unique styling for each template
 const TEMPLATES: TemplatesMap = {
@@ -310,8 +312,11 @@ const ResumeBuilder = () => {
     handleFileUpload,
     updateSelectedTemplate,
     updateCustomColors,
-    sectionTitles  // NEW: Get custom section titles
+    sectionTitles,  // NEW: Get custom section titles
+    loadProfessionalResume
   } = useResume();
+
+  
   
   const [formKey, setFormKey] = useState(0);
   const resumeRef = useRef<HTMLDivElement>(null);
@@ -352,6 +357,71 @@ const ResumeBuilder = () => {
     localStorage.setItem('current_resume_id', newId);
     return newId;
   });
+
+  const [isLoadingProfessionalResume, setIsLoadingProfessionalResume] = useState(false);
+  const [professionalResumeLoaded, setProfessionalResumeLoaded] = useState(false);  
+
+   useEffect(() => {
+    const loadProfessionalResumeFromUrl = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const resumeId = urlParams.get('resumeId');
+      const clientEmail = urlParams.get('clientEmail');
+      const isAdminUser = isAdmin();
+      
+      console.log('🔍 Checking for professional resume:', {
+        resumeId,
+        clientEmail,
+        isAdminUser,
+        hasLoadFunction: !!loadProfessionalResume
+      });
+      
+      if (resumeId && isAdminUser && loadProfessionalResume) {
+        try {
+          setIsLoadingProfessionalResume(true);
+          console.log('🔄 Loading professional resume:', resumeId);
+          
+          const result = await loadProfessionalResume(resumeId);
+          
+          if (result.success) {
+            console.log('✅ Professional resume loaded successfully:', result.data);
+            setProfessionalResumeLoaded(true);
+            
+            // Track that we loaded a professional resume
+            trackFirebaseEvent(
+              'professional_resume_loaded_in_builder',
+              'Professional Resume',
+              'load_success',
+              {
+                resume_id: resumeId,
+                client_email: clientEmail,
+                sections_loaded: Object.keys(result.data?.resumeData || {}).length,
+                template: result.data?.resumeData?.selectedTemplate
+              }
+            );
+          } else {
+            console.error('❌ Failed to load professional resume:', result.error);
+            trackFirebaseEvent(
+              'professional_resume_load_failed',
+              'Professional Resume',
+              'load_failed',
+              {
+                resume_id: resumeId,
+                error: result.error
+              }
+            );
+          }
+        } catch (error) {
+          console.error('❌ Error loading professional resume:', error);
+        } finally {
+          setIsLoadingProfessionalResume(false);
+        }
+      } else if (resumeId && !isAdminUser) {
+        console.log('🔒 Not an admin, cannot load professional resume');
+      }
+    };
+    
+    loadProfessionalResumeFromUrl();
+  }, [loadProfessionalResume]);
 
   // Track page view on mount - DUAL TRACKING
   useEffect(() => {

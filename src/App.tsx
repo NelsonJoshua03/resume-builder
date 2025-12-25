@@ -1,5 +1,5 @@
-// src/App.tsx - UPDATED WITHOUT GDPR CONSENT
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// src/App.tsx - UPDATED WITH ADMIN DASHBOARD AND PROFESSIONAL RESUME SYSTEM
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
 import Layout from "./components/Layout";
@@ -33,10 +33,17 @@ import EditResumePage from './components/EditResumePage';
 // Analytics Dashboard Components (Admin only)
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import LocalAnalyticsDashboard from './components/LocalAnalyticsDashboard';
-import AdminDashboard from './components/AdminDashboard';
 import DailyAnalyticsDashboard from './components/DailyAnalyticsDashboard';
 import ComprehensiveAnalyticsDashboard from './components/ComprehensiveAnalyticsDashboard';
 import FirebaseAnalyticsDashboardComponent from './components/FirebaseAnalyticsDashboardComponent';
+
+// Professional Resume Admin Components
+import AdminDashboard from './/components/AdminDashboard';
+import ProfessionalResumeDashboard from './components/ProfessionalResumeDashboard';
+
+// Auth Components
+import AdminLogin from './components/AdminLogin';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
 
 import './styles/blog.css';
 // Import PDF styles globally
@@ -47,6 +54,7 @@ import { initializeFirebase } from './firebase/config';
 import { firebaseSyncService } from './firebase/syncService';
 import { anonymousTracking } from './firebase/anonymousTracking';
 import { useEffect } from 'react';
+import { isAdmin } from './utils/adminAuth';
 
 function App() {
   // Initialize Firebase on app start (no consent required)
@@ -61,6 +69,14 @@ function App() {
       setTimeout(() => {
         firebaseSyncService.checkAndSync();
       }, 2000);
+      
+      // Check for admin mode in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminMode = urlParams.get('adminMode');
+      
+      if (adminMode === 'true') {
+        console.log('🔐 Admin mode detected in URL');
+      }
       
     } catch (error) {
       console.error('Firebase initialization error:', error);
@@ -88,17 +104,101 @@ function App() {
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/edit" element={<EditResumePage />} />
 
-              {/* Analytics & Admin Dashboards (Admin only) */}
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
-              <Route path="/admin/daily-analytics" element={<DailyAnalyticsDashboard />} />
-              <Route path="/local-analytics" element={<LocalAnalyticsDashboard />} />
-              <Route path="/admin/comprehensive-analytics" element={<ComprehensiveAnalyticsDashboard />} />
-              <Route path="/admin/firebase-analytics" element={<FirebaseAnalyticsDashboardComponent />} />
+              {/* Admin Login Page */}
+              <Route path="/admin/login" element={<AdminLogin />} />
               
-              <Route path="/admin/job-posting" element={<AdminJobPosting />} />
-              <Route path="/admin/job-drives" element={<AdminJobDrives />} />
-              <Route path="/admin/government-exams" element={<AdminGovernmentExams />} />
+              {/* Professional Resume Admin Dashboard */}
+              <Route 
+                path="/admin/dashboard" 
+                element={
+                  <AdminProtectedRoute>
+                    <AdminDashboard />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              {/* Professional Resume Management */}
+              <Route 
+                path="/admin/professional-resumes" 
+                element={
+                  <AdminProtectedRoute>
+                    <ProfessionalResumeDashboard />
+                  </AdminProtectedRoute>
+                } 
+              />
+
+              {/* Analytics & Admin Dashboards (Admin only) */}
+              <Route 
+                path="/admin/analytics" 
+                element={
+                  <AdminProtectedRoute>
+                    <AnalyticsDashboard />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/admin/daily-analytics" 
+                element={
+                  <AdminProtectedRoute>
+                    <DailyAnalyticsDashboard />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/local-analytics" 
+                element={
+                  <AdminProtectedRoute>
+                    <LocalAnalyticsDashboard />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/admin/comprehensive-analytics" 
+                element={
+                  <AdminProtectedRoute>
+                    <ComprehensiveAnalyticsDashboard />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/admin/firebase-analytics" 
+                element={
+                  <AdminProtectedRoute>
+                    <FirebaseAnalyticsDashboardComponent />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/admin/job-posting" 
+                element={
+                  <AdminProtectedRoute>
+                    <AdminJobPosting />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/admin/job-drives" 
+                element={
+                  <AdminProtectedRoute>
+                    <AdminJobDrives />
+                  </AdminProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/admin/government-exams" 
+                element={
+                  <AdminProtectedRoute>
+                    <AdminGovernmentExams />
+                  </AdminProtectedRoute>
+                } 
+              />
 
               {/* Job Discipline Pages - Engineering */}
               <Route path="/job-disciplines/engineering" element={<JobDisciplines />} />
@@ -119,6 +219,11 @@ function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/job-drives" element={<JobDrives />} />
               <Route path="/government-exams" element={<GovernmentExams />} />
+
+              {/* Quick Admin Access - Redirects */}
+              <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+              <Route path="/admin-mode" element={<Navigate to="/edit?adminMode=true" replace />} />
+              <Route path="/create-client-resume" element={<Navigate to="/edit?adminMode=true" replace />} />
 
               {/* Redirect any unknown routes to home */}
               <Route path="*" element={<HomePage />} />

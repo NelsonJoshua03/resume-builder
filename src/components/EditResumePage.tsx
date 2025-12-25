@@ -1,4 +1,4 @@
-// EditResumePage.tsx - COMPLETE WITH FIREBASE ANALYTICS AND ENHANCED SEO
+// EditResumePage.tsx - COMPLETE WITH FIREBASE ANALYTICS, ENHANCED SEO AND ADMIN MODE
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -15,6 +15,7 @@ import SectionOrderCustomizer from './SectionOrderCustomizer';
 import SEO from './SEO';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
+import { adminLogin, isAdmin, getAdminStatus, adminLogout } from '../utils/adminAuth';
 import type { PersonalInfoData } from './types';
 
 // Structured Data Components (included inline to avoid import errors)
@@ -171,7 +172,17 @@ const EditResumePage = () => {
     removeCustomField,
     updateSectionTitle,
     removeSection,
-    sectionTitles
+    sectionTitles,
+    // NEW: Professional resume functions
+    isProfessionalMode,
+    currentProfessionalResumeId,
+    clientInfo,
+    setProfessionalMode,
+    setClientInfo,
+    saveToProfessionalDatabase,
+    loadProfessionalResume,
+    updateProfessionalResumeData,
+    clearProfessionalData
   } = useResume();
 
   const { 
@@ -208,6 +219,309 @@ const EditResumePage = () => {
   const lastSectionSwitchTime = useRef<number>(Date.now());
   const sectionEnterTime = useRef<number>(Date.now());
   const editSessionId = useRef<string>(`edit_session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+
+  // ADMIN MODE STATES
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientNotes, setClientNotes] = useState('');
+  const [saveToDatabase, setSaveToDatabase] = useState(true);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoginError, setAdminLoginError] = useState('');
+  const [savingStatus, setSavingStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [resumeIdFromUrl, setResumeIdFromUrl] = useState<string | null>(null);
+
+  // Check admin status on mount and handle URL parameters
+  useEffect(() => {
+    const checkAdminStatus = () => {
+      const adminStatus = isAdmin();
+      setIsAdminMode(adminStatus);
+      
+      if (adminStatus) {
+        console.log('🔐 Admin mode active');
+        
+        // Set professional mode in context
+        setProfessionalMode(true);
+        
+        // Check URL for parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('clientEmail');
+        const name = urlParams.get('clientName');
+        const resumeId = urlParams.get('resumeId');
+        
+        if (email) {
+          setClientEmail(email);
+          setClientInfo({ email, name: name || '' });
+        }
+        if (name) setClientName(name);
+        if (resumeId) {
+          setResumeIdFromUrl(resumeId);
+          // Load the professional resume
+          handleLoadProfessionalResume(resumeId);
+        }
+        
+        setShowAdminPanel(true);
+      }
+    };
+    
+    checkAdminStatus();
+    
+    // Listen for storage changes (admin login/logout)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'is_admin') {
+        checkAdminStatus();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Handle admin login
+  const handleAdminLogin = () => {
+    setAdminLoginError('');
+    
+    // Simple password check
+    if (adminPassword === 'YOUR_SECURE_ADMIN_PASSWORD_2025') {
+      adminLogin(adminPassword);
+      setIsAdminMode(true);
+      setProfessionalMode(true);
+      setShowAdminPanel(true);
+      setAdminPassword('');
+      
+      // Track admin login
+      trackFirebaseEvent({
+        eventName: 'admin_logged_in',
+        eventCategory: 'Admin',
+        eventLabel: 'login',
+        pagePath: '/edit',
+        pageTitle: 'Edit Resume',
+        metadata: {
+          login_time: new Date().toISOString(),
+          session_id: editSessionId.current
+        }
+      });
+      
+      alert('✅ Admin login successful! Professional mode activated.');
+    } else {
+      setAdminLoginError('Invalid admin password');
+    }
+  };
+
+  // Handle loading professional resume
+  const handleLoadProfessionalResume = async (resumeId: string) => {
+    try {
+      const result = await loadProfessionalResume(resumeId);
+      if (result.success) {
+        alert(`✅ Loaded professional resume successfully`);
+        
+        // Update client info from loaded resume
+        if (result.data?.clientInfo) {
+          setClientEmail(result.data.clientInfo.email);
+          setClientName(result.data.clientInfo.name || '');
+          setClientPhone(result.data.clientInfo.phone || '');
+          setClientNotes(result.data.clientInfo.notes || '');
+        }
+      } else {
+        alert(`❌ Failed to load resume: ${result.error}`);
+      }
+    } catch (error: any) {
+      console.error('Error loading professional resume:', error);
+      alert('❌ Error loading professional resume');
+    }
+  };
+
+  // New function for saving to professional database
+  const handleSaveToProfessionalDatabase = async () => {
+    if (!clientEmail) {
+      alert('⚠️ Please enter client email to save to professional database');
+      return;
+    }
+    
+    setSavingStatus('saving');
+    
+    try {
+      // Set client info in context
+      setClientInfo({
+        email: clientEmail,
+        name: clientName,
+        phone: clientPhone,
+        notes: clientNotes
+      });
+      
+      const result = await saveToProfessionalDatabase();
+      
+      if (result.success) {
+        setSavingStatus('success');
+        
+        // Track successful professional save
+        trackFirebaseEvent({
+          eventName: 'professional_resume_saved',
+          eventCategory: 'Admin',
+          eventLabel: 'database_save',
+          pagePath: '/edit',
+          pageTitle: 'Edit Resume',
+          metadata: {
+            client_email: clientEmail,
+            resume_id: result.id,
+            sections_count: Object.keys(resumeData).length,
+            session_id: editSessionId.current,
+            admin_id: localStorage.getItem('admin_token') || 'unknown'
+          }
+        });
+        
+        alert(`✅ Resume saved to professional database for ${clientEmail}\nResume ID: ${result.id}`);
+        
+        // Optionally redirect to builder for PDF generation
+        setTimeout(() => {
+          window.location.href = `/builder?resumeId=${result.id}&clientEmail=${encodeURIComponent(clientEmail)}`;
+        }, 2000);
+        
+      } else {
+        setSavingStatus('error');
+        alert(`❌ Failed to save to database: ${result.error}\nSaved to local storage instead.`);
+        saveToLocalStorage();
+      }
+    } catch (error: any) {
+      setSavingStatus('error');
+      console.error('Failed to save professional resume:', error);
+      alert('❌ Error saving to database. Saved to local storage instead.');
+      saveToLocalStorage();
+    }
+  };
+
+  // New function for local storage save (regular users)
+  const saveToLocalStorage = () => {
+    const resumeId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const resumeToSave = {
+      ...resumeData,
+      metadata: {
+        ...resumeData.metadata,
+        savedAt: new Date().toISOString(),
+        storageType: 'local_only',
+        isProfessionalResume: false
+      }
+    };
+    
+    localStorage.setItem(`user_resume_${resumeId}`, JSON.stringify(resumeToSave));
+    
+    // Track local save
+    trackFirebaseEvent({
+      eventName: 'user_resume_saved_local',
+      eventCategory: 'Resume Builder',
+      eventLabel: 'local_save',
+      pagePath: '/edit',
+      pageTitle: 'Edit Resume',
+      metadata: {
+        resume_id: resumeId,
+        storage_type: 'local_only',
+        is_professional: false,
+        session_id: editSessionId.current
+      }
+    });
+    
+    console.log('✅ Resume saved to local storage:', resumeId);
+  };
+
+  const handleSaveChanges = () => {
+    const timeSpent = Math.round((Date.now() - pageEnterTime.current) / 1000);
+    const overallCompletion = calculateCompletion(resumeData);
+    const sectionsCompleted = getCompletedSectionsCount(resumeData);
+    
+    // Track each section's completion on save
+    const sectionsToTrack = ['personal', 'experience', 'education', 'skills', 'projects', 'awards', 'custom'];
+    sectionsToTrack.forEach(sectionId => {
+      const completion = getSectionCompletion(sectionId);
+      trackSectionCompletion(sectionId, completion);
+    });
+    
+    // ADMIN-ONLY: Save to Firebase professional database
+    if (isAdminMode && saveToDatabase && clientEmail) {
+      handleSaveToProfessionalDatabase();
+      return; // Don't show regular save alert
+    }
+    
+    // REGULAR USERS: LocalStorage only
+    saveToLocalStorage();
+    
+    // Google Analytics
+    trackGAButtonClick('save_changes', 'quick_actions', 'edit_page');
+    trackGAResumeGeneration('manual_save', 'edit', 'saved');
+    
+    // Firebase Analytics
+    trackFirebaseButtonClick('save_changes', 'quick_actions', '/edit');
+    trackFirebaseResumeGeneration('professional', {
+      personalInfo: Object.keys(resumeData.personalInfo).length,
+      experience: resumeData.experiences.length,
+      education: resumeData.education.length,
+      skills: resumeData.skills.length,
+      projects: resumeData.projects.length
+    }, 'edit');
+    
+    // Track overall save event
+    trackFirebaseEvent({
+      eventName: 'resume_saved',
+      eventCategory: 'Resume Builder',
+      eventLabel: 'manual_save',
+      pagePath: '/edit',
+      pageTitle: 'Edit Resume',
+      eventValue: overallCompletion,
+      metadata: {
+        session_id: editSessionId.current,
+        total_completion: overallCompletion,
+        sections_completed: sectionsCompleted,
+        time_spent_seconds: timeSpent,
+        fields_edited: fieldsEdited.size,
+        sections_edited: Object.keys(sectionTimeSpent).length,
+        has_experience: resumeData.experiences.length > 0,
+        has_education: resumeData.education.length > 0,
+        has_projects: resumeData.projects.length > 0,
+        has_skills: resumeData.skills.length >= 3,
+        save_type: 'manual',
+        user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
+        is_professional: isAdminMode && saveToDatabase
+      }
+    });
+
+    // Track completion milestone if significant progress made
+    const initialCompletion = localStorage.getItem('initial_completion') 
+      ? parseInt(localStorage.getItem('initial_completion') || '0') 
+      : overallCompletion;
+    
+    if (overallCompletion - initialCompletion >= 25) {
+      trackFirebaseEvent({
+        eventName: 'significant_progress_made',
+        eventCategory: 'Resume Builder',
+        eventLabel: 'milestone',
+        pagePath: '/edit',
+        pageTitle: 'Edit Resume',
+        metadata: {
+          session_id: editSessionId.current,
+          progress_increase: overallCompletion - initialCompletion,
+          from_completion: initialCompletion,
+          to_completion: overallCompletion,
+          time_to_progress: timeSpent
+        }
+      });
+    }
+
+    // Funnel step for saving
+    trackFirebaseFunnelStep('resume_editing', 'changes_saved', 3, {
+      completion: overallCompletion,
+      save_count: parseInt(localStorage.getItem('save_count') || '0') + 1,
+      session_id: editSessionId.current,
+      is_professional: isAdminMode
+    });
+
+    // Increment save count
+    const saveCount = parseInt(localStorage.getItem('save_count') || '0') + 1;
+    localStorage.setItem('save_count', saveCount.toString());
+
+    alert('✅ Changes saved successfully!');
+  };
 
   // FAQ Data for Structured Data
   const faqData = [
@@ -286,7 +600,9 @@ const EditResumePage = () => {
         sections_completed: getCompletedSectionsCount(resumeData),
         has_previous_resume: localStorage.getItem('has_previous_resume') === 'true',
         user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
-        device_type: window.innerWidth < 768 ? 'mobile' : 'desktop'
+        device_type: window.innerWidth < 768 ? 'mobile' : 'desktop',
+        is_admin_mode: isAdminMode,
+        is_professional_mode: isProfessionalMode
       }
     });
 
@@ -294,7 +610,8 @@ const EditResumePage = () => {
     trackFirebaseFunnelStep('resume_editing', 'edit_page_entered', 1, {
       entry_point: 'direct',
       resume_completion_before: calculateCompletion(resumeData),
-      session_id: editSessionId.current
+      session_id: editSessionId.current,
+      is_admin_mode: isAdminMode
     });
 
     // Set session start time
@@ -325,7 +642,8 @@ const EditResumePage = () => {
           final_completion: calculateCompletion(resumeData),
           completion_increase: calculateCompletion(resumeData) - (localStorage.getItem('initial_completion') ? parseInt(localStorage.getItem('initial_completion') || '0') : 0),
           exit_action: 'page_close',
-          user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
+          user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
+          is_professional: isAdminMode
         }
       });
 
@@ -363,7 +681,8 @@ const EditResumePage = () => {
             completion_percentage: sectionCompletion,
             fields_in_section: getSectionFieldCount(activeSection),
             session_id: editSessionId.current,
-            is_completed: sectionCompletion === 100
+            is_completed: sectionCompletion === 100,
+            is_professional: isAdminMode
           }
         });
 
@@ -379,7 +698,8 @@ const EditResumePage = () => {
               section_id: activeSection,
               time_spent_seconds: timeSpentInSection,
               fields_edited_in_session: Array.from(fieldsEdited).filter(f => f.startsWith(activeSection)).length,
-              session_id: editSessionId.current
+              session_id: editSessionId.current,
+              is_professional: isAdminMode
             }
           });
         }
@@ -415,98 +735,13 @@ const EditResumePage = () => {
           fields_filled: Object.keys(resumeData.personalInfo).filter(key => {
             const val = resumeData.personalInfo[key as keyof PersonalInfoData];
             return val && (Array.isArray(val) ? val.length > 0 : val.toString().trim() !== '');
-          }).length
+          }).length,
+          is_professional: isAdminMode
         }
       });
       localStorage.setItem('personal_info_completed_tracked', 'true');
     }
   }, [resumeData.personalInfo]);
-
-  const handleSaveChanges = () => {
-    const timeSpent = Math.round((Date.now() - pageEnterTime.current) / 1000);
-    const overallCompletion = calculateCompletion(resumeData);
-    const sectionsCompleted = getCompletedSectionsCount(resumeData);
-    
-    // Track each section's completion on save
-    const sectionsToTrack = ['personal', 'experience', 'education', 'skills', 'projects', 'awards', 'custom'];
-    sectionsToTrack.forEach(sectionId => {
-      const completion = getSectionCompletion(sectionId);
-      trackSectionCompletion(sectionId, completion);
-    });
-    
-    // Google Analytics
-    trackGAButtonClick('save_changes', 'quick_actions', 'edit_page');
-    trackGAResumeGeneration('manual_save', 'edit', 'saved');
-    
-    // Firebase Analytics
-    trackFirebaseButtonClick('save_changes', 'quick_actions', '/edit');
-    trackFirebaseResumeGeneration('professional', {
-      personalInfo: Object.keys(resumeData.personalInfo).length,
-      experience: resumeData.experiences.length,
-      education: resumeData.education.length,
-      skills: resumeData.skills.length,
-      projects: resumeData.projects.length
-    }, 'edit');
-    
-    // Track overall save event
-    trackFirebaseEvent({
-      eventName: 'resume_saved',
-      eventCategory: 'Resume Builder',
-      eventLabel: 'manual_save',
-      pagePath: '/edit',
-      pageTitle: 'Edit Resume',
-      eventValue: overallCompletion,
-      metadata: {
-        session_id: editSessionId.current,
-        total_completion: overallCompletion,
-        sections_completed: sectionsCompleted,
-        time_spent_seconds: timeSpent,
-        fields_edited: fieldsEdited.size,
-        sections_edited: Object.keys(sectionTimeSpent).length,
-        has_experience: resumeData.experiences.length > 0,
-        has_education: resumeData.education.length > 0,
-        has_projects: resumeData.projects.length > 0,
-        has_skills: resumeData.skills.length >= 3,
-        save_type: 'manual',
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
-      }
-    });
-
-    // Track completion milestone if significant progress made
-    const initialCompletion = localStorage.getItem('initial_completion') 
-      ? parseInt(localStorage.getItem('initial_completion') || '0') 
-      : overallCompletion;
-    
-    if (overallCompletion - initialCompletion >= 25) {
-      trackFirebaseEvent({
-        eventName: 'significant_progress_made',
-        eventCategory: 'Resume Builder',
-        eventLabel: 'milestone',
-        pagePath: '/edit',
-        pageTitle: 'Edit Resume',
-        metadata: {
-          session_id: editSessionId.current,
-          progress_increase: overallCompletion - initialCompletion,
-          from_completion: initialCompletion,
-          to_completion: overallCompletion,
-          time_to_progress: timeSpent
-        }
-      });
-    }
-
-    // Funnel step for saving
-    trackFirebaseFunnelStep('resume_editing', 'changes_saved', 3, {
-      completion: overallCompletion,
-      save_count: parseInt(localStorage.getItem('save_count') || '0') + 1,
-      session_id: editSessionId.current
-    });
-
-    // Increment save count
-    const saveCount = parseInt(localStorage.getItem('save_count') || '0') + 1;
-    localStorage.setItem('save_count', saveCount.toString());
-
-    alert('Changes saved successfully!');
-  };
 
   const handleSectionEdit = (sectionName: string, sectionId: string) => {
     // Track completion of current section before switching
@@ -526,7 +761,8 @@ const EditResumePage = () => {
           from_completion: completion,
           to_completion: getSectionCompletion(sectionId),
           session_id: editSessionId.current,
-          switch_count: parseInt(localStorage.getItem('section_switch_count') || '0') + 1
+          switch_count: parseInt(localStorage.getItem('section_switch_count') || '0') + 1,
+          is_professional: isAdminMode
         }
       });
 
@@ -567,7 +803,8 @@ const EditResumePage = () => {
           section_id: sectionId,
           session_id: editSessionId.current,
           is_required_field: isRequiredField(fieldName, sectionId),
-          user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
+          user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
+          is_professional: isAdminMode
         }
       });
       
@@ -589,7 +826,8 @@ const EditResumePage = () => {
             time_spent_seconds: Math.round(timeSpent / 1000),
             session_id: editSessionId.current,
             field_type: getFieldType(fieldName),
-            is_required_field: isRequiredField(fieldName, sectionId)
+            is_required_field: isRequiredField(fieldName, sectionId),
+            is_professional: isAdminMode
           }
         });
       }
@@ -611,7 +849,8 @@ const EditResumePage = () => {
             section_id: sectionId,
             session_id: editSessionId.current,
             total_fields_edited: fieldsEdited.size + 1,
-            time_to_first_edit: Math.round((Date.now() - pageEnterTime.current) / 1000)
+            time_to_first_edit: Math.round((Date.now() - pageEnterTime.current) / 1000),
+            is_professional: isAdminMode
           }
         });
       }
@@ -634,7 +873,8 @@ const EditResumePage = () => {
             session_id: editSessionId.current,
             value_length: value ? value.toString().length : 0,
             has_value: !!value && value.toString().trim() !== '',
-            field_type: getFieldType(fieldName)
+            field_type: getFieldType(fieldName),
+            is_professional: isAdminMode
           }
         });
         localStorage.setItem(`last_track_${fieldName}`, currentTime.toString());
@@ -669,7 +909,8 @@ const EditResumePage = () => {
         completion_increase: completion - parseInt(previousCompletion),
         time_spent_in_section: sectionTimeSpent[sectionId] || 0,
         fields_edited: Array.from(fieldsEdited).filter(f => f.startsWith(sectionId)).length,
-        session_id: editSessionId.current
+        session_id: editSessionId.current,
+        is_professional: isAdminMode
       }
     });
     
@@ -689,7 +930,8 @@ const EditResumePage = () => {
           time_to_complete: Math.round((Date.now() - pageEnterTime.current) / 1000),
           fields_in_section: getSectionFieldCount(sectionId),
           session_id: editSessionId.current,
-          is_required_section: isRequiredSection(sectionId)
+          is_required_section: isRequiredSection(sectionId),
+          is_professional: isAdminMode
         }
       });
       
@@ -697,7 +939,8 @@ const EditResumePage = () => {
       trackFirebaseFunnelStep('resume_editing', `${sectionId}_completed`, 2, {
         section_id: sectionId,
         session_id: editSessionId.current,
-        total_sections_completed: getCompletedSectionsCount(resumeData)
+        total_sections_completed: getCompletedSectionsCount(resumeData),
+        is_professional: isAdminMode
       });
     }
   };
@@ -723,7 +966,8 @@ const EditResumePage = () => {
         data_extracted: fileData ? Object.keys(fileData).length : 0,
         session_id: editSessionId.current,
         import_method: 'file_upload',
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
+        user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
+        is_professional: isAdminMode
       }
     });
 
@@ -743,7 +987,8 @@ const EditResumePage = () => {
           has_experience: fileData.experiences && fileData.experiences.length > 0,
           has_education: fileData.education && fileData.education.length > 0,
           has_skills: fileData.skills && fileData.skills.length > 0,
-          session_id: editSessionId.current
+          session_id: editSessionId.current,
+          is_professional: isAdminMode
         }
       });
     }
@@ -924,6 +1169,224 @@ const EditResumePage = () => {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
       </Helmet>
       
+      {/* ADMIN LOGIN PANEL */}
+      {showAdminPanel && !isAdminMode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800">CareerCraft Admin Login</h3>
+              <button
+                onClick={() => setShowAdminPanel(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-600 mb-4">
+                Enter admin password to access professional resume creation mode.
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Admin Password
+                  </label>
+                  <input
+                    type="password"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter admin password"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  />
+                  {adminLoginError && (
+                    <p className="mt-2 text-sm text-red-600">{adminLoginError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAdminPanel(false)}
+                className="flex-1 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAdminLogin}
+                className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Login as Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN CONTROLS PANEL - Only visible when isAdminMode = true */}
+      {isAdminMode && (
+        <div className="admin-controls-panel bg-gradient-to-r from-blue-50 to-purple-50 p-4 md:p-6 rounded-lg mb-6 border-2 border-blue-300 shadow-lg">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg md:text-xl font-bold text-blue-800 mb-1 flex items-center gap-2">
+                👑 Admin Mode: Professional Resume Creation
+              </h3>
+              <p className="text-blue-600 text-sm">
+                This resume will be saved to the professional database for future access.
+              </p>
+            </div>
+            <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+              ADMIN
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* Client Information */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Client Email *
+                </label>
+                <input
+                  type="email"
+                  value={clientEmail}
+                  onChange={(e) => {
+                    setClientEmail(e.target.value);
+                    setClientInfo({ email: e.target.value, name: clientName });
+                  }}
+                  placeholder="client@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Client Name
+                </label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+            
+            {/* Additional Info & Save Options */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Client Phone (Optional)
+                </label>
+                <input
+                  type="tel"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  placeholder="+91 9876543210"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={clientNotes}
+                  onChange={(e) => setClientNotes(e.target.value)}
+                  placeholder="Any special instructions or notes..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md h-20"
+                />
+              </div>
+            </div>
+          </div>
+          
+          {/* Storage Options */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Storage Option
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-blue-50">
+                <input
+                  type="radio"
+                  name="storageOption"
+                  checked={saveToDatabase}
+                  onChange={() => setSaveToDatabase(true)}
+                  className="mr-3 h-5 w-5 text-blue-600"
+                />
+                <div>
+                  <span className="font-medium text-gray-800">💾 Save to Professional Database</span>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Client can request future updates. Resume data stored securely in Firebase.
+                  </p>
+                </div>
+              </label>
+              
+              <label className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="storageOption"
+                  checked={!saveToDatabase}
+                  onChange={() => setSaveToDatabase(false)}
+                  className="mr-3 h-5 w-5 text-gray-600"
+                />
+                <div>
+                  <span className="font-medium text-gray-800">📱 Local Storage Only (Testing)</span>
+                  <p className="text-xs text-gray-600 mt-1">
+                    For testing purposes. Will not be saved to professional database.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+          
+          {/* Client Reference & Save Button */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-4 border-t border-blue-200">
+            {clientEmail && (
+              <div className="text-sm">
+                <span className="text-blue-700 font-medium">🔗 Linked to:</span>
+                <span className="ml-2 font-semibold">{clientEmail}</span>
+                {clientName && (
+                  <span className="ml-2 text-gray-600">({clientName})</span>
+                )}
+              </div>
+            )}
+            
+            <div className="flex gap-3">
+              {savingStatus === 'saving' && (
+                <span className="flex items-center text-blue-600">
+                  <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Saving...
+                </span>
+              )}
+              
+              <button
+                onClick={handleSaveToProfessionalDatabase}
+                disabled={savingStatus === 'saving' || !clientEmail}
+                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold flex items-center gap-2"
+              >
+                {savingStatus === 'saving' ? (
+                  'Saving...'
+                ) : (
+                  <>
+                    💾 Save to Professional Database
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen bg-gray-50 py-2 md:py-6">
         <div className="container mx-auto px-2 md:px-4 max-w-6xl">
           {/* Mobile Header */}
@@ -1833,6 +2296,10 @@ const EditResumePage = () => {
           <div className="text-yellow-400">📋 Fields: {fieldsEdited.size} edited</div>
           <div className="text-purple-400">📊 Sections: {Object.keys(sectionTimeSpent).length} engaged</div>
           <div className="text-teal-400">🎯 Completion: {calculateCompletion(resumeData)}%</div>
+          <div className="text-orange-400">👑 Admin: {isAdminMode ? 'Yes' : 'No'}</div>
+          {isAdminMode && (
+            <div className="text-pink-400">📧 Client: {clientEmail || 'Not set'}</div>
+          )}
         </div>
       )}
     </>

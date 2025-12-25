@@ -1,4 +1,31 @@
-// src/components/types.ts
+// src/components/types.ts - UPDATED WITH PROFESSIONAL RESUME TYPE
+
+// Professional Resume Type (for admin-created resumes)
+export interface ProfessionalResume {
+  id?: string;
+  resumeData: any; // Complete resume structure
+  clientInfo: {
+    name?: string;
+    email: string;
+    phone?: string;
+    company?: string;
+    notes?: string;
+  };
+  metadata: {
+    createdBy: 'careercraft_admin';
+    createdAt: Date | any;
+    updatedAt: Date | any;
+    lastEditedBy: string;
+    storageType: 'professional_database';
+    version: number;
+    resumeId: string;
+    isActive: boolean;
+  };
+  tags?: string[];
+  jobType?: string;
+  industry?: string;
+  experienceLevel?: string;
+}
 
 // Personal Info Types
 export interface PersonalInfoData {
@@ -80,6 +107,17 @@ export interface Template {
   };
 }
 
+// NEW: Resume Metadata Type
+export interface ResumeMetadata {
+  isProfessionalResume?: boolean;
+  storageType?: 'local_only' | 'professional_database';
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  version?: number;
+  [key: string]: any; // Allow additional properties
+}
+
 // Form Component Base Props
 export interface FormComponentProps {
   template?: Template;
@@ -159,6 +197,8 @@ export interface ResumeData {
     projects?: string;
     [key: string]: string | undefined;
   };
+  // NEW: Metadata property
+  metadata?: ResumeMetadata;
 }
 
 // Section Order Types
@@ -209,6 +249,7 @@ export interface ResumePreviewProps {
 export interface PersonalInfoProps extends FormComponentProps {
   data: PersonalInfoData;
   onChange: (field: keyof PersonalInfoData, value: string | string[]) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => void;
 }
 
 // Experience
@@ -217,6 +258,7 @@ export interface ExperienceProps extends FormComponentProps {
   onUpdate: (id: number, field: string, value: any) => void;
   onAdd: () => number;
   onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => void;
 }
 
 // Education
@@ -225,6 +267,7 @@ export interface EducationProps extends FormComponentProps {
   onUpdate: (id: number, field: string, value: string) => void;
   onAdd: () => number;
   onRemove: (id: number) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => void;
 }
 
 // Projects
@@ -233,7 +276,7 @@ export interface ProjectsProps extends FormComponentProps {
   onUpdate: (id: number, field: string, value: any) => void;
   onAdd: () => number;
   onRemove: (id: number) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => void;
   // NEW: Section title renaming and removal
   onRenameSection?: (newTitle: string) => void;
   onRemoveSection?: () => void;
@@ -246,7 +289,7 @@ export interface AwardsProps extends FormComponentProps {
   onUpdate: (id: number, field: string, value: string) => void;
   onAdd: () => number;
   onRemove: (id: number) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => void;
   // NEW: Section title renaming and removal
   onRenameSection?: (newTitle: string) => void;
   onRemoveSection?: () => void;
@@ -259,7 +302,7 @@ export interface SkillsProps extends FormComponentProps {
   onAdd: (skill: Skill) => void;
   onRemove: (index: number) => void;
   onUpdateProficiency: (index: number, proficiency: Skill['proficiency']) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => void;
   // NEW: Section title renaming
   onRenameSection?: (newTitle: string) => void;
   sectionTitle?: string;
@@ -272,6 +315,7 @@ export interface CustomFieldsProps extends FormComponentProps {
   onAdd: () => number;
   onRemove: (id: number) => void;
   onChangeType: (id: number, type: CustomFieldType) => void;
+  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change' | 'input', value?: any) => void;
 }
 
 // Parsed Resume Data
@@ -407,6 +451,34 @@ export interface ResumeContextType {
   // NEW: Template selection and color customization functions
   updateSelectedTemplate: (template: string) => void;
   updateCustomColors: (templateId: string, colors: any) => void;
+  // Add tracking methods
+  trackResumeUpdate: (action: string, section: string, details?: any) => void;
+  getResumeCompletion: () => number;
+  // NEW: Section title renaming and removal
+  updateSectionTitle: (sectionId: string, newTitle: string) => void;
+  removeSection: (sectionId: string) => void;
+  // NEW: Section titles storage
+  sectionTitles: {
+    skills?: string;
+    awards?: string;
+    projects?: string;
+    [key: string]: string | undefined;
+  };
+  // NEW: Professional resume functions
+  isProfessionalMode: boolean;
+  currentProfessionalResumeId: string | null;
+  clientInfo: {
+    email: string;
+    name?: string;
+    phone?: string;
+    notes?: string;
+  } | null;
+  setProfessionalMode: (mode: boolean) => void;
+  setClientInfo: (info: { email: string; name?: string; phone?: string; notes?: string }) => void;
+  saveToProfessionalDatabase: () => Promise<{ success: boolean; id?: string; error?: string }>;
+  loadProfessionalResume: (resumeId: string) => Promise<{ success: boolean; data?: ProfessionalResume; error?: string }>;
+  updateProfessionalResumeData: (updates: Partial<ProfessionalResume>) => Promise<{ success: boolean; error?: string }>;
+  clearProfessionalData: () => void;
 }
 
 // Color Types for Customization
@@ -701,70 +773,4 @@ export interface ResumeAnalysis {
   };
   improvements: string[];
   warnings: string[];
-}
-
-export interface PersonalInfoProps extends FormComponentProps {
-  data: PersonalInfoData;
-  onChange: (field: keyof PersonalInfoData, value: string | string[]) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
-}
-
-export interface ExperienceProps extends FormComponentProps {
-  experiences: Experience[];
-  onUpdate: (id: number, field: string, value: any) => void;
-  onAdd: () => number;
-  onRemove: (id: number) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
-}
-
-export interface EducationProps extends FormComponentProps {
-  education: Education[];
-  onUpdate: (id: number, field: string, value: string) => void;
-  onAdd: () => number;
-  onRemove: (id: number) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
-}
-
-export interface ProjectsProps extends FormComponentProps {
-  projects: Project[];
-  onUpdate: (id: number, field: string, value: any) => void;
-  onAdd: () => number;
-  onRemove: (id: number) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
-  // NEW: Section title renaming and removal
-  onRenameSection?: (newTitle: string) => void;
-  onRemoveSection?: () => void;
-  sectionTitle?: string;
-}
-
-export interface AwardsProps extends FormComponentProps {
-  awards: Award[];
-  onUpdate: (id: number, field: string, value: string) => void;
-  onAdd: () => number;
-  onRemove: (id: number) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
-  // NEW: Section title renaming and removal
-  onRenameSection?: (newTitle: string) => void;
-  onRemoveSection?: () => void;
-  sectionTitle?: string;
-}
-
-export interface SkillsProps extends FormComponentProps {
-  skills: Skill[];
-  onAdd: (skill: Skill) => void;
-  onRemove: (index: number) => void;
-  onUpdateProficiency: (index: number, proficiency: Skill['proficiency']) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
-  // NEW: Section title renaming
-  onRenameSection?: (newTitle: string) => void;
-  sectionTitle?: string;
-}
-
-export interface CustomFieldsProps extends FormComponentProps {
-  customFields: CustomField[];
-  onUpdate: (id: number, field: string, value: string) => void;
-  onAdd: () => number;
-  onRemove: (id: number) => void;
-  onChangeType: (id: number, type: CustomFieldType) => void;
-  onFieldInteraction?: (fieldName: string, action: 'focus' | 'blur' | 'change') => void;
 }
