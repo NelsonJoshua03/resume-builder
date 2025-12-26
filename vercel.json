@@ -150,6 +150,24 @@
           "value": "text/plain; charset=utf-8"
         }
       ]
+    },
+    
+    {
+      "source": "/(free-resume-builder|ats-resume-builder|online-resume-maker|cv-maker-online|professional-resume-builder|resume-builder-for-freshers|resume-builder-for-engineers|resume-builder-for-it-jobs|resume-builder-for-developers|create-resume-online)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow, max-image-preview:large"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept-Encoding"
+        }
+      ]
     }
   ],
   "trailingSlash": false,

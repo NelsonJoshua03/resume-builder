@@ -23,6 +23,20 @@ export default defineConfig({
       },
     },
     rollupOptions: {
+      input: {
+        main: './index.html',
+        // Generate separate entries for SEO routes
+        'free-resume-builder': './index.html',
+        'ats-resume-builder': './index.html',
+        'online-resume-maker': './index.html',
+        'cv-maker-online': './index.html',
+        'professional-resume-builder': './index.html',
+        'resume-builder-for-freshers': './index.html',
+        'resume-builder-for-engineers': './index.html',
+        'resume-builder-for-it-jobs': './index.html',
+        'resume-builder-for-developers': './index.html',
+        'create-resume-online': './index.html'
+      },
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
