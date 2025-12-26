@@ -1,4 +1,4 @@
-// src/components/Layout.tsx - COMPLETELY UPDATED WITH FIXED NAVIGATION
+// src/components/Layout.tsx - UPDATED WITH SEO-FRIENDLY NAVIGATION
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -75,7 +75,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <meta property="og:url" content="https://careercraft.in/" />
         <meta property="og:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
         <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India. Free resume builder with ATS templates." />
-        <meta property="og:image" content="https://careercraft.in/logos/careercraft-logo-main.png" />
+        <meta property="og:image" content="https://careercraft.in/og/careercraft-homepage-preview.jpg" />
         <meta property="og:site_name" content="CareerCraft.in" />
         <meta property="og:locale" content="en_IN" />
 
@@ -84,7 +84,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <meta property="twitter:url" content="https://careercraft.in/" />
         <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
         <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
-        <meta property="twitter:image" content="https://careercraft.in/logos/careercraft-logo-main.png" />
+        <meta property="twitter:image" content="https://careercraft.in/og/careercraft-homepage-preview.jpg" />
 
         {/* Structured Data */}
         <script type="application/ld+json">
@@ -114,18 +114,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </Helmet>
 
       <div className="min-h-screen bg-gray-50 flex flex-col w-full overflow-x-hidden">
-        {/* Header with Logo Removed */}
+        {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-50 w-full">
           <div className="container mx-auto px-3 md:px-4 py-3 w-full max-w-7xl">
             <nav className="flex justify-between items-center w-full">
-              {/* Logo Removed - Only Text Brand */}
+              {/* Logo */}
               <Link to="/" className="flex items-center">
                 <span className="text-xl md:text-2xl font-bold text-blue-600">
                   CareerCraft.in
                 </span>
               </Link>
               
-              {/* Navigation Menu - UPDATED: Simplified Links */}
+              {/* Navigation Menu - UPDATED: Added SEO-friendly links */}
               <div className="hidden md:flex space-x-4 lg:space-x-6">
                 <Link 
                   to="/government-exams" 
@@ -168,7 +168,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   Walk-in Drives
                 </Link>
                 
-                {/* Resume Templates Dropdown - UPDATED */}
+                {/* Resume Templates Dropdown - UPDATED with SEO-friendly links */}
                 <div className="relative group" ref={dropdownRef}>
                   <button 
                     className="font-medium transition-colors text-sm lg:text-base text-gray-700 hover:text-blue-600 flex items-center gap-1"
@@ -176,27 +176,41 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     aria-expanded={isDropdownOpen}
                     aria-haspopup="true"
                   >
-                    Resume Templates
+                    Resume Builder
                     <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  <div className={`absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200 z-50 ${
+                  <div className={`absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200 z-50 ${
                     isDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
                   }`}>
                     <Link 
-                      to="/builder" 
+                      to="/free-resume-builder" 
                       className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-100"
                     >
-                      <div className="font-medium">Free ATS Templates</div>
-                      <div className="text-xs text-gray-500">Optimized for Indian job market</div>
+                      <div className="font-medium">🚀 Free Resume Builder</div>
+                      <div className="text-xs text-gray-500">Best for Indian job market</div>
+                    </Link>
+                    <Link 
+                      to="/ats-resume-builder" 
+                      className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-100"
+                    >
+                      <div className="font-medium">🤖 ATS Resume Builder</div>
+                      <div className="text-xs text-gray-500">Pass through applicant tracking</div>
+                    </Link>
+                    <Link 
+                      to="/resume-builder-for-freshers" 
+                      className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-100"
+                    >
+                      <div className="font-medium">🎓 For Freshers</div>
+                      <div className="text-xs text-gray-500">First job resume templates</div>
                     </Link>
                     <Link 
                       to="/edit" 
                       className="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                     >
                       <div className="font-medium flex items-center gap-2">
-                        <span>Edit Resume</span>
+                        <span>✏️ Edit Resume</span>
                       </div>
                       <div className="text-xs text-gray-500">Update your information</div>
                     </Link>
@@ -238,7 +252,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               {/* CTA Buttons */}
               <div className="flex items-center gap-2 md:gap-3">
                 <button
-                  onClick={() => handleNavigation('/builder')}
+                  onClick={() => handleNavigation('/free-resume-builder')}
                   className="bg-blue-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-sm md:text-base"
                 >
                   Build Resume
@@ -253,12 +267,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </main>
 
-        {/* Footer with Logo Removed - UPDATED: Simplified Links */}
+        {/* Footer - UPDATED: Added SEO-friendly links */}
         <footer className="bg-gray-900 text-white py-8 md:py-12 mt-auto w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 mb-6 md:mb-8">
               <div>
-                {/* Footer Logo Removed - Only Text */}
+                {/* Footer Brand */}
                 <div className="mb-3 md:mb-4">
                   <Link to="/">
                     <span className="text-xl md:text-2xl font-bold text-white">
@@ -300,11 +314,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
               
               <div>
-                <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resume Tools</h3>
+                <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resume Builder</h3>
                 <ul className="space-y-1 md:space-y-2">
-                  <li><Link to="/builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">ATS Resume Builder</Link></li>
+                  <li><Link to="/free-resume-builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Free Resume Builder</Link></li>
+                  <li><Link to="/ats-resume-builder" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">ATS Resume Builder</Link></li>
+                  <li><Link to="/resume-builder-for-freshers" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">For Freshers</Link></li>
+                  <li><Link to="/resume-builder-for-engineers" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">For Engineers</Link></li>
                   <li><Link to="/edit" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Edit Resume</Link></li>
-                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Fresh Graduate Guide</Link></li>
                 </ul>
               </div>
               
@@ -312,6 +328,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resources</h3>
                 <ul className="space-y-1 md:space-y-2">
                   <li><Link to="/blog" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Blog</Link></li>
+                  <li><Link to="/fresh-graduate-guide" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Fresh Graduate Guide</Link></li>
                   <li><Link to="/about" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">About Us</Link></li>
                   <li><Link to="/contact" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Contact</Link></li>
                 </ul>
