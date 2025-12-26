@@ -153,3 +153,4 @@ src/firebase/.env.production
 src/firebase/service-account.json
 firebase-admin-key.json
 google-cloud-key.json
+.vercel

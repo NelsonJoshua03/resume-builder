@@ -19,34 +19,14 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: false, // Keep for debugging
+        drop_console: false,
       },
     },
     rollupOptions: {
-      input: {
-        main: './index.html',
-        // Generate separate entries for SEO routes
-        'free-resume-builder': './index.html',
-        'ats-resume-builder': './index.html',
-        'online-resume-maker': './index.html',
-        'cv-maker-online': './index.html',
-        'professional-resume-builder': './index.html',
-        'resume-builder-for-freshers': './index.html',
-        'resume-builder-for-engineers': './index.html',
-        'resume-builder-for-it-jobs': './index.html',
-        'resume-builder-for-developers': './index.html',
-        'create-resume-online': './index.html'
-      },
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',
         chunkFileNames: 'assets/[name]-[hash].js',
         entryFileNames: 'assets/[name]-[hash].js',
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'firebase-vendor': ['firebase/app', 'firebase/firestore', 'firebase/analytics', 'firebase/auth'],
-          'chart-vendor': ['recharts'],
-          'pdf-vendor': ['html2canvas', 'jspdf']
-        }
       }
     },
     outDir: 'dist',

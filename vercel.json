@@ -1,175 +1,130 @@
 {
-  "rewrites": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
     }
   ],
-  "redirects": [
+  "routes": [
     {
-      "source": "/builder",
-      "destination": "/free-resume-builder",
-      "permanent": true
+      "src": "/free-resume-builder",
+      "dest": "/index.html"
     },
     {
-      "source": "/builder/",
-      "destination": "/free-resume-builder",
-      "permanent": true
+      "src": "/ats-resume-builder",
+      "dest": "/index.html"
     },
     {
-      "source": "/resume-builder",
-      "destination": "/free-resume-builder",
-      "permanent": true
+      "src": "/online-resume-maker",
+      "dest": "/index.html"
     },
     {
-      "source": "/resume-builder/",
-      "destination": "/free-resume-builder",
-      "permanent": true
+      "src": "/cv-maker-online",
+      "dest": "/index.html"
     },
     {
-      "source": "/cv-builder",
-      "destination": "/cv-maker-online",
-      "permanent": true
+      "src": "/professional-resume-builder",
+      "dest": "/index.html"
     },
     {
-      "source": "/cv-builder/",
-      "destination": "/cv-maker-online",
-      "permanent": true
+      "src": "/resume-builder-for-freshers",
+      "dest": "/index.html"
     },
     {
-      "source": "/resume-creator",
-      "destination": "/online-resume-maker",
-      "permanent": true
+      "src": "/resume-builder-for-engineers",
+      "dest": "/index.html"
     },
     {
-      "source": "/resume-creator/",
-      "destination": "/online-resume-maker",
-      "permanent": true
+      "src": "/resume-builder-for-it-jobs",
+      "dest": "/index.html"
     },
     {
-      "source": "/make-resume",
-      "destination": "/create-resume-online",
-      "permanent": true
+      "src": "/resume-builder-for-developers",
+      "dest": "/index.html"
     },
     {
-      "source": "/make-resume/",
-      "destination": "/create-resume-online",
-      "permanent": true
+      "src": "/create-resume-online",
+      "dest": "/index.html"
     },
     {
-      "source": "/create-resume",
-      "destination": "/create-resume-online",
-      "permanent": true
+      "src": "/builder",
+      "dest": "/free-resume-builder",
+      "status": 301
     },
     {
-      "source": "/create-resume/",
-      "destination": "/create-resume-online",
-      "permanent": true
+      "src": "/builder/",
+      "dest": "/free-resume-builder",
+      "status": 301
     },
     {
-      "source": "/resume-maker",
-      "destination": "/online-resume-maker",
-      "permanent": true
+      "src": "/resume-builder",
+      "dest": "/free-resume-builder",
+      "status": 301
     },
     {
-      "source": "/resume-maker/",
-      "destination": "/online-resume-maker",
-      "permanent": true
+      "src": "/cv-builder",
+      "dest": "/cv-maker-online",
+      "status": 301
+    },
+    {
+      "src": "/resume-creator",
+      "dest": "/online-resume-maker",
+      "status": 301
+    },
+    {
+      "src": "/make-resume",
+      "dest": "/create-resume-online",
+      "status": 301
+    },
+    {
+      "src": "/create-resume",
+      "dest": "/create-resume-online",
+      "status": 301
+    },
+    {
+      "src": "/resume-maker",
+      "dest": "/online-resume-maker",
+      "status": 301
+    },
+    {
+      "src": "/assets/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/images/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/(.*\\.(ico|svg|png|jpg|jpeg|gif))",
+      "headers": {
+        "cache-control": "public, max-age=86400"
+      }
+    },
+    {
+      "src": "/(sitemap\\.xml|robots\\.txt|manifest\\.json)",
+      "headers": {
+        "cache-control": "public, max-age=3600",
+        "content-type": "text/plain; charset=utf-8"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html",
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "x-robots-tag": "index, follow, max-image-preview:large",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "strict-origin-when-cross-origin",
+        "permissions-policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+      }
     }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        },
-        {
-          "key": "X-Robots-Tag",
-          "value": "index, follow, max-image-preview:large"
-        },
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=31536000; includeSubDomains; preload"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()"
-        }
-      ]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/images/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/logos/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/(sitemap.xml|robots.txt|manifest.json)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600"
-        },
-        {
-          "key": "Content-Type",
-          "value": "text/plain; charset=utf-8"
-        }
-      ]
-    },
-    
-    {
-      "source": "/(free-resume-builder|ats-resume-builder|online-resume-maker|cv-maker-online|professional-resume-builder|resume-builder-for-freshers|resume-builder-for-engineers|resume-builder-for-it-jobs|resume-builder-for-developers|create-resume-online)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Robots-Tag",
-          "value": "index, follow, max-image-preview:large"
-        },
-        {
-          "key": "Vary",
-          "value": "Accept-Encoding"
-        }
-      ]
-    }
-  ],
-  "trailingSlash": false,
-  "cleanUrls": true
+  ]
 }
