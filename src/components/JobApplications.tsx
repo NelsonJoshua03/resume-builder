@@ -1471,7 +1471,7 @@ const JobApplications: React.FC = () => {
                   Create an ATS-friendly resume optimized for Indian job market.
                 </p>
                 <Link 
-                  to="/builder" 
+                  to="//free-resume-builder" 
                   onClick={() => {
                     trackGoogleButtonClick('build_resume_sidebar', 'sidebar_cta', 'job_applications');
                     trackButtonClick('build_resume_sidebar', 'sidebar_cta', '/job-applications');
@@ -2215,7 +2215,7 @@ const JobCard: React.FC<JobCardProps> = ({
             {saved ? 'Saved' : 'Save Job'}
           </button>
           <Link 
-            to="/builder" 
+            to="/free-resume-builder" 
             onClick={handleBuildResumeClick}
             className="border border-green-600 text-green-600 px-3 py-2 md:px-6 md:py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors text-center text-sm"
           >

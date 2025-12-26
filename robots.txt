@@ -1,12 +1,38 @@
-# CareerCraft.in - Optimized Robots.txt for SEO
-# India's Premier Resume Builder & Job Portal
+# CareerCraft.in - SEO Optimized Robots.txt
+# India's #1 Free Resume Builder & Job Portal
 # Last Updated: December 2025
+# Sitemap: https://careercraft.in/sitemap.xml
 
+# ========================
+# ALLOWED PATHS FOR SEO
+# ========================
 User-agent: *
-Allow: /
+Allow: /free-resume-builder
+Allow: /ats-resume-builder
+Allow: /online-resume-maker
+Allow: /cv-maker-online
+Allow: /professional-resume-builder
+Allow: /resume-builder-for-freshers
+Allow: /resume-builder-for-engineers
+Allow: /resume-builder-for-it-jobs
+Allow: /resume-builder-for-developers
+Allow: /create-resume-online
+Allow: /edit
+Allow: /job-disciplines
+Allow: /job-applications
+Allow: /government-exams
+Allow: /job-drives
+Allow: /blog
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
+Allow: /fresh-graduate-guide
 
-# ============ DISALLOWED PATHS ============
-# Admin and private areas
+# ========================
+# DISALLOWED PATHS
+# ========================
 Disallow: /admin/
 Disallow: /private/
 Disallow: /api/
@@ -15,7 +41,7 @@ Disallow: /backup/
 Disallow: /logs/
 Disallow: /cgi-bin/
 
-# Development and system files
+# Development files
 Disallow: /node_modules/
 Disallow: /src/
 Disallow: /config/
@@ -28,21 +54,12 @@ Disallow: /tsconfig.json
 Disallow: /yarn.lock
 Disallow: /package-lock.json
 
-# Asset files that don't need indexing (but allow CSS/JS for Googlebot)
-Disallow: /assets/
-Disallow: /static/
+# Temporary files
 Disallow: /uploads/temp/
 Disallow: /tmp/
 Disallow: /cache/
 
-# CRITICAL FIX: Allow Googlebot to access JavaScript and CSS files
-# Remove these lines to let Googlebot render your React app properly
-# Disallow: *.js$
-# Disallow: *.css$
-# Disallow: *.scss$
-# Disallow: *.less$
-
-# URL parameters to avoid duplicate content (adjust based on your site)
+# URL parameters
 Disallow: /*?search=
 Disallow: /*?filter=
 Disallow: /*?sort=
@@ -53,60 +70,59 @@ Disallow: /*?sessionid=
 Disallow: /*?token=
 Disallow: /*?redirect=
 
-# ============ ALLOWED BOTS (Search Engines) ============
-# Googlebot - Primary search engine
+# ========================
+# SEARCH ENGINE SPECIFIC
+# ========================
+
+# Google Bots
 User-agent: Googlebot
 Allow: /
 Crawl-delay: 1
+Disallow: /*.pdf$
+Disallow: /*.doc$
+Disallow: /*.docx$
 
-# Googlebot-Image
 User-agent: Googlebot-Image
 Allow: /
 Disallow: /*.gif$
 
-# Googlebot-News (if you have news content)
 User-agent: Googlebot-News
 Allow: /
 
-# Googlebot-Video
 User-agent: Googlebot-Video
 Allow: /
 
-# AdsBot-Google (for landing page quality)
 User-agent: AdsBot-Google
 Allow: /
 
-# AdsBot-Google-Mobile-Apps
 User-agent: AdsBot-Google-Mobile-Apps
 Allow: /
 
-# Bingbot - Microsoft's crawler
+# Bing Bots
 User-agent: Bingbot
 Allow: /
 Crawl-delay: 1
 
-# MSNBot
 User-agent: MSNBot
 Allow: /
 Crawl-delay: 1
 
-# DuckDuckGo - Privacy-focused search
+# Other Search Engines
 User-agent: DuckDuckBot
 Allow: /
 Crawl-delay: 2
 
-# Yandex
 User-agent: Yandex
 Allow: /
 Crawl-delay: 2
 
-# Baidu
 User-agent: Baiduspider
 Allow: /
 Crawl-delay: 5
 
-# ============ BLOCKED BOTS ============
-# AI and data scraper bots
+# ========================
+# BLOCKED BOTS (AI/Scrapers)
+# ========================
 User-agent: ChatGPT-User
 Disallow: /
 User-agent: GPTBot
@@ -118,7 +134,7 @@ Disallow: /
 User-agent: FacebookExternalHit
 Disallow: /
 
-# Aggressive SEO tools (they consume bandwidth)
+# SEO Scrapers
 User-agent: AhrefsBot
 Disallow: /
 Crawl-delay: 10
@@ -139,7 +155,7 @@ Disallow: /
 User-agent: BLEXBot
 Disallow: /
 
-# Other unwanted bots
+# Archive Bots
 User-agent: ia_archiver
 Disallow: /
 User-agent: archive.org_bot
@@ -148,6 +164,8 @@ User-agent: Gigabot
 Disallow: /
 User-agent: Nutch
 Disallow: /
+
+# Scraping Tools
 User-agent: Java
 Disallow: /
 User-agent: curl
@@ -158,47 +176,17 @@ User-agent: scrapbot
 Disallow: /
 User-agent: Scrapy
 Disallow: /
-User-agent: Sogou
-Disallow: /
 
-# ============ SITEMAP REFERENCES ============
-# Primary sitemap
-Sitemap: https://careercraft.in/sitemap.xml
-
-# Additional sitemaps (if you have separate ones)
-# Sitemap: https://careercraft.in/blog-sitemap.xml
-# Sitemap: https://careercraft.in/jobs-sitemap.xml
-
-# ============ CRAWLING INSTRUCTIONS ============
-# General crawl delay for all bots (prevents server overload)
-Crawl-delay: 1
-
-# Visit-time for server maintenance window (IST timezone)
-# 2 AM to 5 AM IST (avoid peak hours)
-Visit-time: 0200-0500
-
-# ============ ADDITIONAL SEO DIRECTIVES ============
-# Clean param for dynamic URLs (help avoid duplicate content)
-Clean-param: ref /blog/
-Clean-param: utm_source /
-Clean-param: utm_medium /
-Clean-param: utm_campaign /
-
-# ============ MOBILE CRAWLER SPECIFIC ============
-# Googlebot Smartphone
+# ========================
+# MOBILE CRAWLERS
+# ========================
 User-agent: Googlebot-Mobile
 Allow: /
 Crawl-delay: 1
 
-# ============ FEED CRAWLERS ============
-# Allow legitimate feed readers
-User-agent: Feedfetcher-Google
-Allow: /
-User-agent: Apple-PubSub
-Allow: /
-
-# ============ SPECIALIZED CRAWLERS ============
-# Allow media and social preview bots
+# ========================
+# SOCIAL MEDIA BOTS
+# ========================
 User-agent: Twitterbot
 Allow: /
 User-agent: LinkedInBot
@@ -206,21 +194,46 @@ Allow: /
 User-agent: Pinterest
 Allow: /
 
-# ============ ANALYTICS & MONITORING ============
-# Allow Google PageSpeed Insights
+# ========================
+# FEED READERS
+# ========================
+User-agent: Feedfetcher-Google
+Allow: /
+User-agent: Apple-PubSub
+Allow: /
+
+# ========================
+# TESTING TOOLS
+# ========================
 User-agent: Google-PageSpeed-Insights
 Allow: /
 Crawl-delay: 5
-
-# Allow Google Mobile-Friendly Test
 User-agent: Google-Mobile-Friendly
 Allow: /
 Crawl-delay: 5
 
-# ============ CACHE CONTROL ============
-# Instruct search engines to cache pages
-# This is just a comment - actual cache control via HTTP headers
+# ========================
+# SITEMAP REFERENCES
+# ========================
+Sitemap: https://careercraft.in/sitemap.xml
 
-# ============ END OF ROBOTS.TXT ============
-# For questions or crawl issues, contact: contact@careercraft.in
-# This file should be placed in the root directory (public/)
+# ========================
+# ADDITIONAL DIRECTIVES
+# ========================
+# Clean parameters to avoid duplicate content
+Clean-param: utm_source /free-resume-builder
+Clean-param: utm_medium /free-resume-builder
+Clean-param: utm_campaign /free-resume-builder
+Clean-param: ref /blog/
+Clean-param: source /job-applications/
+
+# General crawl delay
+Crawl-delay: 1
+
+# ========================
+# SPECIAL NOTES
+# ========================
+# This site is built with React (SPA)
+# Googlebot can execute JavaScript
+# All main content routes are accessible
+# Contact: contact@careercraft.in

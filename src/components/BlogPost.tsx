@@ -883,7 +883,7 @@ const BlogPost: React.FC = () => {
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Link 
-                      to="/builder" 
+                      to="/free-resume-builder" 
                       onClick={handleCTAClick}
                       className="bg-white text-blue-700 px-8 py-4 rounded-xl font-bold hover:bg-gray-100 inline-flex items-center justify-center gap-3 transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-xl"
                     >

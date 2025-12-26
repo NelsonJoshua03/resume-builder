@@ -97,7 +97,7 @@ const About: React.FC = () => {
 
           <div className="text-center space-y-4">
             <div>
-              <Link to="/builder" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 inline-block mx-2">
+              <Link to="/free-resume-builder" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 inline-block mx-2">
                 Build Your Indian Resume
               </Link>
               <Link to="/job-applications" className="bg-green-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 inline-block mx-2">

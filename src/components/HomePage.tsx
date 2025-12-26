@@ -260,7 +260,7 @@ const ExitIntentModal = ({ onClose }: {
                 </button>
                 
                 <Link
-                  to="/builder"
+                  to="/free-resume-builder"  // CHANGED FROM '/builder'
                   onClick={onClose}
                   className="w-full bg-blue-600 text-white py-2 md:py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
                 >
@@ -484,7 +484,7 @@ const ResumePreviewSection = () => {
                   onClick={() => {
                     trackCTAClick('view_all_templates', 'preview_section', 'homepage');
                     trackFirebaseCTAClick('view_all_templates', 'preview_section', 'homepage');
-                    navigate('/builder');
+                    navigate('/free-resume-builder');  // CHANGED FROM '/builder'
                   }}
                   className="w-full bg-white border-2 border-blue-600 text-blue-600 py-2 md:py-3 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
                 >
@@ -702,7 +702,7 @@ const HomePage = () => {
                 <button 
                   onClick={() => {
                     handleCTAClick('view_templates', 'hero_section');
-                    navigate('/builder');
+                    navigate('/free-resume-builder');  // CHANGED FROM '/builder'
                   }}
                   className="bg-blue-500/20 text-white border-2 border-white/30 px-6 md:px-8 lg:px-10 py-3 md:py-4 lg:py-5 rounded-xl font-bold text-base md:text-lg lg:text-xl hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2 md:gap-3 w-full sm:w-auto max-w-md active:scale-95"
                 >
@@ -873,7 +873,7 @@ const HomePage = () => {
               <button
                 onClick={() => {
                   handleCTAClick('mobile_view_templates', 'quick_actions');
-                  navigate('/builder');
+                  navigate('/free-resume-builder');  // CHANGED FROM '/builder'
                 }}
                 className="bg-white p-3 rounded-xl border border-gray-200 text-center hover:shadow-md transition-shadow active:scale-95"
               >

@@ -1,9 +1,10 @@
-// src/App.tsx - UPDATED WITH ADMIN DASHBOARD AND PROFESSIONAL RESUME SYSTEM
+// src/App.tsx - UPDATED WITH SEO-OPTIMIZED ROUTES
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
 import Layout from "./components/Layout";
 import ResumeBuilder from "./components/ResumeBuilder";
+import SEOOptimizedResumeBuilder from "./components/SEOOptimizedResumeBuilder";
 import HomePage from "./components/HomePage";
 import JobDisciplines from "./components/JobDisciplines";
 import JobApplications from "./components/JobApplications";
@@ -38,7 +39,7 @@ import ComprehensiveAnalyticsDashboard from './components/ComprehensiveAnalytics
 import FirebaseAnalyticsDashboardComponent from './components/FirebaseAnalyticsDashboardComponent';
 
 // Professional Resume Admin Components
-import AdminDashboard from './/components/AdminDashboard';
+import AdminDashboard from './components/AdminDashboard';
 import ProfessionalResumeDashboard from './components/ProfessionalResumeDashboard';
 
 // Auth Components
@@ -95,7 +96,24 @@ function App() {
             <Routes>
               {/* Main Pages */}
               <Route path="/" element={<HomePage />} />
+              
+              {/* RESUME BUILDER ROUTES - UPDATED FOR SEO */}
+              {/* Keep original for backward compatibility */}
               <Route path="/builder" element={<ResumeBuilder />} />
+              
+              {/* SEO-Optimized Resume Builder Routes */}
+              <Route path="/free-resume-builder" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/ats-resume-builder" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/online-resume-maker" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/cv-maker-online" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/professional-resume-builder" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/resume-builder-for-freshers" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/resume-builder-for-engineers" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/resume-builder-for-it-jobs" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/resume-builder-for-developers" element={<SEOOptimizedResumeBuilder />} />
+              <Route path="/create-resume-online" element={<SEOOptimizedResumeBuilder />} />
+              
+              {/* Additional Pages */}
               <Route path="/job-disciplines" element={<JobDisciplines />} />
               <Route path="/job-applications" element={<JobApplications />} />
               <Route path="/about" element={<About />} />
@@ -224,6 +242,12 @@ function App() {
               <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
               <Route path="/admin-mode" element={<Navigate to="/edit?adminMode=true" replace />} />
               <Route path="/create-client-resume" element={<Navigate to="/edit?adminMode=true" replace />} />
+
+              {/* Vercel Redirects for SEO - Client-side redirects */}
+              <Route path="/resume-builder" element={<Navigate to="/free-resume-builder" replace />} />
+              <Route path="/cv-builder" element={<Navigate to="/cv-maker-online" replace />} />
+              <Route path="/resume-creator" element={<Navigate to="/online-resume-maker" replace />} />
+              <Route path="/make-resume" element={<Navigate to="/create-resume-online" replace />} />
 
               {/* Redirect any unknown routes to home */}
               <Route path="*" element={<HomePage />} />

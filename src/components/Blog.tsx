@@ -544,7 +544,7 @@ const Blog: React.FC = () => {
               Join thousands of successful Indian job seekers who landed their dream jobs with our ATS-optimized resume templates and expert guidance tailored for Indian companies.
             </p>
             <Link 
-              to="/builder" 
+              to="/free-resume-builder" 
               className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 inline-block transition-colors duration-200 shadow-lg hover:shadow-xl"
               onClick={() => {
                 // Google Analytics

@@ -72,7 +72,7 @@ const SoftwareDevelopment: React.FC = () => {
             </div>
 
             <div className="text-center">
-              <Link to="/builder" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 inline-block">
+              <Link to="/free-resume-builder" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 inline-block">
                 Create Your Indian Software Development Resume
               </Link>
             </div>
