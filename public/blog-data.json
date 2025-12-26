@@ -1,6 +1,32 @@
 {
   "posts": [
     {
+  "id": 30,
+  "slug": "why-careercraft-is-different-from-other-resume-builders",
+  "title": "Why CareerCraft Is Different from Other Resume Builder Websites in India",
+  "excerpt": "Discover how CareerCraft stands out from other resume builders in India by offering a completely free, ATS-friendly resume builder with no signup, no payments, and only optimized templates.",
+  "category": "career-advice",
+  "date": "2025-01-27",
+  "readTime": "4 min read",
+  "author": "CareerCraft Team",
+  "authorBio": "CareerCraft helps Indian job seekers build ATS-friendly resumes without hidden charges, signups, or confusing templates.",
+  "contentFile": "why-careercraft-is-different.md",
+  "seo": {
+    "metaTitle": "Why CareerCraft Is Different | Free ATS Resume Builder in India",
+    "metaDescription": "Learn how CareerCraft offers a free ATS-friendly resume builder in India with no signup, no payments, and only optimized resume templates.",
+    "keywords": [
+      "free resume builder India",
+      "ATS resume builder",
+      "resume builder without signup",
+      "free ATS resume templates",
+      "best resume builder for freshers",
+      "Indian resume builder",
+      "resume maker India"
+    ]
+  }
+},
+
+    {
   "id": 29,
   "slug": "ats-friendly-resume-us-jobs-from-india",
   "title": "How to Make an ATS-Friendly Resume for US Jobs from India",
