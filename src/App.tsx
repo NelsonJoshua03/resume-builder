@@ -1,10 +1,10 @@
-// src/App.tsx - UPDATED WITH ADMIN DASHBOARD AND PROFESSIONAL RESUME SYSTEM
+// src/App.tsx - ONLY ROUTE CHANGES
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
 import Layout from "./components/Layout";
 import ResumeBuilder from "./components/ResumeBuilder";
-import SEOOptimizedResumeBuilder from "./components/SEOOptimizedResumeBuilder"; // ADD THIS IMPORT
+import SEOOptimizedResumeBuilder from "./components/SEOOptimizedResumeBuilder";
 import HomePage from "./components/HomePage";
 import JobDisciplines from "./components/JobDisciplines";
 import JobApplications from "./components/JobApplications";
@@ -24,7 +24,7 @@ import FreshGraduateGuide from './components/FreshGraduateGuide';
 import TermsOfService from "./components/TermsOfService";
 import CookiePolicy from "./components/CookiePolicy";
 import Contact from "./components/Contact";
-import JobDrives from './components/JobDrives';
+import JobDrives from './components/JobDrives'; // KEEP OLD COMPONENT
 import AdminJobDrives from './components/AdminJobDrives';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import GovernmentExams from "./components/GovernmentExams";
@@ -98,12 +98,20 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/builder" element={<ResumeBuilder />} /> {/* Keep for backward compatibility */}
               <Route path="/job-disciplines" element={<JobDisciplines />} />
-              <Route path="/job-applications" element={<JobApplications />} />
+              {/* UPDATED: Changed from /job-applications to /latest-jobs-for-freshers-india for better SEO */}
+              <Route path="/latest-jobs-for-freshers-india" element={<JobApplications />} />
+              {/* Keep old route for redirect purposes */}
+              <Route path="/job-applications" element={<Navigate to="/latest-jobs-for-freshers-india" replace />} />
               <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/edit" element={<EditResumePage />} />
+
+              {/* NEW SEO-OPTIMIZED ROUTE - SAME OLD COMPONENT */}
+              <Route path="/latest-walk-in-drives-india" element={<JobDrives />} />
+              {/* Keep old route for redirect purposes */}
+              <Route path="/job-drives" element={<Navigate to="/latest-walk-in-drives-india" replace />} />
 
               {/* SEO-Optimized Resume Builder Routes */}
               <Route path="/free-resume-builder" element={<SEOOptimizedResumeBuilder />} />
@@ -230,7 +238,6 @@ function App() {
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/cookies" element={<CookiePolicy />} />
               <Route path="/contact" element={<Contact />} />
-              <Route path="/job-drives" element={<JobDrives />} />
               <Route path="/government-exams" element={<GovernmentExams />} />
 
               {/* Quick Admin Access - Redirects */}

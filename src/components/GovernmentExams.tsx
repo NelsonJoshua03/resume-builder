@@ -507,7 +507,7 @@ const GovernmentExams: React.FC = () => {
                   Create ATS-friendly resume for government job applications
                 </p>
                 <Link 
-                  to="/builder" 
+                  to="/free-resume-builder" 
                   onClick={() => trackButtonClick('build_resume_sidebar', 'sidebar_cta', 'government_exams')}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors block text-center"
                 >

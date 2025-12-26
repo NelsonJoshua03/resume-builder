@@ -2,6 +2,10 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
+  <!-- ======================== -->
+  <!-- HOME PAGE & CORE PAGES  -->
+  <!-- ======================== -->
+  
   <!-- Home Page -->
   <url>
     <loc>https://careercraft.in/</loc>
@@ -12,7 +16,69 @@
     <xhtml:link rel="alternate" hreflang="en-in" href="https://careercraft.in/" />
   </url>
 
-  <!-- SEO-Optimized Resume Builder Pages (HIGH PRIORITY) -->
+  <!-- ======================== -->
+  <!-- SEO-OPTIMIZED FRESHER JOB PAGES 2026 -->
+  <!-- ======================== -->
+  
+  <!-- NEW: Main Fresher Jobs Page -->
+  <url>
+    <loc>https://careercraft.in/latest-jobs-for-freshers-india</loc>
+    <lastmod>2024-12-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://careercraft.in/latest-jobs-for-freshers-india" />
+    <xhtml:link rel="alternate" hreflang="en-in" href="https://careercraft.in/latest-jobs-for-freshers-india" />
+  </url>
+  
+  <!-- 2026 Fresher Jobs Page (for future indexing) -->
+  <url>
+    <loc>https://careercraft.in/latest-jobs-for-freshers-india-2026</loc>
+    <lastmod>2024-12-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://careercraft.in/latest-jobs-for-freshers-india-2026" />
+  </url>
+  
+  <!-- ======================== -->
+  <!-- SEO-OPTIMIZED WALK-IN DRIVES PAGES -->
+  <!-- ======================== -->
+  
+  <!-- NEW: Main Walk-in Drives Page (Optimized for SEO) -->
+  <url>
+    <loc>https://careercraft.in/latest-walk-in-drives-india</loc>
+    <lastmod>2024-12-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://careercraft.in/latest-walk-in-drives-india" />
+    <xhtml:link rel="alternate" hreflang="en-in" href="https://careercraft.in/latest-walk-in-drives-india" />
+  </url>
+  
+  <!-- OLD: Job Drives Page (keep for existing indexing) -->
+  <url>
+    <loc>https://careercraft.in/job-drives</loc>
+    <lastmod>2024-12-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+ 
+  
+  <!-- ======================== -->
+  <!-- KEEP OLD PAGES FOR SEO INDEXING -->
+  <!-- ======================== -->
+  
+  <!-- OLD: Job Applications Page (keep for existing indexing) -->
+  <url>
+    <loc>https://careercraft.in/job-applications</loc>
+    <lastmod>2024-12-26</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- ======================== -->
+  <!-- SEO-OPTIMIZED RESUME BUILDER PAGES -->
+  <!-- ======================== -->
+  
   <url>
     <loc>https://careercraft.in/free-resume-builder</loc>
     <lastmod>2024-12-26</lastmod>
@@ -101,16 +167,12 @@
     <priority>0.6</priority>
   </url>
 
-  <!-- Job Pages -->
-  <url>
-    <loc>https://careercraft.in/job-disciplines</loc>
-    <lastmod>2024-12-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
+  <!-- ======================== -->
+  <!-- JOB PORTAL PAGES -->
+  <!-- ======================== -->
   
   <url>
-    <loc>https://careercraft.in/job-applications</loc>
+    <loc>https://careercraft.in/job-disciplines</loc>
     <lastmod>2024-12-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
@@ -123,13 +185,6 @@
     <priority>0.5</priority>
   </url>
   
-  <url>
-    <loc>https://careercraft.in/job-drives</loc>
-    <lastmod>2024-12-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
-
   <!-- Job Discipline Specific Pages -->
   <url>
     <loc>https://careercraft.in/job-disciplines/mechanical-engineering</loc>
@@ -152,7 +207,10 @@
     <priority>0.4</priority>
   </url>
 
-  <!-- Career Resources -->
+  <!-- ======================== -->
+  <!-- CAREER RESOURCES -->
+  <!-- ======================== -->
+  
   <url>
     <loc>https://careercraft.in/fresh-graduate-guide</loc>
     <lastmod>2024-12-26</lastmod>
@@ -167,7 +225,10 @@
     <priority>0.4</priority>
   </url>
 
-  <!-- Company Pages -->
+  <!-- ======================== -->
+  <!-- COMPANY PAGES -->
+  <!-- ======================== -->
+  
   <url>
     <loc>https://careercraft.in/about</loc>
     <lastmod>2024-12-26</lastmod>
@@ -182,7 +243,10 @@
     <priority>0.3</priority>
   </url>
 
-  <!-- Legal Pages -->
+  <!-- ======================== -->
+  <!-- LEGAL PAGES -->
+  <!-- ======================== -->
+  
   <url>
     <loc>https://careercraft.in/privacy</loc>
     <lastmod>2024-12-26</lastmod>

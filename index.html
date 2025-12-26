@@ -37,7 +37,7 @@
     <script>
       // Set environment variables for React app
       window.REACT_APP_ADMIN_PASSWORD = 'YOUR_SECURE_ADMIN_PASSWORD_2025';
-      console.log('Admin password loaded from index.html');
+      
     </script>
     
     <!-- Google Verification -->
@@ -56,14 +56,14 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://careercraft.in/">
     
-    <!-- Enhanced Structured Data -->
+    <!-- Enhanced Structured Data for Fresher Jobs -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "CareerCraft India",
       "url": "https://careercraft.in/",
-      "description": "India's premier career platform - Free ATS-friendly resume builder and job portal for Indian job seekers. Find jobs in IT, engineering, marketing and more.",
+      "description": "India's premier career platform - Free ATS-friendly resume builder and job portal for Indian job seekers. Find latest fresher jobs in IT, engineering, marketing and more.",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web Browser",
       "permissions": "browser",
@@ -81,6 +81,7 @@
       },
       "featureList": [
         "Free ATS Resume Builder",
+        "Latest Fresher Jobs in India",
         "Online Resume Maker",
         "CV Maker Online",
         "Professional Resume Templates",
@@ -99,7 +100,7 @@
       "@type": "Organization",
       "name": "CareerCraft India",
       "url": "https://careercraft.in/",
-      "description": "India's free ATS-friendly resume builder and job portal",
+      "description": "India's free ATS-friendly resume builder and fresher job portal",
       "email": "contact@careercraft.in",
       "address": {
         "@type": "PostalAddress",
@@ -116,7 +117,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://careercraft.in/" />
     <meta property="og:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
-    <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India." />
+    <meta property="og:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest fresher job openings in IT, engineering, marketing sectors across India." />
     <meta property="og:image" content="https://careercraft.in/og/careercraft-homepage-preview.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -127,7 +128,7 @@
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://careercraft.in/" />
     <meta property="twitter:title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
-    <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings across India." />
+    <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest fresher job openings across India." />
     <meta property="twitter:image" content="https://careercraft.in/og/careercraft-homepage-preview.jpg" />
     
     <!-- Firebase Configuration (Production) -->
@@ -158,9 +159,7 @@
         const auth = getAuth(app);
         const performance = getPerformance(app);
         
-        console.log('✅ Firebase initialized successfully in index.html');
-        console.log('Firebase Project ID:', firebaseConfig.projectId);
-        console.log('Firebase App Name:', app.name);
+        
         
         // Set global variables for app to use
         window.firebaseApp = app;
@@ -479,6 +478,12 @@
         {
           "@type": "ListItem",
           "position": 2,
+          "name": "Fresher Jobs India",
+          "item": "https://careercraft.in/latest-jobs-for-freshers-india"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
           "name": "Resume Builder",
           "item": "https://careercraft.in/free-resume-builder"
         }

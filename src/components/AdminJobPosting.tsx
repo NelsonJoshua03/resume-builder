@@ -658,7 +658,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           {/* Header */}
           <div className="mb-8">
             <Link 
-              to="/job-applications" 
+              to="/latest-jobs-for-freshers-india" 
               className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
               onClick={() => trackCTAClick('back_to_jobs', 'navigation', 'admin_job_posting')}
             >

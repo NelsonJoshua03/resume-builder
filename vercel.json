@@ -9,6 +9,26 @@
   ],
   "routes": [
     {
+      "src": "/job-drives",
+      "dest": "/latest-walk-in-drives-india",
+      "status": 301
+    },
+    {
+      "src": "/job-drives/(.*)",
+      "dest": "/latest-walk-in-drives-india",
+      "status": 301
+    },
+    {
+      "src": "/job-applications",
+      "dest": "/latest-jobs-for-freshers-india",
+      "status": 301
+    },
+    {
+      "src": "/job-applications/(.*)",
+      "dest": "/latest-jobs-for-freshers-india",
+      "status": 301
+    },
+    {
       "src": "/free-resume-builder",
       "dest": "/index.html"
     },

@@ -1,4 +1,4 @@
-// src/components/Layout.tsx - UPDATED WITH SEO-FRIENDLY NAVIGATION
+// src/components/Layout.tsx - UPDATED WITH CORRECT LATEST WALK-IN DRIVES LINK
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -125,7 +125,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </span>
               </Link>
               
-              {/* Navigation Menu - UPDATED: Added SEO-friendly links */}
+              {/* Navigation Menu - UPDATED: Changed link to new URL */}
               <div className="hidden md:flex space-x-4 lg:space-x-6">
                 <Link 
                   to="/government-exams" 
@@ -147,28 +147,32 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   Job Disciplines
                 </Link>
+                
+                {/* NEW: Fresher Jobs Link */}
                 <Link 
-                  to="/job-applications" 
+                  to="/latest-jobs-for-freshers-india" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/job-applications') 
+                    location.pathname.includes('/latest-jobs-for-freshers-india') 
                       ? 'text-blue-600' 
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
                 >
-                  Job Applications
-                </Link>
-                <Link 
-                  to="/job-drives" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/job-drives') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                >
-                  Walk-in Drives
+                  Fresher Jobs 2026
                 </Link>
                 
-                {/* Resume Templates Dropdown - UPDATED with SEO-friendly links */}
+                {/* NEW: Latest Walk-in Drives Link (SEO Optimized) - FIXED LINK */}
+                <Link 
+                  to="/latest-walk-in-drives-india" 
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname.includes('/latest-walk-in-drives-india') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  Latest Walk-in Drives
+                </Link>
+                
+                {/* Resume Templates Dropdown */}
                 <div className="relative group" ref={dropdownRef}>
                   <button 
                     className="font-medium transition-colors text-sm lg:text-base text-gray-700 hover:text-blue-600 flex items-center gap-1"
@@ -267,7 +271,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </main>
 
-        {/* Footer - UPDATED: Added SEO-friendly links */}
+        {/* Footer - UPDATED: Changed link to new URL */}
         <footer className="bg-gray-900 text-white py-8 md:py-12 mt-auto w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 mb-6 md:mb-8">
@@ -308,8 +312,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Home</Link></li>
                   <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Government Exams</Link></li>
                   <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Disciplines</Link></li>
-                  <li><Link to="/job-applications" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Applications</Link></li>
-                  <li><Link to="/job-drives" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Walk-in Drives</Link></li>
+                  <li><Link to="/latest-jobs-for-freshers-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Fresher Jobs 2026</Link></li>
+                  <li><Link to="/latest-walk-in-drives-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Latest Walk-in Drives</Link></li>
                 </ul>
               </div>
               
