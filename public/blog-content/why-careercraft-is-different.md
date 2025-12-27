@@ -125,13 +125,13 @@ Unlike static platforms, CareerCraft evolves:
 ### Step 1: Choose Your Path
 
 **Option A: Quick Resume**
-1. Go to `/builder`
+1. Go to https://careercraft.in/free-resume-builder
 2. Select template
 3. Download instantly
 4. Edit later if needed
 
 **Option B: Detailed Resume**
-1. Go to `/edit`
+1. Go to https://careercraft.in/edit
 2. Fill all sections
 3. Customize with colors
 4. Preview & download
