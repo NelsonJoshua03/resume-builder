@@ -17,6 +17,7 @@ import {
   isSupported 
 } from 'firebase/analytics';
 import { getAuth, Auth } from 'firebase/auth';
+
 import { getPerformance } from 'firebase/performance';
 
 // Firebase Configuration - Using hardcoded values for production
@@ -208,6 +209,7 @@ export const initializeFirebase = async (): Promise<{
 
   return { app, firestore, analytics, auth, performance };
 };
+
 
 // Get service instances
 export const getFirestoreInstance = (): Firestore | null => {

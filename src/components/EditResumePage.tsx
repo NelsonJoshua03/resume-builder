@@ -1,4 +1,4 @@
-// EditResumePage.tsx - COMPLETE WITH FIREBASE ANALYTICS, ENHANCED SEO AND ADMIN MODE
+// src/components/EditResumePage.tsx - UPDATED WITH BACKEND INTEGRATION
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -15,10 +15,10 @@ import SectionOrderCustomizer from './SectionOrderCustomizer';
 import SEO from './SEO';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
-import { adminLogin, isAdmin, getAdminStatus, adminLogout } from '../utils/adminAuth';
+import { adminAuthService } from '../services/adminAuthService';
 import type { PersonalInfoData } from './types';
 
-// Structured Data Components (included inline to avoid import errors)
+// Structured Data Components
 const StructuredDataComponent = ({ type, data }: { type: string; data: any }) => (
   <Helmet>
     <script type="application/ld+json">
@@ -173,7 +173,7 @@ const EditResumePage = () => {
     updateSectionTitle,
     removeSection,
     sectionTitles,
-    // NEW: Professional resume functions
+    // Professional resume functions
     isProfessionalMode,
     currentProfessionalResumeId,
     clientInfo,
@@ -222,47 +222,56 @@ const EditResumePage = () => {
 
   // ADMIN MODE STATES
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientNotes, setClientNotes] = useState('');
   const [saveToDatabase, setSaveToDatabase] = useState(true);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('');
   const [adminLoginError, setAdminLoginError] = useState('');
   const [savingStatus, setSavingStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [resumeIdFromUrl, setResumeIdFromUrl] = useState<string | null>(null);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
 
   // Check admin status on mount and handle URL parameters
   useEffect(() => {
-    const checkAdminStatus = () => {
-      const adminStatus = isAdmin();
-      setIsAdminMode(adminStatus);
-      
-      if (adminStatus) {
-        console.log('🔐 Admin mode active');
+    const checkAdminStatus = async () => {
+      try {
+        setIsCheckingAdmin(true);
+        const status = await adminAuthService.checkAdminStatus();
+        setIsAdminMode(status.isAdmin);
         
-        // Set professional mode in context
-        setProfessionalMode(true);
-        
-        // Check URL for parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const email = urlParams.get('clientEmail');
-        const name = urlParams.get('clientName');
-        const resumeId = urlParams.get('resumeId');
-        
-        if (email) {
-          setClientEmail(email);
-          setClientInfo({ email, name: name || '' });
+        if (status.isAdmin) {
+          console.log('🔐 Admin mode active via backend');
+          
+          // Set professional mode in context
+          setProfessionalMode(true);
+          
+          // Check URL for parameters
+          const urlParams = new URLSearchParams(window.location.search);
+          const email = urlParams.get('clientEmail');
+          const name = urlParams.get('clientName');
+          const resumeId = urlParams.get('resumeId');
+          
+          if (email) {
+            setClientEmail(email);
+            setClientInfo({ email, name: name || '' });
+          }
+          if (name) setClientName(name);
+          if (resumeId) {
+            setResumeIdFromUrl(resumeId);
+            // Load the professional resume
+            handleLoadProfessionalResume(resumeId);
+          }
+          
+          setShowAdminPanel(true);
         }
-        if (name) setClientName(name);
-        if (resumeId) {
-          setResumeIdFromUrl(resumeId);
-          // Load the professional resume
-          handleLoadProfessionalResume(resumeId);
-        }
-        
-        setShowAdminPanel(true);
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      } finally {
+        setIsCheckingAdmin(false);
       }
     };
     
@@ -270,7 +279,7 @@ const EditResumePage = () => {
     
     // Listen for storage changes (admin login/logout)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'is_admin') {
+      if (e.key === 'careercraft_admin_token' || e.key === 'is_admin') {
         checkAdminStatus();
       }
     };
@@ -279,38 +288,80 @@ const EditResumePage = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Handle admin login
-  const handleAdminLogin = () => {
+  // Handle admin login via backend
+  const handleAdminLogin = async () => {
     setAdminLoginError('');
     
-    // Simple password check
-    if (adminPassword === 'YOUR_SECURE_ADMIN_PASSWORD_2025') {
-      adminLogin(adminPassword);
-      setIsAdminMode(true);
-      setProfessionalMode(true);
-      setShowAdminPanel(true);
-      setAdminPassword('');
+    if (!adminEmail || !adminPassword) {
+      setAdminLoginError('Email and password are required');
+      return;
+    }
+    
+    try {
+      console.log('🔐 Attempting admin login via backend...');
+      const result = await adminAuthService.login(adminEmail, adminPassword);
       
-      // Track admin login
-      trackFirebaseEvent({
-        eventName: 'admin_logged_in',
-        eventCategory: 'Admin',
-        eventLabel: 'login',
-        pagePath: '/edit',
-        pageTitle: 'Edit Resume',
-        metadata: {
-          login_time: new Date().toISOString(),
-          session_id: editSessionId.current
-        }
-      });
-      
-      alert('✅ Admin login successful! Professional mode activated.');
-    } else {
-      setAdminLoginError('Invalid admin password');
+      if (result.success) {
+        setIsAdminMode(true);
+        setProfessionalMode(true);
+        setShowAdminPanel(true);
+        setAdminEmail('');
+        setAdminPassword('');
+        
+        // Track admin login
+        trackFirebaseEvent({
+          eventName: 'admin_logged_in',
+          eventCategory: 'Admin',
+          eventLabel: 'login',
+          pagePath: '/edit',
+          pageTitle: 'Edit Resume',
+          metadata: {
+            login_time: new Date().toISOString(),
+            session_id: editSessionId.current,
+            login_method: 'backend'
+          }
+        });
+        
+        alert('✅ Admin login successful! Professional mode activated.');
+      } else {
+        setAdminLoginError(result.error || 'Login failed');
+        trackFirebaseError('admin_login_failed', 'Admin', result.error || 'Unknown error');
+      }
+    } catch (error: any) {
+      console.error('Admin login error:', error);
+      setAdminLoginError(error.message || 'Network error - please try again');
+      trackFirebaseError('admin_login_exception', 'Admin', error.message);
     }
   };
 
-  // Handle loading professional resume
+  // Handle admin logout via backend
+  const handleAdminLogout = async () => {
+    try {
+      const result = await adminAuthService.logout();
+      
+      if (result.success) {
+        setIsAdminMode(false);
+        setProfessionalMode(false);
+        setShowAdminPanel(false);
+        setClientEmail('');
+        setClientName('');
+        setClientPhone('');
+        setClientNotes('');
+        
+        // Clear professional data
+        clearProfessionalData();
+        
+        alert('✅ Admin logged out successfully!');
+      } else {
+        alert('❌ Logout failed: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error: any) {
+      console.error('Admin logout error:', error);
+      alert('❌ Logout error: ' + error.message);
+    }
+  };
+
+  // Handle loading professional resume via backend
   const handleLoadProfessionalResume = async (resumeId: string) => {
     try {
       const result = await loadProfessionalResume(resumeId);
@@ -333,7 +384,7 @@ const EditResumePage = () => {
     }
   };
 
-  // New function for saving to professional database
+  // New function for saving to professional database via backend
   const handleSaveToProfessionalDatabase = async () => {
     if (!clientEmail) {
       alert('⚠️ Please enter client email to save to professional database');
@@ -351,9 +402,15 @@ const EditResumePage = () => {
         notes: clientNotes
       });
       
-      const result = await saveToProfessionalDatabase();
+      // Use backend service to create professional resume
+      const result = await adminAuthService.createProfessionalResume(resumeData, {
+        email: clientEmail,
+        name: clientName,
+        phone: clientPhone,
+        notes: clientNotes
+      });
       
-      if (result.success) {
+      if (result.success && result.id) {
         setSavingStatus('success');
         
         // Track successful professional save
@@ -368,13 +425,13 @@ const EditResumePage = () => {
             resume_id: result.id,
             sections_count: Object.keys(resumeData).length,
             session_id: editSessionId.current,
-            admin_id: localStorage.getItem('admin_token') || 'unknown'
+            save_method: 'backend_cloud_function'
           }
         });
         
         alert(`✅ Resume saved to professional database for ${clientEmail}\nResume ID: ${result.id}`);
         
-        // Optionally redirect to builder for PDF generation
+        // Redirect to builder for PDF generation with resume ID
         setTimeout(() => {
           window.location.href = `/builder?resumeId=${result.id}&clientEmail=${encodeURIComponent(clientEmail)}`;
         }, 2000);
@@ -424,9 +481,10 @@ const EditResumePage = () => {
     });
     
     console.log('✅ Resume saved to local storage:', resumeId);
+    return resumeId;
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     const timeSpent = Math.round((Date.now() - pageEnterTime.current) / 1000);
     const overallCompletion = calculateCompletion(resumeData);
     const sectionsCompleted = getCompletedSectionsCount(resumeData);
@@ -438,14 +496,14 @@ const EditResumePage = () => {
       trackSectionCompletion(sectionId, completion);
     });
     
-    // ADMIN-ONLY: Save to Firebase professional database
+    // ADMIN-ONLY: Save to Firebase professional database via backend
     if (isAdminMode && saveToDatabase && clientEmail) {
-      handleSaveToProfessionalDatabase();
+      await handleSaveToProfessionalDatabase();
       return; // Don't show regular save alert
     }
     
     // REGULAR USERS: LocalStorage only
-    saveToLocalStorage();
+    const savedId = saveToLocalStorage();
     
     // Google Analytics
     trackGAButtonClick('save_changes', 'quick_actions', 'edit_page');
@@ -480,8 +538,9 @@ const EditResumePage = () => {
         has_education: resumeData.education.length > 0,
         has_projects: resumeData.projects.length > 0,
         has_skills: resumeData.skills.length >= 3,
-        save_type: 'manual',
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
+        save_type: isAdminMode ? 'admin' : 'user',
+        save_method: isAdminMode ? 'professional_database' : 'local_storage',
+        resume_id: savedId,
         is_professional: isAdminMode && saveToDatabase
       }
     });
@@ -520,7 +579,7 @@ const EditResumePage = () => {
     const saveCount = parseInt(localStorage.getItem('save_count') || '0') + 1;
     localStorage.setItem('save_count', saveCount.toString());
 
-    alert('✅ Changes saved successfully!');
+    alert('✅ Changes saved successfully!' + (isAdminMode ? '\nProfessional resume saved to database.' : '\nSaved to local storage.'));
   };
 
   // FAQ Data for Structured Data
@@ -1185,10 +1244,23 @@ const EditResumePage = () => {
             
             <div className="mb-6">
               <p className="text-gray-600 mb-4">
-                Enter admin password to access professional resume creation mode.
+                Login as admin to access professional resume creation mode.
               </p>
               
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Admin Email
+                  </label>
+                  <input
+                    type="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="admin@careercraft.in"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Admin Password
@@ -1238,9 +1310,17 @@ const EditResumePage = () => {
                 This resume will be saved to the professional database for future access.
               </p>
             </div>
-            <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-              ADMIN
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                ADMIN
+              </span>
+              <button
+                onClick={handleAdminLogout}
+                className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-red-600"
+              >
+                Logout
+              </button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1684,6 +1764,14 @@ const EditResumePage = () => {
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <h3 className="font-semibold text-gray-800 mb-2">Quick Actions</h3>
                   <div className="space-y-2">
+                    {!isAdminMode && (
+                      <button
+                        onClick={() => setShowAdminPanel(true)}
+                        className="w-full bg-purple-600 text-white px-3 py-2.5 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                      >
+                        👑 Admin Login
+                      </button>
+                    )}
                     <Link
                       to="/builder"
                       onClick={() => {
@@ -2286,6 +2374,17 @@ const EditResumePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Admin Access Button */}
+      {!isAdminMode && !showAdminPanel && (
+        <button
+          onClick={() => setShowAdminPanel(true)}
+          className="fixed bottom-6 right-6 bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 z-40"
+          title="Admin Login"
+        >
+          👑
+        </button>
+      )}
 
       {/* Firebase Analytics Debug Panel */}
       {process.env.NODE_ENV === 'development' && (

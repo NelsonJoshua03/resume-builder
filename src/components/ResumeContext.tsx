@@ -1,5 +1,6 @@
 // ResumeContext.tsx - Complete fixed imports
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { isAdmin } from '../utils/adminAuth'; // This will work now
 import type { FC, ReactNode } from 'react';
 import type { 
   ResumeData, 
@@ -14,7 +15,7 @@ import type {
   ResumeMetadata,
   ProfessionalResume
 } from './types';
-import { isAdmin } from '../utils/adminAuth';
+
 import { 
   saveProfessionalResume, 
   updateProfessionalResume,
@@ -224,12 +225,16 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   // Initialize professional mode from URL or localStorage
   useEffect(() => {
+  const initializeProfessionalMode = async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const resumeId = urlParams.get('resumeId');
     const clientEmail = urlParams.get('clientEmail');
     const adminMode = urlParams.get('adminMode') === 'true';
     
-    if (adminMode && isAdmin()) {
+    // ✅ FIXED: Check admin status asynchronously
+    const isAdminUser = await isAdmin();
+    
+    if (adminMode && isAdminUser) {
       setIsProfessionalMode(true);
       
       if (resumeId) {
@@ -246,12 +251,15 @@ export const ResumeProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
     }
     
-    // Check localStorage for professional mode
+    // ✅ FIXED: Check local storage with admin status
     const savedProfessionalMode = localStorage.getItem('is_professional_mode') === 'true';
-    if (savedProfessionalMode && isAdmin()) {
+    if (savedProfessionalMode && isAdminUser) {
       setIsProfessionalMode(true);
     }
-  }, []);
+  };
+  
+  initializeProfessionalMode();
+}, []);
 
   // Helper function to safely get string length
   const getStringLength = (value: any): number => {
