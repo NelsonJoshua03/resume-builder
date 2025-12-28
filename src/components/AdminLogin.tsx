@@ -41,20 +41,21 @@ const AdminLogin: React.FC = () => {
       
       // Simple ping to check if backend is reachable
       const response = await fetch(
-        'https://us-central1-careercraft-36711.cloudfunctions.net/adminLogin',
+        'https://us-central1-careercraft-36711.cloudfunctions.net/ping',
         {
-          method: 'POST',
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email: 'test@test.com', password: 'test' }),
         }
       );
       
-      if (response.status !== 400) {
-        setBackendStatus('❌ Unexpected response');
-      } else {
+      if (response.ok) {
+        const data = await response.json();
         setBackendStatus('✅ Backend reachable');
+        console.log('Ping response:', data);
+      } else {
+        setBackendStatus('❌ Backend error');
       }
     } catch (error: any) {
       setBackendStatus('❌ Backend unreachable - Check functions deployment');
@@ -157,10 +158,10 @@ const AdminLogin: React.FC = () => {
     console.log('🧪 Quick admin test...');
     console.log('Admin status:', await adminAuthService.checkAdminStatus());
     
-    // Test with placeholder credentials (show in dev only)
+    // Test with correct credentials
     if (process.env.NODE_ENV === 'development') {
-      setEmail('test@careercraft.in');
-      setPassword('YOUR_ADMIN_PASSWORD_HERE');
+      setEmail('nelsonjoshua03@outlook.com');
+      setPassword('rtyiubvc5674@N');
       alert('Test credentials populated. Click Login to test.');
     }
   };
@@ -192,7 +193,7 @@ const AdminLogin: React.FC = () => {
       
       // Test verifyAdminToken
       const verifyResponse = await fetch(
-        'https://us-central1-careercraft-36711.cloudfunctions.net/verifyAdminToken',
+        'https://us-central1-careercraft-36711.cloudfunctions.net/adminCheck',
         {
           method: 'POST',
           headers: {
@@ -205,11 +206,47 @@ const AdminLogin: React.FC = () => {
       const verifyData = await verifyResponse.json();
       console.log('Verify token result:', verifyData);
       
-      alert(`Backend functions test:\nVerify Token: ${verifyData.success ? '✅' : '❌'}`);
+      alert(`Backend functions test:\nVerify Token: ${verifyData.success ? '✅' : '❌'}\nIs Admin: ${verifyData.isAdmin ? '✅' : '❌'}`);
       
     } catch (error: any) {
       console.error('Backend test error:', error);
       alert('Backend test failed: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testDirectBackendLogin = async () => {
+    try {
+      setLoading(true);
+      console.log('🧪 Testing direct backend login...');
+      
+      const response = await fetch(
+        'https://us-central1-careercraft-36711.cloudfunctions.net/adminLogin',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            email: 'nelsonjoshua03@outlook.com', 
+            password: 'rtyiubvc5674@N' 
+          }),
+        }
+      );
+      
+      const data = await response.json();
+      console.log('Direct backend login response:', data);
+      
+      if (response.ok) {
+        alert(`✅ Direct backend login successful!\n\nUser: ${data.user?.email}\nUID: ${data.user?.uid}\n\nCheck console for details.`);
+      } else {
+        alert(`❌ Direct backend login failed: ${data.error || response.statusText}`);
+      }
+      
+    } catch (error: any) {
+      console.error('Direct backend test error:', error);
+      alert(`❌ Network error: ${error.message}\n\nCheck:\n1. Firebase Functions deployment\n2. CORS configuration\n3. Internet connection`);
     } finally {
       setLoading(false);
     }
@@ -313,13 +350,13 @@ const AdminLogin: React.FC = () => {
               type="button"
               onClick={() => {
                 setError('');
-                setEmail('test@careercraft.in');
-                setPassword('YOUR_ADMIN_PASSWORD_HERE');
+                setEmail('nelsonjoshua03@outlook.com');
+                setPassword('rtyiubvc5674@N');
                 alert('Test credentials populated. Click Login to test.');
               }}
               className="text-sm font-medium text-blue-600 hover:text-blue-500"
             >
-              Forgot password?
+              Load Test Credentials
             </button>
           </div>
 
@@ -417,9 +454,15 @@ const AdminLogin: React.FC = () => {
                   </button>
                   <button
                     onClick={testBackendFunctions}
-                    className="col-span-2 bg-blue-500 text-white text-xs py-1 px-2 rounded hover:bg-blue-600 transition-colors"
+                    className="bg-blue-500 text-white text-xs py-1 px-2 rounded hover:bg-blue-600 transition-colors"
                   >
-                    Test Backend Functions
+                    Test Backend
+                  </button>
+                  <button
+                    onClick={testDirectBackendLogin}
+                    className="bg-green-500 text-white text-xs py-1 px-2 rounded hover:bg-green-600 transition-colors"
+                  >
+                    Direct Backend Test
                   </button>
                 </div>
               </div>
@@ -444,7 +487,7 @@ const AdminLogin: React.FC = () => {
             </li>
             <li className="flex items-start">
               <span className="mr-2">•</span>
-              <span>Secure custom tokens with admin claims</span>
+              <span>Secure admin claims with custom tokens</span>
             </li>
             <li className="flex items-start">
               <span className="mr-2">•</span>
@@ -454,10 +497,14 @@ const AdminLogin: React.FC = () => {
           
           <div className="mt-3 pt-3 border-t border-blue-200">
             <p className="text-xs text-blue-600">
-              <strong>Function URL:</strong> https://us-central1-careercraft-36711.cloudfunctions.net/adminLogin
+              <strong>Allowed Admin Emails:</strong>
             </p>
-            <p className="text-xs text-gray-600 mt-1">
-              Change admin password with: <code className="bg-gray-100 px-1 rounded">firebase functions:config:set admin.password="NEW_PASSWORD"</code>
+            <ul className="text-xs text-gray-600 mt-1 space-y-1">
+              <li>• nelsonjoshua03@outlook.com</li>
+              <li>• contact@careercraft.in</li>
+            </ul>
+            <p className="text-xs text-gray-600 mt-2">
+              <strong>Password:</strong> rtyiubvc5674@N
             </p>
           </div>
         </div>
@@ -485,7 +532,7 @@ const AdminLogin: React.FC = () => {
               View Logs
             </button>
             <button
-              onClick={() => window.open('https://us-central1-careercraft-36711.cloudfunctions.net/', '_blank')}
+              onClick={() => window.open('https://us-central1-careercraft-36711.cloudfunctions.net/ping', '_blank')}
               className="text-xs text-orange-600 hover:text-orange-800 bg-orange-50 px-2 py-1 rounded transition-colors"
             >
               Functions Status

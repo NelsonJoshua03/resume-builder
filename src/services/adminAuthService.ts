@@ -1,5 +1,5 @@
-// src/services/adminAuthService.ts - SIMPLIFIED VERSION
-import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
+// src/services/adminAuthService.ts - UPDATED VERSION
+import { getAuth, signInWithCustomToken, signOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { initializeFirebase } from '../firebase/config';
 
@@ -42,6 +42,18 @@ class AdminAuthService {
     try {
       console.log('🔐 Attempting admin login via backend...');
       
+      // First, check if email is allowed (frontend validation)
+      const allowedEmails = ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      if (!allowedEmails.includes(normalizedEmail)) {
+        console.log(`❌ Email ${normalizedEmail} not in allowed list`);
+        return { 
+          success: false, 
+          error: 'Email not authorized for admin access. Use: nelsonjoshua03@outlook.com or contact@careercraft.in' 
+        };
+      }
+      
       // Call Cloud Function for admin login
       const response = await fetch(
         'https://us-central1-careercraft-36711.cloudfunctions.net/adminLogin',
@@ -51,22 +63,69 @@ class AdminAuthService {
             'Content-Type': 'application/json',
           },
           mode: 'cors',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ 
+            email: normalizedEmail, 
+            password: password 
+          }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Try to get error message from response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        
+        return { 
+          success: false, 
+          error: errorMessage 
+        };
       }
 
       const data = await response.json();
+      console.log('Admin login response:', data);
       
       if (data.success && data.user) {
-        // Sign in to Firebase with the custom token if provided
+        // Try to sign in with custom token if provided
         if (data.token) {
-          const auth = getAuth();
-          await signInWithCustomToken(auth, data.token);
+          try {
+            const auth = getAuth();
+            await signInWithCustomToken(auth, data.token);
+            console.log('✅ Signed in with custom token');
+          } catch (tokenError: any) {
+            console.error('Custom token sign-in failed:', tokenError);
+            // Try email/password sign-in as fallback
+            try {
+              const auth = getAuth();
+              await signInWithEmailAndPassword(auth, normalizedEmail, password);
+              console.log('✅ Signed in with email/password');
+            } catch (emailError: any) {
+              console.error('Email/password sign-in failed:', emailError);
+              // Still return success since backend validated
+            }
+          }
+        } else {
+          // Try to sign in with email/password
+          try {
+            const auth = getAuth();
+            await signInWithEmailAndPassword(auth, normalizedEmail, password);
+            console.log('✅ Signed in with email/password');
+          } catch (emailError: any) {
+            console.error('Email/password sign-in failed:', emailError);
+            // Still return success since backend validated
+          }
         }
+        
+        // Store admin session info
+        localStorage.setItem('admin_email', normalizedEmail);
+        localStorage.setItem('admin_last_login', Date.now().toString());
+        localStorage.setItem('careercraft_admin_token', 'authenticated');
+        localStorage.setItem('is_admin', 'true');
         
         console.log('✅ Admin login successful via backend');
         return { success: true, user: data.user };
@@ -81,7 +140,7 @@ class AdminAuthService {
       if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
         return { 
           success: false, 
-          error: 'CORS error: Backend not accessible. Please check Firebase Functions deployment.' 
+          error: 'Network error: Cannot connect to backend. Please check:\n1. Firebase Functions deployment\n2. CORS configuration\n3. Internet connection' 
         };
       }
       
@@ -101,7 +160,7 @@ class AdminAuthService {
       const user = auth.currentUser;
       
       if (user) {
-        // Call logout function to log the action
+        // Try to call logout function to log the action
         try {
           const idToken = await user.getIdToken();
           await fetch(
@@ -128,6 +187,9 @@ class AdminAuthService {
       localStorage.removeItem('careercraft_admin_token');
       localStorage.removeItem('is_admin');
       
+      // Also clear session storage
+      sessionStorage.removeItem('admin_session');
+      
       console.log('✅ Admin logged out');
       return { success: true };
       
@@ -145,7 +207,14 @@ class AdminAuthService {
       const auth = getAuth();
       const user = auth.currentUser;
       
-      if (!user) return false;
+      if (!user) {
+        // Check localStorage for admin flag
+        const isAdminLocal = localStorage.getItem('is_admin') === 'true';
+        if (isAdminLocal) {
+          console.log('⚠️ No Firebase user but localStorage says admin');
+        }
+        return isAdminLocal;
+      }
       
       // Get ID token to check claims
       const idTokenResult = await user.getIdTokenResult();
@@ -160,7 +229,8 @@ class AdminAuthService {
       
     } catch (error) {
       console.error('Check admin error:', error);
-      return false;
+      // Fallback to localStorage
+      return localStorage.getItem('is_admin') === 'true';
     }
   }
   
@@ -177,7 +247,7 @@ class AdminAuthService {
       const idToken = await user.getIdToken();
       
       const response = await fetch(
-        'https://us-central1-careercraft-36711.cloudfunctions.net/verifyAdminToken',
+        'https://us-central1-careercraft-36711.cloudfunctions.net/adminCheck',
         {
           method: 'POST',
           headers: {
@@ -188,7 +258,7 @@ class AdminAuthService {
       );
       
       const data = await response.json();
-      return data.success === true && data.user?.admin === true;
+      return data.success === true && data.isAdmin === true;
       
     } catch (error) {
       console.error('Verify token error:', error);
@@ -203,19 +273,39 @@ class AdminAuthService {
     isAdmin: boolean;
     user?: any;
     valid?: boolean;
+    error?: string;
   }> {
     try {
       const auth = getAuth();
       const user = auth.currentUser;
       
       if (!user) {
-        return { isAdmin: false };
+        // Check localStorage
+        const isAdminLocal = localStorage.getItem('is_admin') === 'true';
+        const adminEmail = localStorage.getItem('admin_email');
+        
+        return { 
+          isAdmin: isAdminLocal,
+          user: isAdminLocal ? { email: adminEmail } : null,
+          valid: false 
+        };
       }
       
-      const idToken = await user.getIdToken();
+      // Try to get ID token
+      let idToken;
+      try {
+        idToken = await user.getIdToken();
+      } catch (tokenError) {
+        console.warn('Cannot get ID token:', tokenError);
+        return { 
+          isAdmin: false,
+          valid: false,
+          error: 'Cannot get user token'
+        };
+      }
       
       const response = await fetch(
-        'https://us-central1-careercraft-36711.cloudfunctions.net/checkAdminStatus',
+        'https://us-central1-careercraft-36711.cloudfunctions.net/adminCheck',
         {
           method: 'POST',
           headers: {
@@ -225,16 +315,33 @@ class AdminAuthService {
         }
       );
       
+      // Check if response is OK
+      if (!response.ok) {
+        console.warn('Admin check response not OK:', response.status);
+        return { 
+          isAdmin: false,
+          valid: false,
+          error: `Backend error: ${response.status}`
+        };
+      }
+      
       const data = await response.json();
+      console.log('Admin check response:', data);
+      
       return {
         isAdmin: data.isAdmin === true,
         user: data.user,
-        valid: data.valid
+        valid: data.valid,
+        error: data.error
       };
       
     } catch (error: any) {
       console.warn('Check admin status error:', error);
-      return { isAdmin: false };
+      return { 
+        isAdmin: false,
+        valid: false,
+        error: error.message 
+      };
     }
   }
   
@@ -242,12 +349,24 @@ class AdminAuthService {
    * Get current admin user
    */
   async getAdminUser() {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    
-    if (!user) return null;
-    
     try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        // Check localStorage
+        const adminEmail = localStorage.getItem('admin_email');
+        if (adminEmail && localStorage.getItem('is_admin') === 'true') {
+          return {
+            uid: 'local_admin',
+            email: adminEmail,
+            displayName: 'Local Admin',
+            claims: { admin: true }
+          };
+        }
+        return null;
+      }
+      
       const idTokenResult = await user.getIdTokenResult();
       if (idTokenResult.claims.admin === true) {
         return {
@@ -257,11 +376,24 @@ class AdminAuthService {
           claims: idTokenResult.claims
         };
       }
+      
+      // If no claims, verify with backend
+      const isAdmin = await this.verifyAdminToken();
+      if (isAdmin) {
+        return {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          claims: { admin: true }
+        };
+      }
+      
+      return null;
+      
     } catch (error) {
       console.error('Get admin user error:', error);
+      return null;
     }
-    
-    return null;
   }
   
   /**
@@ -352,6 +484,70 @@ class AdminAuthService {
       return { 
         success: false, 
         error: error.message || 'Failed to get professional resume' 
+      };
+    }
+  }
+  
+  /**
+   * Test backend connection
+   */
+  async testBackendConnection(): Promise<{
+    success: boolean;
+    message: string;
+    data?: any;
+  }> {
+    try {
+      console.log('🔍 Testing backend connection...');
+      
+      // Test ping endpoint
+      const pingResponse = await fetch(
+        'https://us-central1-careercraft-36711.cloudfunctions.net/ping',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!pingResponse.ok) {
+        return {
+          success: false,
+          message: `Ping failed with status: ${pingResponse.status}`
+        };
+      }
+      
+      const pingData = await pingResponse.json();
+      
+      // Test debug config endpoint
+      const debugResponse = await fetch(
+        'https://us-central1-careercraft-36711.cloudfunctions.net/debugConfig',
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      const debugData = await debugResponse.json();
+      
+      return {
+        success: true,
+        message: 'Backend is reachable and functioning',
+        data: {
+          ping: pingData,
+          debug: debugData
+        }
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Backend connection test failed:', error);
+      
+      return {
+        success: false,
+        message: error.message || 'Backend unreachable - check Firebase Functions deployment',
+        data: null
       };
     }
   }
