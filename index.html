@@ -131,6 +131,46 @@
     <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest fresher job openings across India." />
     <meta property="twitter:image" content="https://careercraft.in/og/careercraft-homepage-preview.jpg" />
     
+    <!-- Hide debug logs in production -->
+    <script>
+      // Hide debug logs in production (show only on localhost)
+      window.DEBUG_MODE = window.location.hostname.includes('localhost') || 
+                         window.location.hostname.includes('127.0.0.1') ||
+                         window.location.search.includes('debug=true');
+      
+      // Override console methods for production
+      (function() {
+        const originalLog = console.log;
+        const originalInfo = console.info;
+        const originalDebug = console.debug;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        // Only show debug logs in debug mode
+        console.log = function(...args) {
+          if (window.DEBUG_MODE || !args[0]?.includes?.('Firebase') && !args[0]?.includes?.('Backend')) {
+            originalLog.apply(console, args);
+          }
+        };
+        
+        console.info = function(...args) {
+          if (window.DEBUG_MODE || !args[0]?.includes?.('Firebase') && !args[0]?.includes?.('Backend')) {
+            originalInfo.apply(console, args);
+          }
+        };
+        
+        console.debug = function(...args) {
+          if (window.DEBUG_MODE) {
+            originalDebug.apply(console, args);
+          }
+        };
+        
+        // Always show errors and warnings
+        console.warn = originalWarn;
+        console.error = originalError;
+      })();
+    </script>
+    
     <!-- Firebase Configuration (Production) - UPDATED -->
     <script type="module">
       // Import Firebase modules
@@ -169,12 +209,13 @@
         
         // Check GDPR consent
         const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-        if (!hasConsent) {
+        if (!hasConsent && window.DEBUG_MODE) {
           console.log('GDPR consent not given, Firebase analytics disabled');
         }
         
-        console.log('✅ Firebase initialized with Cloud Functions support');
-        console.log('🔗 Cloud Functions URL: https://us-central1-careercraft-36711.cloudfunctions.net');
+        if (window.DEBUG_MODE) {
+          console.log('Firebase initialized with Cloud Functions support');
+        }
         
         // Store backend URL globally
         window.BACKEND_URL = 'https://us-central1-careercraft-36711.cloudfunctions.net';
@@ -185,8 +226,9 @@
         }, 2000);
         
       } catch (error) {
-        console.error('❌ Firebase initialization failed:', error);
-        console.error('Firebase Config:', firebaseConfig);
+        if (window.DEBUG_MODE) {
+          console.error('Firebase initialization failed:', error);
+        }
       }
     </script>
 
@@ -219,9 +261,9 @@
         }
       });
       
-      // Debug info
-      console.log('Google Analytics initialized for:', window.location.hostname);
-      console.log('Cloud Functions backend: https://us-central1-careercraft-36711.cloudfunctions.net');
+      if (window.DEBUG_MODE) {
+        console.log('Google Analytics initialized');
+      }
     </script>
     
     <!-- Preload critical resources -->
@@ -337,9 +379,9 @@
           <div class="loading-spinner" style="width: 40px; height: 40px; margin: 0 auto 1rem;"></div>
           <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">CareerCraft India</h1>
           <p style="opacity: 0.8;">Loading your career journey...</p>
-          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 1rem;" id="firebase-status">Initializing Firebase...</p>
-          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 0.5rem;" id="backend-status">Checking backend services...</p>
-          <p style="font-size: 0.7rem; opacity: 0.5; margin-top: 0.5rem;" id="backend-url">Backend URL: https://us-central1-careercraft-36711.cloudfunctions.net</p>
+          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 1rem; display: none;" id="firebase-status">Initializing Firebase...</p>
+          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 0.5rem; display: none;" id="backend-status">Checking backend services...</p>
+          <p style="font-size: 0.7rem; opacity: 0.5; margin-top: 0.5rem; display: none;" id="backend-url">Backend URL: https://us-central1-careercraft-36711.cloudfunctions.net</p>
         </div>
       </div>
     </div>
@@ -347,19 +389,21 @@
     <!-- Vite will inject the script here -->
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Firebase & Backend Debug Script - UPDATED -->
+    <!-- Firebase & Backend Debug Script - UPDATED (Hidden logs) -->
     <script>
       // Global backend URL
       window.BACKEND_URL = 'https://us-central1-careercraft-36711.cloudfunctions.net';
       
       // Test backend connection function
       window.testBackendConnection = async function() {
-        console.log('🔍 Testing backend connection...');
+        if (window.DEBUG_MODE) {
+          console.log('Testing backend connection...');
+        }
         
         const backendStatusElement = document.getElementById('backend-status');
         const backendUrlElement = document.getElementById('backend-url');
         
-        if (backendStatusElement) {
+        if (backendStatusElement && window.DEBUG_MODE) {
           backendStatusElement.textContent = 'Testing backend connection...';
           backendStatusElement.style.color = '#fbbf24';
         }
@@ -372,7 +416,9 @@
           });
           
           const pingData = await pingResponse.json();
-          console.log('Ping response:', pingData);
+          if (window.DEBUG_MODE) {
+            console.log('Ping response:', pingData);
+          }
           
           // Test 2: debug config endpoint (GET)
           const debugResponse = await fetch(`${window.BACKEND_URL}/debugConfig`, {
@@ -381,10 +427,14 @@
           });
           
           const debugData = await debugResponse.json();
-          console.log('Debug config:', debugData);
+          if (window.DEBUG_MODE) {
+            console.log('Debug config:', debugData);
+          }
           
           // Test 3: admin login with test credentials (POST)
-          console.log('Testing admin login with placeholder credentials...');
+          if (window.DEBUG_MODE) {
+            console.log('Testing admin login with placeholder credentials...');
+          }
           const loginResponse = await fetch(`${window.BACKEND_URL}/adminLogin`, {
             method: 'POST',
             headers: { 
@@ -398,15 +448,17 @@
           });
           
           const loginData = await loginResponse.json();
-          console.log('Admin login test response:', loginData);
+          if (window.DEBUG_MODE) {
+            console.log('Admin login test response:', loginData);
+          }
           
           // Update status
-          if (backendStatusElement) {
+          if (backendStatusElement && window.DEBUG_MODE) {
             if (pingResponse.ok && debugResponse.ok) {
-              backendStatusElement.textContent = 'Backend: Connected ✅';
+              backendStatusElement.textContent = 'Backend: Connected';
               backendStatusElement.style.color = '#4ade80';
             } else {
-              backendStatusElement.textContent = 'Backend: Partial connection ⚠️';
+              backendStatusElement.textContent = 'Backend: Partial connection';
               backendStatusElement.style.color = '#fbbf24';
             }
           }
@@ -419,10 +471,12 @@
           };
           
         } catch (error) {
-          console.error('❌ Backend connection failed:', error);
+          if (window.DEBUG_MODE) {
+            console.error('Backend connection failed:', error);
+          }
           
-          if (backendStatusElement) {
-            backendStatusElement.textContent = 'Backend: Connection failed ❌';
+          if (backendStatusElement && window.DEBUG_MODE) {
+            backendStatusElement.textContent = 'Backend: Connection failed';
             backendStatusElement.style.color = '#f87171';
           }
           
@@ -436,7 +490,9 @@
 
       // Admin test function for development
       window.testAdminLogin = async function(email = 'nelsonjoshua03@outlook.com', password = 'rtyiubvc5674@N') {
-        console.log('🔐 Testing admin login with credentials:', email);
+        if (window.DEBUG_MODE) {
+          console.log('Testing admin login with credentials:', email);
+        }
         
         try {
           const response = await fetch(`${window.BACKEND_URL}/adminLogin`, {
@@ -449,19 +505,27 @@
           });
           
           const data = await response.json();
-          console.log('Admin login test:', data);
+          if (window.DEBUG_MODE) {
+            console.log('Admin login test:', data);
+          }
           
           if (response.ok) {
-            alert(`✅ Admin login successful!\n\nUser: ${data.user?.email}\nUID: ${data.user?.uid}\n\nCheck console for details.`);
+            if (window.DEBUG_MODE) {
+              alert(`Admin login successful!\n\nUser: ${data.user?.email}\nUID: ${data.user?.uid}\n\nCheck console for details.`);
+            }
             return { success: true, data };
           } else {
-            alert(`❌ Admin login failed: ${data.error || response.statusText}`);
+            if (window.DEBUG_MODE) {
+              alert(`Admin login failed: ${data.error || response.statusText}`);
+            }
             return { success: false, status: response.status, data };
           }
           
         } catch (error) {
-          console.error('❌ Admin login test error:', error);
-          alert(`❌ Network error: ${error.message}\n\nCheck:\n1. Firebase Functions deployment\n2. CORS configuration\n3. Internet connection`);
+          if (window.DEBUG_MODE) {
+            console.error('Admin login test error:', error);
+            alert(`Network error: ${error.message}\n\nCheck:\n1. Firebase Functions deployment\n2. CORS configuration\n3. Internet connection`);
+          }
           return { success: false, error: error.message };
         }
       };
@@ -469,11 +533,13 @@
       // Check backend connection on load
       setTimeout(() => {
         window.testBackendConnection().then(result => {
-          console.log('Backend test result:', result);
+          if (window.DEBUG_MODE) {
+            console.log('Backend test result:', result);
+          }
           
           // Update URL element
           const backendUrlElement = document.getElementById('backend-url');
-          if (backendUrlElement) {
+          if (backendUrlElement && window.DEBUG_MODE) {
             backendUrlElement.textContent = `Backend: ${window.BACKEND_URL}`;
             backendUrlElement.style.color = result.success ? '#4ade80' : '#f87171';
           }
@@ -483,12 +549,12 @@
       // Firebase initialization status
       setTimeout(() => {
         const statusElement = document.getElementById('firebase-status');
-        if (statusElement) {
+        if (statusElement && window.DEBUG_MODE) {
           if (window.firebaseApp) {
-            statusElement.textContent = 'Firebase: Initialized ✅';
+            statusElement.textContent = 'Firebase: Initialized';
             statusElement.style.color = '#4ade80';
           } else {
-            statusElement.textContent = 'Firebase: Initialization failed ❌';
+            statusElement.textContent = 'Firebase: Initialization failed';
             statusElement.style.color = '#f87171';
           }
         }
@@ -535,28 +601,30 @@
         }
       });
 
-      // Debug info
+      // Debug info (only in debug mode)
       setTimeout(() => {
-        console.log('=== CareerCraft Debug Info ===');
-        console.log('URL:', window.location.href);
-        console.log('Hostname:', window.location.hostname);
-        console.log('Environment:', window.location.hostname.includes('localhost') ? 'development' : 'production');
-        console.log('Firebase App:', window.firebaseApp ? '✅ Loaded' : '❌ Not loaded');
-        console.log('Firebase Functions:', window.firebaseFunctions ? '✅ Loaded' : '❌ Not loaded');
-        console.log('Firebase Auth:', window.firebaseAuth ? '✅ Loaded' : '❌ Not loaded');
-        console.log('GDPR Consent:', localStorage.getItem('gdpr_consent') || 'Not set');
-        console.log('Admin Token:', localStorage.getItem('careercraft_admin_token') ? 'Set ✓' : 'Not set');
-        console.log('LocalStorage Admin:', localStorage.getItem('is_admin') || 'Not logged in');
-        console.log('Backend URL:', window.BACKEND_URL);
-        console.log('============================');
-        
-        // Quick admin test for development
-        if (window.location.hostname.includes('localhost')) {
-          console.log('🛠️ Development mode detected');
-          console.log('Use window.testAdminLogin() to test admin login');
-          console.log('Use window.testBackendConnection() to test backend');
-          console.log('Admin email: nelsonjoshua03@outlook.com');
-          console.log('Admin password: rtyiubvc5674@N');
+        if (window.DEBUG_MODE) {
+          console.log('=== CareerCraft Debug Info ===');
+          console.log('URL:', window.location.href);
+          console.log('Hostname:', window.location.hostname);
+          console.log('Environment:', window.location.hostname.includes('localhost') ? 'development' : 'production');
+          console.log('Firebase App:', window.firebaseApp ? 'Loaded' : 'Not loaded');
+          console.log('Firebase Functions:', window.firebaseFunctions ? 'Loaded' : 'Not loaded');
+          console.log('Firebase Auth:', window.firebaseAuth ? 'Loaded' : 'Not loaded');
+          console.log('GDPR Consent:', localStorage.getItem('gdpr_consent') || 'Not set');
+          console.log('Admin Token:', localStorage.getItem('careercraft_admin_token') ? 'Set' : 'Not set');
+          console.log('LocalStorage Admin:', localStorage.getItem('is_admin') || 'Not logged in');
+          console.log('Backend URL:', window.BACKEND_URL);
+          console.log('============================');
+          
+          // Quick admin test for development
+          if (window.location.hostname.includes('localhost')) {
+            console.log('Development mode detected');
+            console.log('Use window.testAdminLogin() to test admin login');
+            console.log('Use window.testBackendConnection() to test backend');
+            console.log('Admin email: nelsonjoshua03@outlook.com');
+            console.log('Admin password: rtyiubvc5674@N');
+          }
         }
       }, 2000);
       
@@ -578,7 +646,9 @@
 
       // Simple CORS test function
       window.corsTest = function() {
-        console.log('🔍 Running CORS test...');
+        if (window.DEBUG_MODE) {
+          console.log('Running CORS test...');
+        }
         
         // Test with different methods
         const endpoints = [
@@ -599,9 +669,13 @@
               body: endpoint.body
             });
             
-            console.log(`${endpoint.method} ${endpoint.url}: ${response.status}`);
+            if (window.DEBUG_MODE) {
+              console.log(`${endpoint.method} ${endpoint.url}: ${response.status}`);
+            }
           } catch (error) {
-            console.error(`${endpoint.method} ${endpoint.url}: ${error.message}`);
+            if (window.DEBUG_MODE) {
+              console.error(`${endpoint.method} ${endpoint.url}: ${error.message}`);
+            }
           }
         });
       };
@@ -649,31 +723,31 @@
         
         // Check CORS
         if (!window.BACKEND_URL) {
-          issues.push('❌ BACKEND_URL is not defined');
+          issues.push('BACKEND_URL is not defined');
         }
         
         // Check if functions are reachable
         fetch(`${window.BACKEND_URL}/ping`)
           .then(res => {
-            if (!res.ok) issues.push(`❌ /ping endpoint returned ${res.status}`);
+            if (!res.ok) issues.push(`/ping endpoint returned ${res.status}`);
           })
           .catch(err => {
-            issues.push(`❌ Cannot reach /ping: ${err.message}`);
+            issues.push(`Cannot reach /ping: ${err.message}`);
           });
         
         // Check CSP
         const csp = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
         if (csp && !csp.content.includes('us-central1-careercraft-36711.cloudfunctions.net')) {
-          issues.push('❌ CSP is blocking Cloud Functions');
+          issues.push('CSP is blocking Cloud Functions');
         }
         
         // Display issues
-        if (issues.length > 0) {
-          console.log('🔧 Backend Issues Found:');
+        if (issues.length > 0 && window.DEBUG_MODE) {
+          console.log('Backend Issues Found:');
           issues.forEach(issue => console.log(issue));
           alert('Backend issues found. Check console for details.');
-        } else {
-          console.log('✅ No backend issues detected');
+        } else if (window.DEBUG_MODE) {
+          console.log('No backend issues detected');
           alert('Backend appears to be configured correctly.');
         }
         
@@ -681,11 +755,11 @@
       };
       
       // Add troubleshooting button in dev mode
-      if (window.location.hostname.includes('localhost')) {
+      if (window.location.hostname.includes('localhost') && window.DEBUG_MODE) {
         window.addEventListener('load', () => {
           setTimeout(() => {
             const troubleshootBtn = document.createElement('button');
-            troubleshootBtn.textContent = '🔧 Troubleshoot Backend';
+            troubleshootBtn.textContent = 'Troubleshoot Backend';
             troubleshootBtn.style.position = 'fixed';
             troubleshootBtn.style.bottom = '20px';
             troubleshootBtn.style.right = '20px';

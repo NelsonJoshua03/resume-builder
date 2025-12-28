@@ -385,69 +385,76 @@ const EditResumePage = () => {
   };
 
   // New function for saving to professional database via backend
-  const handleSaveToProfessionalDatabase = async () => {
-    if (!clientEmail) {
-      alert('⚠️ Please enter client email to save to professional database');
-      return;
-    }
+  // Fixed handleSaveToProfessionalDatabase function
+const handleSaveToProfessionalDatabase = async () => {
+  if (!clientEmail) {
+    alert('⚠️ Please enter client email to save to professional database');
+    return;
+  }
+  
+  setSavingStatus('saving');
+  
+  try {
+    console.log('🔄 Saving professional resume via backend...');
     
-    setSavingStatus('saving');
+    // Prepare client info
+    const clientInfo = {
+      email: clientEmail,
+      name: clientName || '',
+      phone: clientPhone || '',
+      notes: clientNotes || ''
+    };
     
-    try {
-      // Set client info in context
-      setClientInfo({
-        email: clientEmail,
-        name: clientName,
-        phone: clientPhone,
-        notes: clientNotes
+    // Set client info in context FIRST
+    setClientInfo(clientInfo);
+    
+    // Call backend service using ResumeContext's function
+    const result = await saveToProfessionalDatabase();
+    
+    if (result.success && result.id) {
+      setSavingStatus('success');
+      
+      // Track successful save
+      trackFirebaseEvent({
+        eventName: 'professional_resume_saved',
+        eventCategory: 'Admin',
+        eventLabel: 'database_save',
+        pagePath: '/edit',
+        pageTitle: 'Edit Resume',
+        metadata: {
+          client_email: clientEmail,
+          resume_id: result.id,
+          sections_count: Object.keys(resumeData).length,
+          save_method: 'backend_cloud_function'
+        }
       });
       
-      // Use backend service to create professional resume
-      const result = await adminAuthService.createProfessionalResume(resumeData, {
-        email: clientEmail,
-        name: clientName,
-        phone: clientPhone,
-        notes: clientNotes
-      });
+      alert(`✅ Resume saved to professional database for ${clientEmail}\nResume ID: ${result.id}`);
       
-      if (result.success && result.id) {
-        setSavingStatus('success');
-        
-        // Track successful professional save
-        trackFirebaseEvent({
-          eventName: 'professional_resume_saved',
-          eventCategory: 'Admin',
-          eventLabel: 'database_save',
-          pagePath: '/edit',
-          pageTitle: 'Edit Resume',
-          metadata: {
-            client_email: clientEmail,
-            resume_id: result.id,
-            sections_count: Object.keys(resumeData).length,
-            session_id: editSessionId.current,
-            save_method: 'backend_cloud_function'
-          }
-        });
-        
-        alert(`✅ Resume saved to professional database for ${clientEmail}\nResume ID: ${result.id}`);
-        
-        // Redirect to builder for PDF generation with resume ID
-        setTimeout(() => {
-          window.location.href = `/builder?resumeId=${result.id}&clientEmail=${encodeURIComponent(clientEmail)}`;
-        }, 2000);
-        
-      } else {
-        setSavingStatus('error');
-        alert(`❌ Failed to save to database: ${result.error}\nSaved to local storage instead.`);
-        saveToLocalStorage();
-      }
-    } catch (error: any) {
+      // Redirect to builder for PDF generation with resume ID
+      setTimeout(() => {
+        window.location.href = `/builder?resumeId=${result.id}&clientEmail=${encodeURIComponent(clientEmail)}`;
+      }, 2000);
+      
+    } else {
       setSavingStatus('error');
-      console.error('Failed to save professional resume:', error);
-      alert('❌ Error saving to database. Saved to local storage instead.');
-      saveToLocalStorage();
+      alert(`❌ Failed to save to database: ${result.error}\nSaved to local storage instead.`);
+      
+      // Fallback to local storage
+      const savedId = saveToLocalStorage();
+      console.log('📁 Fallback: Saved to local storage with ID:', savedId);
     }
-  };
+  } catch (error: any) {
+    setSavingStatus('error');
+    console.error('Failed to save professional resume:', error);
+    
+    alert('❌ Error saving to database. Saved to local storage instead.');
+    
+    // Fallback to local storage
+    const savedId = saveToLocalStorage();
+    console.log('📁 Fallback: Saved to local storage with ID:', savedId);
+  }
+};
 
   // New function for local storage save (regular users)
   const saveToLocalStorage = () => {
