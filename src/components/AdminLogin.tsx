@@ -351,7 +351,7 @@ const AdminLogin: React.FC = () => {
               onClick={() => {
                 setError('');
                 setEmail('nelsonjoshua03@outlook.com');
-                setPassword('rtyiubvc5674@N');
+                setPassword('');
                 alert('Test credentials populated. Click Login to test.');
               }}
               className="text-sm font-medium text-blue-600 hover:text-blue-500"

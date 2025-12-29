@@ -50,8 +50,9 @@ catch (error) {
     console.log('ℹ️ Firebase admin already initialized');
 }
 // 🔐 ADMIN CREDENTIALS (TEMPORARY - Move to environment variables for production)
-const ADMIN_PASSWORD = 'rtyiubvc5674@N';
-const ADMIN_EMAILS = ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
+const adminConfig = functions.config().admin || {};
+const ADMIN_PASSWORD = adminConfig.password || '';
+const ADMIN_EMAILS = (adminConfig.emails || '').split(',');
 console.log('📋 Using admin emails:', ADMIN_EMAILS);
 // Configure CORS properly
 const corsMiddleware = (0, cors_1.default)({

@@ -12,8 +12,9 @@ try {
 }
 
 // 🔐 ADMIN CREDENTIALS (TEMPORARY - Move to environment variables for production)
-const ADMIN_PASSWORD = 'rtyiubvc5674@N';
-const ADMIN_EMAILS = ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
+const adminConfig = functions.config().admin || {};
+const ADMIN_PASSWORD = adminConfig.password || '';
+const ADMIN_EMAILS = (adminConfig.emails || '').split(',');
 
 console.log('📋 Using admin emails:', ADMIN_EMAILS);
 

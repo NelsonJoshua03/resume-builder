@@ -154,3 +154,6 @@ src/firebase/service-account.json
 firebase-admin-key.json
 google-cloud-key.json
 .vercel
+
+# Add these lines
+functions/src/config/secure.ts
