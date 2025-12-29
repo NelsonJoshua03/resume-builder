@@ -12,11 +12,15 @@ try {
 }
 
 // 🔐 ADMIN CREDENTIALS (TEMPORARY - Move to environment variables for production)
-const adminConfig = functions.config().admin || {};
-const ADMIN_PASSWORD = adminConfig.password || '';
-const ADMIN_EMAILS = (adminConfig.emails || '').split(',');
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 't9nb5qrfha@N';
+const ADMIN_EMAILS = (process.env.ALLOWED_EMAILS || 'nelsonjoshua03@outlook.com').split(',');
 
-console.log('📋 Using admin emails:', ADMIN_EMAILS);
+// Log environment status (for debugging)
+console.log('🔧 Environment Variables Status:', {
+  hasAdminPassword: !!process.env.ADMIN_PASSWORD,
+  hasAllowedEmails: !!process.env.ALLOWED_EMAILS,
+  emailsCount: ADMIN_EMAILS.length
+});
 
 // Configure CORS properly
 const corsMiddleware = cors({

@@ -43,7 +43,9 @@ class AdminAuthService {
       console.log('🔐 Attempting admin login via backend...');
       
       // First, check if email is allowed (frontend validation)
-      const allowedEmails = ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
+      const allowedEmails = process.env.REACT_APP_ALLOWED_EMAILS 
+  ? process.env.REACT_APP_ALLOWED_EMAILS.split(',') 
+  : ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
       const normalizedEmail = email.toLowerCase().trim();
       
       if (!allowedEmails.includes(normalizedEmail)) {
