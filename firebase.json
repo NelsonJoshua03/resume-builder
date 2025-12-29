@@ -22,7 +22,7 @@
           }
         ]
       }
-    ],
+    ],                       
     "site": "careercraft-in"
   },
   "firestore": {
@@ -53,7 +53,7 @@
     {
       "source": "functions",
       "codebase": "default",
-      "disallowLegacyRuntimeConfig": true,
+      "disallowLegacyRuntimeConfig": false,
       "ignore": [
         "node_modules",
         ".git",

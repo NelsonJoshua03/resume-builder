@@ -1,7 +1,7 @@
-// functions/src/index.ts - SIMPLIFIED VERSION
-import * as functions from 'firebase-functions/v1';
+// functions/src/index.ts - FIXED VERSION
+import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import cors from 'cors';
+import cors = require('cors');
 
 // Initialize Firebase Admin
 try {
@@ -11,16 +11,49 @@ try {
   console.log('ℹ️ Firebase admin already initialized');
 }
 
-// 🔐 ADMIN CREDENTIALS (TEMPORARY - Move to environment variables for production)
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 't9nb5qrfha@N';
-const ADMIN_EMAILS = (process.env.ALLOWED_EMAILS || 'nelsonjoshua03@outlook.com').split(',');
+// 🔐 ADMIN CREDENTIALS - from Firebase Functions Config
+// Try to get config, fallback to hardcoded for testing
+let ADMIN_PASSWORD = '';
+let ADMIN_EMAILS: string[] = [];
 
-// Log environment status (for debugging)
-console.log('🔧 Environment Variables Status:', {
-  hasAdminPassword: !!process.env.ADMIN_PASSWORD,
-  hasAllowedEmails: !!process.env.ALLOWED_EMAILS,
-  emailsCount: ADMIN_EMAILS.length
-});
+try {
+  const adminConfig = functions.config().admin || {};
+  console.log('🔧 Config loaded:', {
+    configExists: !!functions.config().admin,
+    passwordExists: !!adminConfig.password,
+    emailsExists: !!adminConfig.emails
+  });
+  
+  ADMIN_PASSWORD = adminConfig.password || '';
+  ADMIN_EMAILS = (adminConfig.emails || '')
+    .split(',')
+    .map((email: string) => email.trim().toLowerCase())
+    .filter((email: string) => email.length > 0);
+    
+  console.log('🔧 Config values:', {
+    passwordLength: ADMIN_PASSWORD.length,
+    emails: ADMIN_EMAILS,
+    emailsCount: ADMIN_EMAILS.length
+  });
+  
+} catch (configError: any) {
+  console.error('❌ Error loading config:', configError);
+  
+  // Fallback to environment variables or hardcoded values
+  const fallbackEmails = process.env.ADMIN_EMAILS || 'nelsonjoshua03@outlook.com,contact@careercraft.in';
+  const fallbackPassword = process.env.ADMIN_PASSWORD || 't9nb5qrfha@N';
+  
+  ADMIN_PASSWORD = fallbackPassword;
+  ADMIN_EMAILS = fallbackEmails
+    .split(',')
+    .map((email: string) => email.trim().toLowerCase())
+    .filter((email: string) => email.length > 0);
+    
+  console.log('⚠️ Using fallback config:', {
+    emails: ADMIN_EMAILS,
+    emailsCount: ADMIN_EMAILS.length
+  });
+}
 
 // Configure CORS properly
 const corsMiddleware = cors({
@@ -32,8 +65,8 @@ const corsMiddleware = cors({
 });
 
 // Helper function to wrap with CORS
-const runWithCors = (handler: (req: functions.Request, res: functions.Response) => Promise<void>) => 
-  functions.https.onRequest((req, res) => {
+const runWithCors = (handler: any) => 
+  functions.https.onRequest((req: any, res: any) => {
     corsMiddleware(req, res, async () => {
       try {
         await handler(req, res);
@@ -48,71 +81,68 @@ const runWithCors = (handler: (req: functions.Request, res: functions.Response) 
   });
 
 /**
- * 1. HEALTH CHECK ENDPOINT
+ * DEBUG CONFIG FUNCTION
+ * Shows current config status
  */
-export const ping = runWithCors(async (req: functions.Request, res: functions.Response) => {
+export const debugConfig = runWithCors(async (req: any, res: any) => {
+  console.log('🔧 Firebase Config Status:', {
+    hasPassword: !!ADMIN_PASSWORD,
+    passwordLength: ADMIN_PASSWORD.length,
+    emails: ADMIN_EMAILS,
+    emailsCount: ADMIN_EMAILS.length
+  });
+  
+  if (ADMIN_EMAILS.length === 0) {
+    console.error('❌ No admin emails configured!');
+    console.log('   Run: firebase functions:config:set admin.emails="email1,email2" admin.password="yourpassword"');
+  }
+  
   res.json({
     success: true,
-    message: 'CareerCraft Firebase Functions API is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    endpoints: [
-      'GET /ping - Health check',
-      'POST /adminLogin - Admin login',
-      'POST /adminCheck - Check admin status',
-      'POST /setupAdminUsers - Setup admin users',
-      'POST /createProfessionalResume - Create resume (callable)',
-      'POST /getProfessionalResume - Get resume (callable)'
-    ]
+    config: {
+      hasPassword: !!ADMIN_PASSWORD,
+      passwordLength: ADMIN_PASSWORD.length,
+      emails: ADMIN_EMAILS,
+      emailsCount: ADMIN_EMAILS.length
+    }
   });
 });
 
 /**
- * 2. DEBUG CONFIG ENDPOINT
+ * PING FUNCTION
+ * Simple endpoint to test if functions are working
  */
-export const debugConfig = runWithCors(async (req: functions.Request, res: functions.Response) => {
-  try {
-    console.log('📊 Debug endpoint called');
-    
-    const envVars = {
-      ADMIN_PASSWORD_SET: process.env.ADMIN_PASSWORD ? 'YES (hidden)' : 'NO',
-      ALLOWED_EMAILS_SET: process.env.ALLOWED_EMAILS ? 'YES' : 'NO',
-      GCLOUD_PROJECT: process.env.GCLOUD_PROJECT,
-      FUNCTION_REGION: process.env.FUNCTION_REGION,
-      NODE_ENV: process.env.NODE_ENV,
-    };
-    
-    res.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      environmentVariables: envVars,
-      currentConfig: {
-        adminEmails: ADMIN_EMAILS,
-        adminPasswordLength: ADMIN_PASSWORD.length,
-      },
-      firebase: {
-        projectId: admin.app().options.projectId,
-        firestoreAvailable: true,
-      },
-      note: 'Using temporary configuration. Set environment variables for production.'
-    });
-    
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Debug config error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: errorMessage 
-    });
-  }
+export const ping = runWithCors(async (req: any, res: any) => {
+  res.json({
+    success: true,
+    message: 'CareerCraft Functions API is running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
 });
 
 /**
- * 3. SIMPLIFIED ADMIN LOGIN FUNCTION
- * Validates admin credentials and returns user info
+ * ADMIN LOGIN FUNCTION
  */
-export const adminLogin = runWithCors(async (req: functions.Request, res: functions.Response) => {
+export const adminLogin = runWithCors(async (req: any, res: any) => {
   try {
+    // Log config status at runtime
+    console.log('🔧 Runtime Config Status:', {
+      hasPassword: !!ADMIN_PASSWORD,
+      passwordLength: ADMIN_PASSWORD.length,
+      emails: ADMIN_EMAILS,
+      emailsCount: ADMIN_EMAILS.length
+    });
+    
+    if (ADMIN_EMAILS.length === 0) {
+      console.error('⚠️ WARNING: No admin emails configured in Firebase Config');
+      res.status(500).json({ 
+        success: false, 
+        error: 'Server configuration error: No admin emails configured' 
+      });
+      return;
+    }
+    
     const { password, email } = req.body;
 
     console.log('🔐 Admin login attempt for:', email);
@@ -130,17 +160,18 @@ export const adminLogin = runWithCors(async (req: functions.Request, res: functi
     const normalizedEmail = email.toLowerCase().trim();
     if (!ADMIN_EMAILS.includes(normalizedEmail)) {
       console.log(`❌ Email ${normalizedEmail} not in allowed list`);
+      console.log(`   Allowed emails: ${ADMIN_EMAILS.join(', ')}`);
       res.status(403).json({ 
         success: false, 
-        error: 'Email not authorized for admin access' 
+        error: `Email not authorized for admin access. Allowed: ${ADMIN_EMAILS.join(', ')}` 
       });
       return;
     }
     
-    // Verify password
+    // Check password
     if (password !== ADMIN_PASSWORD) {
-      console.log('❌ Password mismatch');
-      res.status(401).json({ 
+      console.log('❌ Invalid password attempt');
+      res.status(403).json({ 
         success: false, 
         error: 'Invalid admin password' 
       });
@@ -154,16 +185,20 @@ export const adminLogin = runWithCors(async (req: functions.Request, res: functi
       console.log('✅ Found existing admin user:', adminUser.uid);
     } catch (error: any) {
       // Create admin user if doesn't exist
-      console.log('🆕 Creating new admin user for:', normalizedEmail);
-      const randomPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      adminUser = await admin.auth().createUser({
-        email: normalizedEmail,
-        emailVerified: true,
-        password: randomPassword,
-        displayName: 'Admin User',
-        disabled: false,
-      });
-      console.log('✅ Created new admin user:', adminUser.uid);
+      if (error.code === 'auth/user-not-found') {
+        console.log('🆕 Creating new admin user for:', normalizedEmail);
+        // Use the provided password for the new user
+        adminUser = await admin.auth().createUser({
+          email: normalizedEmail,
+          emailVerified: true,
+          password: password, // Use the provided password
+          displayName: 'Admin User',
+          disabled: false,
+        });
+        console.log('✅ Created new admin user:', adminUser.uid);
+      } else {
+        throw error;
+      }
     }
     
     // Set custom claims (admin role)
@@ -188,8 +223,7 @@ export const adminLogin = runWithCors(async (req: functions.Request, res: functi
       success: true
     });
     
-    // Return success with user info
-    // Note: Frontend should use Firebase Authentication to sign in
+    // Return success with user info (NO TOKEN NEEDED)
     res.json({
       success: true,
       user: {
@@ -198,9 +232,10 @@ export const adminLogin = runWithCors(async (req: functions.Request, res: functi
         admin: true,
         claims: { admin: true }
       },
-      message: 'Admin login successful',
-      instructions: 'Use Firebase Authentication on frontend with these credentials',
-      frontendAuthMethod: 'signInWithEmailAndPassword'
+      message: 'Admin login successful. You can now sign in with Firebase Authentication.',
+      instructions: 'Use Firebase Authentication on frontend with same email/password',
+      frontendAuthMethod: 'signInWithEmailAndPassword',
+      note: 'The user has been created/updated in Firebase Auth with admin claims'
     });
     
   } catch (error: unknown) {
@@ -230,10 +265,10 @@ export const adminLogin = runWithCors(async (req: functions.Request, res: functi
 });
 
 /**
- * 4. CHECK ADMIN STATUS FUNCTION
+ * CHECK ADMIN STATUS FUNCTION
  * Verifies if a token is valid and has admin claims
  */
-export const adminCheck = runWithCors(async (req: functions.Request, res: functions.Response) => {
+export const adminCheck = runWithCors(async (req: any, res: any) => {
   try {
     const { token } = req.body;
     
@@ -252,16 +287,16 @@ export const adminCheck = runWithCors(async (req: functions.Request, res: functi
       const decodedToken = await admin.auth().verifyIdToken(token);
       
       // Check if user has admin claims
-      const isAdmin = decodedToken.admin === true;
+      const isAdminClaim = decodedToken.admin === true;
       
       res.json({
         success: true,
-        isAdmin,
+        isAdmin: isAdminClaim,
         valid: true,
         user: {
           uid: decodedToken.uid,
           email: decodedToken.email,
-          admin: isAdmin,
+          admin: isAdminClaim,
           claims: decodedToken
         }
       });
@@ -288,14 +323,14 @@ export const adminCheck = runWithCors(async (req: functions.Request, res: functi
 });
 
 /**
- * 5. SETUP ADMIN USERS FUNCTION
+ * SETUP ADMIN USERS FUNCTION
  * One-time function to create admin users in Firebase Auth
  */
-export const setupAdminUsers = runWithCors(async (req: functions.Request, res: functions.Response) => {
+export const setupAdminUsers = runWithCors(async (req: any, res: any) => {
   try {
     console.log('⚙️ Setting up admin users...');
     
-    const results = [];
+    const results: any[] = [];
     
     for (const email of ADMIN_EMAILS) {
       try {
@@ -380,7 +415,7 @@ export const setupAdminUsers = runWithCors(async (req: functions.Request, res: f
 });
 
 /**
- * 6. CREATE PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
+ * CREATE PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
  */
 export const createProfessionalResume = functions.https.onCall(
   async (data: { resumeData: any; clientInfo: any }, context: functions.https.CallableContext) => {
@@ -483,7 +518,7 @@ export const createProfessionalResume = functions.https.onCall(
 );
 
 /**
- * 7. GET PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
+ * GET PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
  */
 export const getProfessionalResume = functions.https.onCall(
   async (data: { resumeId: string }, context: functions.https.CallableContext) => {
@@ -554,10 +589,10 @@ export const getProfessionalResume = functions.https.onCall(
 );
 
 /**
- * 8. ADMIN LOGOUT FUNCTION
+ * ADMIN LOGOUT FUNCTION
  * Logs admin logout action
  */
-export const adminLogout = runWithCors(async (req: functions.Request, res: functions.Response) => {
+export const adminLogout = runWithCors(async (req: any, res: any) => {
   try {
     const { token } = req.body;
     

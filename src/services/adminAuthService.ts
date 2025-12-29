@@ -1,5 +1,5 @@
 // src/services/adminAuthService.ts - UPDATED VERSION
-import { getAuth, signInWithCustomToken, signOut, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, signOut, getIdTokenResult } from 'firebase/auth';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import { initializeFirebase } from '../firebase/config';
 
@@ -16,7 +16,7 @@ class AdminAuthService {
       const { app } = await initializeFirebase();
       if (app) {
         // Get functions instance after Firebase is initialized
-        this.functions = getFunctions(app);
+        this.functions = getFunctions(app, 'us-central1');
         console.log('✅ Firebase initialized for AdminAuthService');
       }
     } catch (error) {
@@ -44,15 +44,15 @@ class AdminAuthService {
       
       // First, check if email is allowed (frontend validation)
       const allowedEmails = process.env.REACT_APP_ALLOWED_EMAILS 
-  ? process.env.REACT_APP_ALLOWED_EMAILS.split(',') 
-  : ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
+        ? process.env.REACT_APP_ALLOWED_EMAILS.split(',') 
+        : ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
       const normalizedEmail = email.toLowerCase().trim();
       
       if (!allowedEmails.includes(normalizedEmail)) {
         console.log(`❌ Email ${normalizedEmail} not in allowed list`);
         return { 
           success: false, 
-          error: 'Email not authorized for admin access. Use: nelsonjoshua03@outlook.com or contact@careercraft.in' 
+          error: 'Email not authorized for admin access.' 
         };
       }
       
@@ -93,33 +93,25 @@ class AdminAuthService {
       console.log('Admin login response:', data);
       
       if (data.success && data.user) {
-        // Try to sign in with custom token if provided
-        if (data.token) {
-          try {
-            const auth = getAuth();
-            await signInWithCustomToken(auth, data.token);
-            console.log('✅ Signed in with custom token');
-          } catch (tokenError: any) {
-            console.error('Custom token sign-in failed:', tokenError);
-            // Try email/password sign-in as fallback
+        // Try to sign in with email/password (NO custom token now)
+        try {
+          const auth = getAuth();
+          await signInWithEmailAndPassword(auth, normalizedEmail, password);
+          console.log('✅ Signed in with email/password');
+        } catch (emailError: any) {
+          console.error('Email/password sign-in failed:', emailError);
+          
+          // If user doesn't exist or password is wrong, try to create user
+          if (emailError.code === 'auth/user-not-found' || emailError.code === 'auth/wrong-password') {
+            console.log('⚠️ User may not exist in Firebase Auth or password mismatch');
+            // The backend should have created the user, so try one more time
             try {
               const auth = getAuth();
               await signInWithEmailAndPassword(auth, normalizedEmail, password);
-              console.log('✅ Signed in with email/password');
-            } catch (emailError: any) {
-              console.error('Email/password sign-in failed:', emailError);
-              // Still return success since backend validated
+            } catch (retryError: any) {
+              console.log('❌ Second sign-in attempt failed:', retryError.message);
+              // Still proceed since backend validated
             }
-          }
-        } else {
-          // Try to sign in with email/password
-          try {
-            const auth = getAuth();
-            await signInWithEmailAndPassword(auth, normalizedEmail, password);
-            console.log('✅ Signed in with email/password');
-          } catch (emailError: any) {
-            console.error('Email/password sign-in failed:', emailError);
-            // Still return success since backend validated
           }
         }
         
@@ -258,6 +250,8 @@ class AdminAuthService {
           body: JSON.stringify({ token: idToken }),
         }
       );
+      
+      if (!response.ok) return false;
       
       const data = await response.json();
       return data.success === true && data.isAdmin === true;
