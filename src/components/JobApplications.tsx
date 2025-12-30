@@ -1,4 +1,4 @@
-// src/components/JobApplications.tsx - FIXED VERSION WITH LATEST JOBS FIRST AND MOBILE-FRIENDLY ANALYTICS
+// src/components/JobApplications.tsx - COMPLETE UPDATED VERSION WITH EXPERIENCE FIELD
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -38,7 +38,8 @@ import {
   Database,
   Clock,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Award
 } from 'lucide-react';
 
 interface Job extends JobData {
@@ -50,6 +51,7 @@ interface Job extends JobData {
 const JobApplications: React.FC = () => {
   const [selectedSector, setSelectedSector] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedExperience, setSelectedExperience] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -72,6 +74,7 @@ const JobApplications: React.FC = () => {
   const [analytics, setAnalytics] = useState({
     topCities: [] as {city: string; count: number}[],
     topSectors: [] as {sector: string; count: number}[],
+    topExperience: [] as {experience: string; count: number}[],
     popularJobs: [] as {title: string; views: number; company: string}[],
     hourlyTrends: [] as {hour: number; views: number}[]
   });
@@ -142,7 +145,6 @@ const JobApplications: React.FC = () => {
       
       const { jobs: fetchedJobs } = await firebaseJobService.getJobs({}, 1, 1000);
       
-      // FIXED: Sort jobs by postedDate (newest first)
       const formattedJobs: Job[] = fetchedJobs.map(jobData => {
         const postedDate = jobData.postedDate || new Date().toISOString().split('T')[0];
         const createdAt = jobData.createdAt ? new Date(jobData.createdAt) : new Date();
@@ -155,15 +157,15 @@ const JobApplications: React.FC = () => {
           views: jobData.views || 0,
           shares: jobData.shares || 0,
           applications: jobData.applications || 0,
+          experience: jobData.experience || 'Not specified',
           isReal: true
         };
       });
 
-      // Sort by postedDate in descending order (newest first)
       const sortedJobs = formattedJobs.sort((a, b) => {
         const dateA = a.postedDate ? new Date(a.postedDate).getTime() : a.addedTimestamp || 0;
         const dateB = b.postedDate ? new Date(b.postedDate).getTime() : b.addedTimestamp || 0;
-        return dateB - dateA; // Newest first
+        return dateB - dateA;
       });
 
       const jobsWithPages = sortedJobs.map((job, index) => ({
@@ -202,11 +204,10 @@ const JobApplications: React.FC = () => {
       console.error('Error loading jobs:', error);
       const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
       
-      // Sort saved jobs by date (newest first)
       const sortedSavedJobs = savedJobs.sort((a: Job, b: Job) => {
         const timeA = a.addedTimestamp || (a.postedDate ? new Date(a.postedDate).getTime() : 0);
         const timeB = b.addedTimestamp || (b.postedDate ? new Date(b.postedDate).getTime() : 0);
-        return timeB - timeA; // Newest first
+        return timeB - timeA;
       });
       
       setJobs(sortedSavedJobs);
@@ -249,6 +250,16 @@ const JobApplications: React.FC = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
+      const experienceMap: Record<string, number> = {};
+      jobsData.forEach(job => {
+        const exp = job.experience || 'Not specified';
+        experienceMap[exp] = (experienceMap[exp] || 0) + 1;
+      });
+      const topExperience = Object.entries(experienceMap)
+        .map(([experience, count]) => ({ experience, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
       const popularJobs = [...jobsData]
         .sort((a, b) => (b.views || 0) - (a.views || 0))
         .slice(0, 3)
@@ -266,6 +277,7 @@ const JobApplications: React.FC = () => {
       setAnalytics({
         topCities,
         topSectors,
+        topExperience,
         popularJobs,
         hourlyTrends
       });
@@ -333,6 +345,17 @@ const JobApplications: React.FC = () => {
     'Pune', 'Kolkata', 'Ahmedabad', 'Remote', 'Gurgaon', 'Noida'
   ];
 
+  const experienceOptions = [
+    'all',
+    'Fresher (0-1 years)',
+    '0-2 years',
+    '1-3 years',
+    '2-5 years',
+    '3-5 years',
+    '5-8 years',
+    '8+ years'
+  ];
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
@@ -351,6 +374,7 @@ const JobApplications: React.FC = () => {
       {
         search_query: searchTerm,
         location_filter: locationFilter || 'none',
+        experience_filter: selectedExperience || 'none',
         results_count: resultsCount,
         user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
       },
@@ -358,11 +382,12 @@ const JobApplications: React.FC = () => {
     );
     
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
-    if (searchTerm || locationFilter) {
+    if (searchTerm || locationFilter || selectedExperience !== 'all') {
       trackFunnelStep('job_search_funnel', 'searched_jobs', 2, {
         user_id: userId,
         search_query: searchTerm,
         location_filter: locationFilter,
+        experience_filter: selectedExperience,
         results_count: resultsCount
       });
     }
@@ -392,6 +417,7 @@ const JobApplications: React.FC = () => {
   const clearFilters = () => {
     setSelectedSector('all');
     setSelectedType('all');
+    setSelectedExperience('all');
     setSearchTerm('');
     setLocationFilter('');
     setCurrentPage(1);
@@ -415,6 +441,7 @@ const JobApplications: React.FC = () => {
   const filteredJobs = jobs.filter(job => {
     const matchesSector = selectedSector === 'all' || job.sector === selectedSector;
     const matchesType = selectedType === 'all' || job.type === selectedType;
+    const matchesExperience = selectedExperience === 'all' || job.experience === selectedExperience;
     const matchesSearch = searchTerm === '' || 
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -422,7 +449,7 @@ const JobApplications: React.FC = () => {
     const matchesLocation = locationFilter === '' || 
       job.location.toLowerCase().includes(locationFilter.toLowerCase());
     
-    return matchesSector && matchesType && matchesSearch && matchesLocation;
+    return matchesSector && matchesType && matchesExperience && matchesSearch && matchesLocation;
   });
 
   const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
@@ -492,6 +519,25 @@ const JobApplications: React.FC = () => {
       {
         filter_type: 'job_type',
         filter_value: type,
+        user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
+      }
+    );
+  };
+
+  const handleExperienceChange = (experience: string) => {
+    setSelectedExperience(experience);
+    setCurrentPage(1);
+    
+    trackGoogleButtonClick(`filter_experience_${experience}`, 'experience_filters', 'job_applications');
+    trackButtonClick(`filter_experience_${experience}`, 'experience_filters', '/job-applications');
+    
+    trackFirebaseEvent(
+      'job_filter_applied',
+      'Job Filter',
+      `experience_${experience}`,
+      {
+        filter_type: 'experience',
+        filter_value: experience,
         user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
       }
     );
@@ -620,7 +666,7 @@ const JobApplications: React.FC = () => {
   const shareViaEmail = async () => {
     if (selectedJob) {
       const subject = `Job Opportunity: ${selectedJob.title} at ${selectedJob.company}`;
-      const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\n\nView details: ${window.location.href}`;
+      const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\nExperience: ${selectedJob.experience || 'Not specified'}\n\nView details: ${window.location.href}`;
       window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
       
       if (selectedJob.id) {
@@ -707,7 +753,8 @@ const JobApplications: React.FC = () => {
           email: newsletterEmail,
           preferences: {
             sector: selectedSector !== 'all' ? selectedSector : 'all',
-            location: locationFilter || 'all'
+            location: locationFilter || 'all',
+            experience: selectedExperience !== 'all' ? selectedExperience : 'all'
           },
           user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
         }
@@ -719,7 +766,8 @@ const JobApplications: React.FC = () => {
         date: new Date().toISOString(),
         preferences: {
           sector: selectedSector !== 'all' ? selectedSector : 'all',
-          location: locationFilter || 'all'
+          location: locationFilter || 'all',
+          experience: selectedExperience !== 'all' ? selectedExperience : 'all'
         }
       });
       localStorage.setItem('job_subscribers', JSON.stringify(subscribers));
@@ -756,13 +804,14 @@ const JobApplications: React.FC = () => {
 
   const downloadJobsCSV = () => {
     const csvContent = [
-      ['Title', 'Company', 'Location', 'Type', 'Sector', 'Salary', 'Posted Date', 'Apply Link', 'Views', 'Shares', 'Applications'],
+      ['Title', 'Company', 'Location', 'Type', 'Sector', 'Experience', 'Salary', 'Posted Date', 'Apply Link', 'Views', 'Shares', 'Applications'],
       ...jobs.map(job => [
         `"${job.title}"`,
         `"${job.company}"`,
         `"${job.location}"`,
         `"${job.type}"`,
         `"${job.sector}"`,
+        `"${job.experience || 'Not specified'}"`,
         `"${job.salary}"`,
         `"${job.postedDate}"`,
         `"${job.applyLink}"`,
@@ -840,6 +889,7 @@ const JobApplications: React.FC = () => {
         job_id: job.id,
         job_title: job.title,
         company: job.company,
+        experience: job.experience || 'Not specified',
         application_method: 'direct',
         user_id: localStorage.getItem('firebase_user_id') || 'anonymous'
       }
@@ -850,7 +900,8 @@ const JobApplications: React.FC = () => {
       user_id: userId,
       job_id: job.id,
       job_title: job.title,
-      company: job.company
+      company: job.company,
+      experience: job.experience || 'Not specified'
     });
     
     trackGoogleFunnelStep('job_search', 'application_started', 2, userId);
@@ -875,6 +926,7 @@ const JobApplications: React.FC = () => {
         "datePosted": postedDate,
         "validThrough": validThrough,
         "employmentType": job.type,
+        "experienceRequirements": job.experience || 'Not specified',
         "hiringOrganization": {
           "@type": "Organization",
           "name": job.company,
@@ -903,7 +955,6 @@ const JobApplications: React.FC = () => {
           "name": "India"
         },
         "countryOfOrigin": "India",
-        "experienceRequirements": job.requirements.join(' '),
         "inLanguage": "en-IN"
       };
     });
@@ -931,10 +982,10 @@ const JobApplications: React.FC = () => {
       },
       {
         "@type": "Question",
-        "name": "Can I get job alerts for specific cities?",
+        "name": "Can I filter jobs by experience level?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes! Use our newsletter signup form to receive daily job alerts filtered by your preferred cities, sectors, and job types."
+          "text": "Yes! You can filter jobs by experience level including Fresher (0-1 years), 0-2 years, 2-5 years, 5+ years and more. Use the experience filter in the sidebar."
         }
       },
       {
@@ -950,7 +1001,7 @@ const JobApplications: React.FC = () => {
         "name": "Do you have jobs for freshers?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes! We have dedicated fresher job listings across IT, Engineering, Marketing, and Business roles. Filter by 'Entry Level' or 'Internship' to find suitable opportunities."
+          "text": "Yes! We have dedicated fresher job listings across IT, Engineering, Marketing, and Business roles. Filter by 'Fresher (0-1 years)' to find suitable opportunities."
         }
       }
     ]
@@ -1110,6 +1161,7 @@ const JobApplications: React.FC = () => {
                 "title": job.title,
                 "description": job.description,
                 "datePosted": job.postedDate,
+                "experienceRequirements": job.experience || 'Not specified',
                 "hiringOrganization": {
                   "@type": "Organization",
                   "name": job.company
@@ -1401,6 +1453,25 @@ const JobApplications: React.FC = () => {
                   </select>
                 </div>
 
+                {/* NEW: Experience Filter */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <Award size={16} />
+                    Years of Experience
+                  </label>
+                  <select 
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={selectedExperience}
+                    onChange={(e) => handleExperienceChange(e.target.value)}
+                  >
+                    {experienceOptions.map(exp => (
+                      <option key={exp} value={exp}>
+                        {exp === 'all' ? 'All Experience Levels' : exp}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Desktop Analytics */}
                 <div className="border-t border-gray-200 pt-4">
                   <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
@@ -1427,6 +1498,18 @@ const JobApplications: React.FC = () => {
                           <div key={sector.sector} className="flex justify-between items-center">
                             <span className="text-gray-700 truncate">{sector.sector}</span>
                             <span className="font-bold text-purple-600">{sector.count} jobs</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-600 mb-1">🎯 Popular Experience Levels</p>
+                      <div className="space-y-1">
+                        {analytics.topExperience.map((exp, index) => (
+                          <div key={exp.experience} className="flex justify-between items-center">
+                            <span className="text-gray-700 truncate">{exp.experience}</span>
+                            <span className="font-bold text-amber-600">{exp.count} jobs</span>
                           </div>
                         ))}
                       </div>
@@ -1514,7 +1597,7 @@ const JobApplications: React.FC = () => {
                   <button 
                     onClick={() => {
                       const savedJobsList = jobs.filter(job => savedJobs.includes(job.id!));
-                      alert(`Saved Jobs:\n${savedJobsList.map(job => `• ${job.title} at ${job.company}`).join('\n')}`);
+                      alert(`Saved Jobs:\n${savedJobsList.map(job => `• ${job.title} at ${job.company} (${job.experience || 'Not specified'})`).join('\n')}`);
                     }}
                     className="text-amber-600 hover:text-amber-700 text-sm font-medium"
                   >
@@ -1571,6 +1654,25 @@ const JobApplications: React.FC = () => {
                     {jobTypes.map(type => (
                       <option key={type} value={type}>
                         {type === 'all' ? 'All Types' : type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* NEW: Mobile Experience Filter */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <Award size={14} />
+                    Years of Experience
+                  </label>
+                  <select 
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={selectedExperience}
+                    onChange={(e) => handleExperienceChange(e.target.value)}
+                  >
+                    {experienceOptions.map(exp => (
+                      <option key={exp} value={exp}>
+                        {exp === 'all' ? 'All Experience Levels' : exp}
                       </option>
                     ))}
                   </select>
@@ -1758,6 +1860,18 @@ const JobApplications: React.FC = () => {
                           ))}
                         </div>
                       </div>
+
+                      <div>
+                        <p className="text-gray-600 mb-1">🎯 Popular Experience Levels</p>
+                        <div className="space-y-1">
+                          {analytics.topExperience.map((exp, index) => (
+                            <div key={exp.experience} className="flex justify-between items-center">
+                              <span className="text-gray-700 truncate">{exp.experience}</span>
+                              <span className="font-bold text-amber-600">{exp.count} jobs</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                       
                       <div>
                         <p className="text-gray-600 mb-1">🔥 Popular Jobs</p>
@@ -1918,6 +2032,7 @@ const JobApplications: React.FC = () => {
               <div className="mb-6">
                 <h4 className="font-semibold text-gray-700 mb-2">{selectedJob.title}</h4>
                 <p className="text-sm text-gray-600">{selectedJob.company} • {selectedJob.location}</p>
+                <p className="text-sm text-amber-600 mt-1">Experience: {selectedJob.experience || 'Not specified'}</p>
                 <p className="text-xs text-gray-500 mt-1">Share with friends who might be interested</p>
               </div>
 
@@ -2089,6 +2204,7 @@ const JobCard: React.FC<JobCardProps> = ({
       <meta itemProp="hiringOrganization" content={job.company} />
       <meta itemProp="jobLocation" content={job.location} />
       <meta itemProp="title" content={job.title} />
+      <meta itemProp="experienceRequirements" content={job.experience || 'Not specified'} />
       
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
         <div className="flex-1">
@@ -2149,6 +2265,13 @@ const JobCard: React.FC<JobCardProps> = ({
               <Building size={10} />
               {job.sector}
             </span>
+            {/* NEW: Experience badge */}
+            {job.experience && (
+              <span className="bg-amber-100 text-amber-800 px-1 py-0.5 md:px-2 md:py-1 rounded text-xs flex items-center gap-1">
+                <Award size={10} />
+                {job.experience}
+              </span>
+            )}
             <span className="bg-orange-100 text-orange-800 px-1 py-0.5 md:px-2 md:py-1 rounded text-xs flex items-center gap-1" itemProp="baseSalary">
               <DollarSign size={10} />
               {job.salary}

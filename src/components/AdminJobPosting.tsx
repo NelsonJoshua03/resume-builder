@@ -1,4 +1,4 @@
-// src/components/AdminJobPosting.tsx - COMPLETE FIXED VERSION
+// src/components/AdminJobPosting.tsx - UPDATED WITH EXPERIENCE FIELD
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -27,6 +27,8 @@ interface Job {
   views?: number;
   shares?: number;
   applications?: number;
+  // NEW FIELD: Experience
+  experience?: string;
 }
 
 const AdminJobPosting: React.FC = () => {
@@ -41,7 +43,9 @@ const AdminJobPosting: React.FC = () => {
     requirements: [],
     applyLink: '',
     featured: false,
-    isNew: true
+    isNew: true,
+    // NEW: Default experience
+    experience: '0-2 years'
   });
 
   const [requirementsInput, setRequirementsInput] = useState<string>('');
@@ -59,6 +63,7 @@ const AdminJobPosting: React.FC = () => {
     baseTitle: '',
     companies: [''],
     locations: [''],
+    experiences: ['0-2 years'], // NEW: Experience options
     count: 3
   });
 
@@ -81,7 +86,7 @@ const AdminJobPosting: React.FC = () => {
   const { trackButtonClick, trackCTAClick, trackUserFlow, trackEvent } = useGoogleAnalytics();
   const { trackFirebaseEvent } = useFirebaseAnalytics();
 
-  // Quick job templates optimized for Indian market
+  // Quick job templates optimized for Indian market - UPDATED WITH EXPERIENCE
   const quickTemplates = {
     software_developer: {
       title: "Software Developer",
@@ -98,7 +103,9 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of database systems",
         "Bachelor's degree in Computer Science or related field"
       ],
-      applyLink: "mailto:careers@company.com"
+      applyLink: "mailto:careers@company.com",
+      // NEW: Experience field
+      experience: "2-5 years"
     },
     data_analyst: {
       title: "Data Analyst",
@@ -114,7 +121,9 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of data visualization tools",
         "Strong analytical and problem-solving skills"
       ],
-      applyLink: "mailto:hr@company.com"
+      applyLink: "mailto:hr@company.com",
+      // NEW: Experience field
+      experience: "1-3 years"
     },
     mechanical_engineer: {
       title: "Mechanical Engineer",
@@ -131,9 +140,42 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of manufacturing processes",
         "Good communication skills"
       ],
-      applyLink: "mailto:careers@engineering.com"
+      applyLink: "mailto:careers@engineering.com",
+      // NEW: Experience field
+      experience: "1-3 years"
+    },
+    // NEW: Fresher template
+    fresher_developer: {
+      title: "Fresher Software Developer",
+      company: "Startup India",
+      location: "Remote",
+      type: "Full-time",
+      sector: "IT/Software",
+      salary: "₹3,00,000 - ₹5,00,000 PA",
+      description: "Exciting opportunity for fresh graduates to start their career in software development. Training will be provided.",
+      requirements: [
+        "Bachelor's degree in Computer Science or related field",
+        "Basic knowledge of programming concepts",
+        "Good problem-solving skills",
+        "Willingness to learn new technologies"
+      ],
+      applyLink: "mailto:careers@startup.com",
+      // NEW: Experience field
+      experience: "0-1 years"
     }
   };
+
+  // Experience options for dropdown
+  const experienceOptions = [
+    'Fresher (0-1 years)',
+    '0-2 years',
+    '1-3 years',
+    '2-5 years',
+    '3-5 years',
+    '5-8 years',
+    '8+ years',
+    'Not specified'
+  ];
 
   // Load existing manual jobs and check Firebase status
   useEffect(() => {
@@ -227,87 +269,85 @@ const AdminJobPosting: React.FC = () => {
   };
 
   // Test Firebase connection
-  // In AdminJobPosting.tsx, update these functions:
-
-const testFirebaseConnection = async () => {
-  setSyncStatus({ syncing: true, message: 'Testing Firebase connection...' });
-  
-  try {
-    const result = await firebaseJobService.testFirebaseConnection();
+  const testFirebaseConnection = async () => {
+    setSyncStatus({ syncing: true, message: 'Testing Firebase connection...' });
     
-    if (result.connected) {
-      setSyncStatus({ 
-        syncing: false, 
-        message: '✅ Firebase connection successful!',
-        synced: 1,
-        failed: 0
-      });
-      alert(result.message);
+    try {
+      const result = await firebaseJobService.testFirebaseConnection();
       
-      // Refresh Firebase status
-      setFirebaseStatus(getFirebaseStatus());
-    } else {
+      if (result.connected) {
+        setSyncStatus({ 
+          syncing: false, 
+          message: '✅ Firebase connection successful!',
+          synced: 1,
+          failed: 0
+        });
+        alert(result.message);
+        
+        // Refresh Firebase status
+        setFirebaseStatus(getFirebaseStatus());
+      } else {
+        setSyncStatus({ 
+          syncing: false, 
+          message: '❌ Firebase connection failed',
+          synced: 0,
+          failed: 1
+        });
+        alert(result.message);
+      }
+    } catch (error) {
       setSyncStatus({ 
         syncing: false, 
-        message: '❌ Firebase connection failed',
+        message: '❌ Error testing Firebase connection',
         synced: 0,
         failed: 1
       });
-      alert(result.message);
+      alert('Error testing Firebase connection. Check console for details.');
+      console.error('Connection test error:', error);
     }
-  } catch (error) {
-    setSyncStatus({ 
-      syncing: false, 
-      message: '❌ Error testing Firebase connection',
-      synced: 0,
-      failed: 1
-    });
-    alert('Error testing Firebase connection. Check console for details.');
-    console.error('Connection test error:', error);
-  }
-};
+  };
 
-const syncToFirebase = async () => {
-  if (!window.confirm('This will sync all localStorage jobs to Firebase. Continue?')) {
-    return;
-  }
-  
-  setSyncStatus({ syncing: true, message: 'Syncing jobs to Firebase...' });
-  
-  try {
-    const result = await firebaseJobService.syncAllToFirebase();
-    
-    setSyncStatus({ 
-      syncing: false, 
-      message: result.synced > 0 ? 
-        `✅ Synced ${result.synced} jobs to Firebase` : 
-        result.synced === 0 && result.failed === 0 ? 
-          'No jobs to sync' : 'Failed to sync jobs',
-      synced: result.synced,
-      failed: result.failed
-    });
-    
-    if (result.synced > 0) {
-      alert(`Successfully synced ${result.synced} jobs to Firebase${result.failed > 0 ? ` (${result.failed} failed)` : ''}`);
-    } else if (result.failed > 0) {
-      alert('Failed to sync jobs. Please check console for errors.');
-    } else {
-      alert('No jobs available to sync.');
+  const syncToFirebase = async () => {
+    if (!window.confirm('This will sync all localStorage jobs to Firebase. Continue?')) {
+      return;
     }
     
-    // Refresh Firebase status
-    setFirebaseStatus(getFirebaseStatus());
-  } catch (error) {
-    setSyncStatus({ 
-      syncing: false, 
-      message: '❌ Error syncing to Firebase',
-      synced: 0,
-      failed: 0
-    });
-    alert('Error syncing to Firebase. Please check console for details.');
-    console.error('Sync error:', error);
-  }
-};
+    setSyncStatus({ syncing: true, message: 'Syncing jobs to Firebase...' });
+    
+    try {
+      const result = await firebaseJobService.syncAllToFirebase();
+      
+      setSyncStatus({ 
+        syncing: false, 
+        message: result.synced > 0 ? 
+          `✅ Synced ${result.synced} jobs to Firebase` : 
+          result.synced === 0 && result.failed === 0 ? 
+            'No jobs to sync' : 'Failed to sync jobs',
+        synced: result.synced,
+        failed: result.failed
+      });
+      
+      if (result.synced > 0) {
+        alert(`Successfully synced ${result.synced} jobs to Firebase${result.failed > 0 ? ` (${result.failed} failed)` : ''}`);
+      } else if (result.failed > 0) {
+        alert('Failed to sync jobs. Please check console for errors.');
+      } else {
+        alert('No jobs available to sync.');
+      }
+      
+      // Refresh Firebase status
+      setFirebaseStatus(getFirebaseStatus());
+    } catch (error) {
+      setSyncStatus({ 
+        syncing: false, 
+        message: '❌ Error syncing to Firebase',
+        synced: 0,
+        failed: 0
+      });
+      alert('Error syncing to Firebase. Please check console for details.');
+      console.error('Sync error:', error);
+    }
+  };
 
   // Apply quick template
   const applyTemplate = (templateKey: keyof typeof quickTemplates) => {
@@ -324,79 +364,81 @@ const syncToFirebase = async () => {
   };
 
   // Single job submission
-  // Update the handleSubmit function:
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  try {
-    const newJobData = {
-      ...job,
-      postedDate: new Date().toISOString().split('T')[0], // Add postedDate
-      requirements: requirementsInput.split('\n')
-        .filter(req => req.trim() !== '')
-        .map(req => req.trim()),
-    };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const newJobData = {
+        ...job,
+        postedDate: new Date().toISOString().split('T')[0],
+        requirements: requirementsInput.split('\n')
+          .filter(req => req.trim() !== '')
+          .map(req => req.trim()),
+      };
 
-    // Use the job service to create job (will save to localStorage and Firebase if available)
-    const jobId = await firebaseJobService.createJob(newJobData);
-    
-    // Create local job object for UI
-    const newJob: Job = {
-      ...newJobData,
-      id: jobId,
-      postedDate: new Date().toISOString().split('T')[0],
-      addedTimestamp: Date.now(),
-      page: Math.floor(manualJobs.length / 10) + 1,
-      isNew: true,
-      views: 0,
-      shares: 0,
-      applications: 0
-    };
+      // Use the job service to create job
+      const jobId = await firebaseJobService.createJob(newJobData);
+      
+      // Create local job object for UI
+      const newJob: Job = {
+        ...newJobData,
+        id: jobId,
+        postedDate: new Date().toISOString().split('T')[0],
+        addedTimestamp: Date.now(),
+        page: Math.floor(manualJobs.length / 10) + 1,
+        isNew: true,
+        views: 0,
+        shares: 0,
+        applications: 0
+      };
 
-    const updatedJobs = [newJob, ...manualJobs];
-    setManualJobs(updatedJobs);
-    
-    // Track job posting
-    trackButtonClick('post_single_job', 'job_form', 'admin_job_posting');
-    trackUserFlow('admin_job_posting', 'job_posted', 'job_creation');
-    trackEvent('job_posted', {
-      job_type: 'single',
-      job_title: job.title,
-      company: job.company,
-      sector: job.sector
-    });
-    
-    trackFirebaseEvent('job_posted', 'Job Management', job.title, {
-      job_type: 'single',
-      company: job.company,
-      sector: job.sector
-    });
-    
-    setShowSuccess(true);
-    
-    // Reset form
-    setJob({
-      title: '',
-      company: '',
-      location: '',
-      type: 'Full-time',
-      sector: 'IT/Software',
-      salary: '',
-      description: '',
-      requirements: [],
-      applyLink: '',
-      featured: false,
-      isNew: true
-    });
-    setRequirementsInput('');
+      const updatedJobs = [newJob, ...manualJobs];
+      setManualJobs(updatedJobs);
+      
+      // Track job posting
+      trackButtonClick('post_single_job', 'job_form', 'admin_job_posting');
+      trackUserFlow('admin_job_posting', 'job_posted', 'job_creation');
+      trackEvent('job_posted', {
+        job_type: 'single',
+        job_title: job.title,
+        company: job.company,
+        sector: job.sector,
+        experience: job.experience // NEW: Track experience
+      });
+      
+      trackFirebaseEvent('job_posted', 'Job Management', job.title, {
+        job_type: 'single',
+        company: job.company,
+        sector: job.sector,
+        experience: job.experience // NEW: Track experience
+      });
+      
+      setShowSuccess(true);
+      
+      // Reset form
+      setJob({
+        title: '',
+        company: '',
+        location: '',
+        type: 'Full-time',
+        sector: 'IT/Software',
+        salary: '',
+        description: '',
+        requirements: [],
+        applyLink: '',
+        featured: false,
+        isNew: true,
+        experience: '0-2 years' // NEW: Reset with default
+      });
+      setRequirementsInput('');
 
-    setTimeout(() => setShowSuccess(false), 3000);
-    
-  } catch (error) {
-    console.error('Error creating job:', error);
-    alert('Failed to create job: ' + error);
-  }
-};
+      setTimeout(() => setShowSuccess(false), 3000);
+      
+    } catch (error) {
+      console.error('Error creating job:', error);
+      alert('Failed to create job: ' + error);
+    }
+  };
 
   // Bulk job upload from JSON
   const handleBulkUpload = async (e: React.FormEvent) => {
@@ -502,6 +544,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     for (let i = 0; i < batchCreate.count; i++) {
       const company = batchCreate.companies[i % batchCreate.companies.length] || 'Tech Company';
       const location = batchCreate.locations[i % batchCreate.locations.length] || 'Bangalore, Karnataka';
+      const experience = batchCreate.experiences[i % batchCreate.experiences.length] || '0-2 years';
       
       jobs.push({
         title: `${batchCreate.baseTitle} ${i + 1}`,
@@ -514,7 +557,9 @@ const handleSubmit = async (e: React.FormEvent) => {
         requirements: ["2+ years experience", "Relevant skills", "Good communication"],
         applyLink: "mailto:careers@company.com",
         featured: i < 2,
-        isNew: true
+        isNew: true,
+        // NEW: Add experience field
+        experience: experience
       });
     }
     setBulkJsonInput(JSON.stringify(jobs, null, 2));
@@ -522,7 +567,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     trackFirebaseEvent('generate_batch_jobs', 'Admin', 'batch_creator');
   };
 
-  // Download template JSON
+  // Download template JSON - UPDATED WITH EXPERIENCE FIELD
   const downloadTemplate = () => {
     const template = [
       {
@@ -539,7 +584,9 @@ const handleSubmit = async (e: React.FormEvent) => {
           "Experience with responsive web design"
         ],
         "applyLink": "mailto:careers@company.com",
-        "featured": true
+        "featured": true,
+        // NEW: Experience field in template
+        "experience": "2-5 years"
       },
       {
         "title": "Mechanical Engineer",
@@ -555,7 +602,27 @@ const handleSubmit = async (e: React.FormEvent) => {
           "Knowledge of manufacturing processes"
         ],
         "applyLink": "https://company.com/careers/mechanical-engineer",
-        "featured": false
+        "featured": false,
+        // NEW: Experience field in template
+        "experience": "1-3 years"
+      },
+      {
+        "title": "Fresher Software Engineer",
+        "company": "Startup India",
+        "location": "Remote",
+        "type": "Full-time",
+        "sector": "IT/Software",
+        "salary": "₹3,00,000 - ₹5,00,000 PA",
+        "description": "Great opportunity for fresh graduates to start their career...",
+        "requirements": [
+          "Bachelor's degree in Computer Science",
+          "Basic programming knowledge",
+          "Good problem-solving skills"
+        ],
+        "applyLink": "mailto:hr@startup.com",
+        "featured": false,
+        // NEW: Experience field in template
+        "experience": "Fresher (0-1 years)"
       }
     ];
 
@@ -872,8 +939,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                       </div>
                     </div>
 
-                    {/* Sector and Salary */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Sector, Salary and Experience */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Sector/Industry *
@@ -901,6 +968,23 @@ const handleSubmit = async (e: React.FormEvent) => {
                           placeholder="e.g., ₹8,00,000 - ₹15,00,000 PA"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                      </div>
+
+                      {/* NEW: Experience Field */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Years of Experience *
+                        </label>
+                        <select
+                          required
+                          value={job.experience}
+                          onChange={e => setJob({...job, experience: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {experienceOptions.map(exp => (
+                            <option key={exp} value={exp}>{exp}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -1024,7 +1108,7 @@ Bachelor's degree in Computer Science..."
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Companies (one per line)</label>
                         <textarea
@@ -1043,6 +1127,16 @@ Bachelor's degree in Computer Science..."
                           rows={3}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                           placeholder="Bangalore, Karnataka\nMumbai, Maharashtra\nHyderabad, Telangana"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Experience Levels (one per line)</label>
+                        <textarea
+                          value={batchCreate.experiences.join('\n')}
+                          onChange={e => setBatchCreate({...batchCreate, experiences: e.target.value.split('\n')})}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="0-2 years\n2-5 years\n5+ years"
                         />
                       </div>
                     </div>
@@ -1092,7 +1186,7 @@ Bachelor's degree in Computer Science..."
     "requirements": ["Requirement 1", "Requirement 2"],
     "applyLink": "mailto:careers@company.com",
     "featured": false,
-    "isNew": true
+    "experience": "2-5 years" // NEW: Experience field
   }
 ]`}
                       rows={12}
@@ -1162,21 +1256,31 @@ Bachelor's degree in Computer Science..."
                 <div className="space-y-2">
                   <button 
                     onClick={() => applyTemplate('software_developer')}
-                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left"
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
                   >
-                    💻 Software Developer
+                    <span>💻 Software Developer</span>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">2-5 yrs</span>
                   </button>
                   <button 
                     onClick={() => applyTemplate('data_analyst')}
-                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left"
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
                   >
-                    📊 Data Analyst
+                    <span>📊 Data Analyst</span>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">1-3 yrs</span>
                   </button>
                   <button 
                     onClick={() => applyTemplate('mechanical_engineer')}
-                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left"
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
                   >
-                    🔧 Mechanical Engineer
+                    <span>🔧 Mechanical Engineer</span>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">1-3 yrs</span>
+                  </button>
+                  <button 
+                    onClick={() => applyTemplate('fresher_developer')}
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
+                  >
+                    <span>🎓 Fresher Developer</span>
+                    <span className="text-xs bg-green-100 text-green-800 px-1 rounded">0-1 yrs</span>
                   </button>
                 </div>
               </div>
@@ -1275,6 +1379,12 @@ Bachelor's degree in Computer Science..."
                                     Featured
                                   </span>
                                 )}
+                                {/* NEW: Display experience badge */}
+                                {manualJob.experience && (
+                                  <span className="inline-block bg-amber-100 text-amber-800 text-xs px-1 py-0.5 rounded">
+                                    {manualJob.experience}
+                                  </span>
+                                )}
                                 {manualJob.id.startsWith('manual-bulk-') && (
                                   <span className="inline-block bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">
                                     Bulk
@@ -1319,17 +1429,17 @@ Bachelor's degree in Computer Science..."
                     <li>• Use clear, descriptive job titles</li>
                     <li>• Include specific requirements for Indian market</li>
                     <li>• Provide realistic INR salary ranges</li>
+                    <li>• Specify years of experience clearly</li>
                     <li>• Use Indian city names and states</li>
                     <li>• Mark high-priority roles as "Featured"</li>
-                    <li>• Jobs auto-clean after 90 days</li>
                   </ul>
                 ) : (
                   <ul className="text-sm text-blue-700 space-y-1">
                     <li>• Download the India-specific template</li>
                     <li>• JSON must be an array of job objects</li>
                     <li>• Required fields: title, company, location</li>
+                    <li>• Include experience field (e.g., "2-5 years")</li>
                     <li>• Use arrays for requirements field</li>
-                    <li>• Validate JSON before uploading</li>
                     <li>• Include Indian salary ranges in INR</li>
                     <li>• All jobs marked as "Latest"</li>
                   </ul>
@@ -1355,6 +1465,10 @@ Bachelor's degree in Computer Science..."
                   <div className="flex justify-between">
                     <span>Remote Jobs:</span>
                     <span className="font-bold">{manualJobs.filter(j => j.type === 'Remote').length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Fresher Jobs:</span>
+                    <span className="font-bold">{manualJobs.filter(j => j.experience?.includes('Fresher') || j.experience?.includes('0-1')).length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>New Today:</span>
