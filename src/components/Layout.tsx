@@ -1,4 +1,4 @@
-// src/components/Layout.tsx - UPDATED WITH CORRECT LATEST WALK-IN DRIVES LINK
+// src/components/Layout.tsx - UPDATED WITH LATEST JOB UPDATES LINK
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -53,7 +53,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <title>CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform</title>
         <meta name="title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
         <meta name="description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India. Free resume builder with ATS templates." />
-        <meta name="keywords" content="resume builder India, ATS resume maker, job portal India, Indian job search, engineering jobs India, IT jobs India, fresher jobs India, free resume maker, CV builder India, career platform India, government exams, walk-in drives" />
+        <meta name="keywords" content="resume builder India, ATS resume maker, job portal India, Indian job search, engineering jobs India, IT jobs India, fresher jobs India, free resume maker, CV builder India, career platform India, government exams, walk-in drives, experienced jobs India, senior jobs" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <meta name="author" content="CareerCraft India" />
@@ -125,8 +125,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </span>
               </Link>
               
-              {/* Navigation Menu - UPDATED: Changed link to new URL */}
+              {/* Navigation Menu - UPDATED: Added Latest Job Updates link */}
               <div className="hidden md:flex space-x-4 lg:space-x-6">
+                {/* Government Exams */}
                 <Link 
                   to="/government-exams" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -137,6 +138,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   Government Exams
                 </Link>
+                
+                {/* Job Disciplines */}
                 <Link 
                   to="/job-disciplines" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -148,7 +151,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   Job Disciplines
                 </Link>
                 
-                {/* NEW: Fresher Jobs Link */}
+                {/* Fresher Jobs */}
                 <Link 
                   to="/latest-jobs-for-freshers-india" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -160,7 +163,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   Fresher Jobs 2026
                 </Link>
                 
-                {/* NEW: Latest Walk-in Drives Link (SEO Optimized) - FIXED LINK */}
+                {/* NEW: Latest Job Updates for Experienced Professionals */}
+                <Link 
+                  to="/latest-job-updates-india" 
+                  className={`font-medium transition-colors text-sm lg:text-base ${
+                    location.pathname.includes('/latest-job-updates-india') 
+                      ? 'text-blue-600' 
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  Experienced Jobs
+                </Link>
+                
+                {/* Latest Walk-in Drives */}
                 <Link 
                   to="/latest-walk-in-drives-india" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -169,7 +184,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
                 >
-                  Latest Walk-in Drives
+                  Walk-in Drives
                 </Link>
                 
                 {/* Resume Templates Dropdown */}
@@ -221,6 +236,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                 </div>
 
+                {/* Blog */}
                 <Link 
                   to="/blog" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -231,6 +247,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   Blog
                 </Link>
+                
+                {/* About */}
                 <Link 
                   to="/about" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -241,6 +259,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   About
                 </Link>
+                
+                {/* Contact */}
                 <Link 
                   to="/contact" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -271,12 +291,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </main>
 
-        {/* Footer - UPDATED: Changed link to new URL */}
+        {/* Footer - UPDATED: Added Latest Job Updates link */}
         <footer className="bg-gray-900 text-white py-8 md:py-12 mt-auto w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 mb-6 md:mb-8">
+              {/* Brand Section */}
               <div>
-                {/* Footer Brand */}
                 <div className="mb-3 md:mb-4">
                   <Link to="/">
                     <span className="text-xl md:text-2xl font-bold text-white">
@@ -306,6 +326,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               </div>
               
+              {/* Quick Links */}
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Quick Links</h3>
                 <ul className="space-y-1 md:space-y-2">
@@ -313,10 +334,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Government Exams</Link></li>
                   <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Disciplines</Link></li>
                   <li><Link to="/latest-jobs-for-freshers-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Fresher Jobs 2026</Link></li>
-                  <li><Link to="/latest-walk-in-drives-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Latest Walk-in Drives</Link></li>
+                  <li><Link to="/latest-job-updates-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Experienced Jobs</Link></li>
+                  <li><Link to="/latest-walk-in-drives-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Walk-in Drives</Link></li>
                 </ul>
               </div>
               
+              {/* Resume Builder */}
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resume Builder</h3>
                 <ul className="space-y-1 md:space-y-2">
@@ -328,6 +351,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </ul>
               </div>
               
+              {/* Resources */}
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Resources</h3>
                 <ul className="space-y-1 md:space-y-2">
@@ -338,6 +362,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </ul>
               </div>
               
+              {/* Legal */}
               <div>
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Legal</h3>
                 <ul className="space-y-1 md:space-y-2">
@@ -348,6 +373,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
             </div>
             
+            {/* Footer Bottom */}
             <div className="border-t border-gray-800 pt-6 md:pt-8">
               <div className="flex flex-col md:flex-row justify-between items-center">
                 <p className="text-gray-500 text-sm md:text-base text-center md:text-left mb-4 md:mb-0">

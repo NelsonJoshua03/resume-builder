@@ -1,4 +1,4 @@
-// src/components/AdminJobPosting.tsx - UPDATED WITH EXPERIENCE FIELD
+// src/components/AdminJobPosting.tsx - COMPLETE UPDATED VERSION WITH QUALIFICATIONS FIELD
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -6,7 +6,11 @@ import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import { getFirebaseStatus } from '../firebase/config';
 import { firebaseJobService } from '../firebase/jobService';
-import { Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle, Database, WifiOff } from 'lucide-react';
+import { 
+  Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle, 
+  Database, WifiOff, GraduationCap, Award, DollarSign, Calendar,
+  BookOpen, Users, TrendingUp, Eye, Briefcase, MapPin, Building
+} from 'lucide-react';
 
 interface Job {
   id: string;
@@ -18,6 +22,8 @@ interface Job {
   salary: string;
   description: string;
   requirements: string[];
+  // NEW FIELD: Qualifications
+  qualifications: string[];
   postedDate: string;
   applyLink: string;
   featured?: boolean;
@@ -27,7 +33,7 @@ interface Job {
   views?: number;
   shares?: number;
   applications?: number;
-  // NEW FIELD: Experience
+  // Experience field
   experience?: string;
 }
 
@@ -41,14 +47,16 @@ const AdminJobPosting: React.FC = () => {
     salary: '',
     description: '',
     requirements: [],
+    // NEW: Qualifications array
+    qualifications: [],
     applyLink: '',
     featured: false,
     isNew: true,
-    // NEW: Default experience
     experience: '0-2 years'
   });
 
   const [requirementsInput, setRequirementsInput] = useState<string>('');
+  const [qualificationsInput, setQualificationsInput] = useState<string>('');
   const [manualJobs, setManualJobs] = useState<Job[]>([]);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
@@ -63,7 +71,9 @@ const AdminJobPosting: React.FC = () => {
     baseTitle: '',
     companies: [''],
     locations: [''],
-    experiences: ['0-2 years'], // NEW: Experience options
+    experiences: ['0-2 years'],
+    // NEW: Qualifications for batch creation
+    qualifications: ['B.E/B.Tech', 'Any Graduate'],
     count: 3
   });
 
@@ -86,7 +96,7 @@ const AdminJobPosting: React.FC = () => {
   const { trackButtonClick, trackCTAClick, trackUserFlow, trackEvent } = useGoogleAnalytics();
   const { trackFirebaseEvent } = useFirebaseAnalytics();
 
-  // Quick job templates optimized for Indian market - UPDATED WITH EXPERIENCE
+  // Quick job templates optimized for Indian market - UPDATED WITH QUALIFICATIONS
   const quickTemplates = {
     software_developer: {
       title: "Software Developer",
@@ -103,8 +113,13 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of database systems",
         "Bachelor's degree in Computer Science or related field"
       ],
+      // NEW: Qualifications array
+      qualifications: [
+        "B.E/B.Tech in Computer Science",
+        "MCA",
+        "B.Sc in IT/Computer Science"
+      ],
       applyLink: "mailto:careers@company.com",
-      // NEW: Experience field
       experience: "2-5 years"
     },
     data_analyst: {
@@ -121,8 +136,13 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of data visualization tools",
         "Strong analytical and problem-solving skills"
       ],
+      // NEW: Qualifications array
+      qualifications: [
+        "B.Sc/M.Sc in Statistics/Mathematics",
+        "B.Tech in Data Science",
+        "MBA in Analytics"
+      ],
       applyLink: "mailto:hr@company.com",
-      // NEW: Experience field
       experience: "1-3 years"
     },
     mechanical_engineer: {
@@ -140,11 +160,15 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of manufacturing processes",
         "Good communication skills"
       ],
+      // NEW: Qualifications array
+      qualifications: [
+        "B.E/B.Tech in Mechanical Engineering",
+        "Diploma in Mechanical Engineering",
+        "M.E/M.Tech in Mechanical Design"
+      ],
       applyLink: "mailto:careers@engineering.com",
-      // NEW: Experience field
       experience: "1-3 years"
     },
-    // NEW: Fresher template
     fresher_developer: {
       title: "Fresher Software Developer",
       company: "Startup India",
@@ -159,9 +183,37 @@ const AdminJobPosting: React.FC = () => {
         "Good problem-solving skills",
         "Willingness to learn new technologies"
       ],
+      // NEW: Qualifications array
+      qualifications: [
+        "B.E/B.Tech in Computer Science (2023/2024 Batch)",
+        "BCA/MCA",
+        "B.Sc in Computer Science"
+      ],
       applyLink: "mailto:careers@startup.com",
-      // NEW: Experience field
       experience: "0-1 years"
+    },
+    marketing_executive: {
+      title: "Marketing Executive",
+      company: "Digital Marketing Agency",
+      location: "Mumbai, Maharashtra",
+      type: "Full-time",
+      sector: "Marketing",
+      salary: "₹4,00,000 - ₹7,00,000 PA",
+      description: "Looking for a dynamic Marketing Executive to handle digital marketing campaigns and client communications.",
+      requirements: [
+        "1-2 years of experience in digital marketing",
+        "Knowledge of SEO, SEM, and social media marketing",
+        "Excellent communication skills",
+        "Creative thinking and problem-solving abilities"
+      ],
+      // NEW: Qualifications array
+      qualifications: [
+        "MBA in Marketing",
+        "BBA in Marketing",
+        "Any Graduate with digital marketing certification"
+      ],
+      applyLink: "mailto:hr@marketingagency.com",
+      experience: "1-3 years"
     }
   };
 
@@ -175,6 +227,63 @@ const AdminJobPosting: React.FC = () => {
     '5-8 years',
     '8+ years',
     'Not specified'
+  ];
+
+  // Qualification suggestions for Indian market
+  const qualificationSuggestions = [
+    'Any Graduate',
+    'B.E/B.Tech',
+    'M.E/M.Tech',
+    'B.Sc',
+    'M.Sc',
+    'BBA',
+    'MBA',
+    'B.Com',
+    'M.Com',
+    'BCA',
+    'MCA',
+    'Diploma',
+    'PhD',
+    'Post Graduate',
+    '12th Pass',
+    '10th Pass',
+    'UGC NET',
+    'GATE',
+    'ITI',
+    'CA',
+    'CS',
+    'ICWA',
+    'Medical Graduate (MBBS)',
+    'B.Arch',
+    'LLB',
+    'LLM',
+    'B.Pharm',
+    'M.Pharm',
+    'BDS',
+    'BAMS',
+    'BHMS'
+  ];
+
+  // Job Types
+  const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Remote', 'Internship', 'Freelance'];
+
+  // Sectors for Indian market
+  const sectors = [
+    'IT/Software', 'Engineering', 'Data Science', 'Marketing', 
+    'HR', 'Finance', 'Healthcare', 'Education', 'Sales', 'Design',
+    'Manufacturing', 'Construction', 'Real Estate', 'Banking',
+    'Insurance', 'Telecom', 'E-commerce', 'Logistics', 'Media',
+    'Hospitality', 'Automotive', 'Agriculture', 'Pharmaceutical'
+  ];
+
+  // Popular Indian Locations
+  const popularLocations = [
+    'Bangalore, Karnataka', 'Mumbai, Maharashtra', 'Delhi', 'Hyderabad, Telangana',
+    'Chennai, Tamil Nadu', 'Pune, Maharashtra', 'Kolkata, West Bengal', 
+    'Ahmedabad, Gujarat', 'Remote', 'Gurgaon, Haryana', 'Noida, Uttar Pradesh',
+    'Chandigarh', 'Jaipur, Rajasthan', 'Lucknow, Uttar Pradesh', 'Bhopal, Madhya Pradesh',
+    'Bhubaneswar, Odisha', 'Coimbatore, Tamil Nadu', 'Indore, Madhya Pradesh',
+    'Kochi, Kerala', 'Nagpur, Maharashtra', 'Vadodara, Gujarat', 'Visakhapatnam, Andhra Pradesh'
   ];
 
   // Load existing manual jobs and check Firebase status
@@ -358,6 +467,7 @@ const AdminJobPosting: React.FC = () => {
       isNew: true
     });
     setRequirementsInput(template.requirements.join('\n'));
+    setQualificationsInput(template.qualifications.join('\n'));
     setActiveTab('single');
     trackButtonClick(`apply_template_${templateKey}`, 'quick_templates', 'admin_job_posting');
     trackFirebaseEvent(`apply_template_${templateKey}`, 'Admin', 'quick_templates');
@@ -374,6 +484,10 @@ const AdminJobPosting: React.FC = () => {
         requirements: requirementsInput.split('\n')
           .filter(req => req.trim() !== '')
           .map(req => req.trim()),
+        // Parse qualifications
+        qualifications: qualificationsInput.split('\n')
+          .filter(qual => qual.trim() !== '')
+          .map(qual => qual.trim()),
       };
 
       // Use the job service to create job
@@ -394,6 +508,7 @@ const AdminJobPosting: React.FC = () => {
 
       const updatedJobs = [newJob, ...manualJobs];
       setManualJobs(updatedJobs);
+      localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
       
       // Track job posting
       trackButtonClick('post_single_job', 'job_form', 'admin_job_posting');
@@ -403,14 +518,16 @@ const AdminJobPosting: React.FC = () => {
         job_title: job.title,
         company: job.company,
         sector: job.sector,
-        experience: job.experience // NEW: Track experience
+        experience: job.experience,
+        qualifications_count: newJobData.qualifications.length
       });
       
       trackFirebaseEvent('job_posted', 'Job Management', job.title, {
         job_type: 'single',
         company: job.company,
         sector: job.sector,
-        experience: job.experience // NEW: Track experience
+        experience: job.experience,
+        qualifications_count: newJobData.qualifications.length
       });
       
       setShowSuccess(true);
@@ -425,12 +542,14 @@ const AdminJobPosting: React.FC = () => {
         salary: '',
         description: '',
         requirements: [],
+        qualifications: [],
         applyLink: '',
         featured: false,
         isNew: true,
-        experience: '0-2 years' // NEW: Reset with default
+        experience: '0-2 years'
       });
       setRequirementsInput('');
+      setQualificationsInput('');
 
       setTimeout(() => setShowSuccess(false), 3000);
       
@@ -545,6 +664,7 @@ const AdminJobPosting: React.FC = () => {
       const company = batchCreate.companies[i % batchCreate.companies.length] || 'Tech Company';
       const location = batchCreate.locations[i % batchCreate.locations.length] || 'Bangalore, Karnataka';
       const experience = batchCreate.experiences[i % batchCreate.experiences.length] || '0-2 years';
+      const qualifications = batchCreate.qualifications[i % batchCreate.qualifications.length] || 'Any Graduate';
       
       jobs.push({
         title: `${batchCreate.baseTitle} ${i + 1}`,
@@ -553,12 +673,12 @@ const AdminJobPosting: React.FC = () => {
         type: "Full-time",
         sector: "IT/Software",
         salary: "₹6,00,000 - ₹12,00,000 PA",
-        description: `We are hiring a ${batchCreate.baseTitle} to join our team at ${company}.`,
-        requirements: ["2+ years experience", "Relevant skills", "Good communication"],
+        description: `We are hiring a ${batchCreate.baseTitle} to join our team at ${company}. This position requires strong technical skills and ${experience} of experience.`,
+        requirements: ["2+ years experience", "Relevant skills", "Good communication", "Problem-solving abilities"],
+        qualifications: [qualifications, "Any Graduate"],
         applyLink: "mailto:careers@company.com",
         featured: i < 2,
         isNew: true,
-        // NEW: Add experience field
         experience: experience
       });
     }
@@ -567,7 +687,7 @@ const AdminJobPosting: React.FC = () => {
     trackFirebaseEvent('generate_batch_jobs', 'Admin', 'batch_creator');
   };
 
-  // Download template JSON - UPDATED WITH EXPERIENCE FIELD
+  // Download template JSON - UPDATED WITH QUALIFICATIONS FIELD
   const downloadTemplate = () => {
     const template = [
       {
@@ -577,15 +697,21 @@ const AdminJobPosting: React.FC = () => {
         "type": "Full-time",
         "sector": "IT/Software",
         "salary": "₹8,00,000 - ₹15,00,000 PA",
-        "description": "We are looking for a skilled Frontend Developer with experience in React.js...",
+        "description": "We are looking for a skilled Frontend Developer with experience in React.js for building modern web applications. The ideal candidate should have strong JavaScript skills and experience with modern frameworks.",
         "requirements": [
           "2+ years of experience with React.js",
           "Proficiency in JavaScript and modern frameworks",
-          "Experience with responsive web design"
+          "Experience with responsive web design",
+          "Knowledge of state management (Redux/Zustand)",
+          "Experience with testing frameworks"
+        ],
+        "qualifications": [
+          "B.E/B.Tech in Computer Science",
+          "MCA",
+          "B.Sc in IT/Computer Science"
         ],
         "applyLink": "mailto:careers@company.com",
         "featured": true,
-        // NEW: Experience field in template
         "experience": "2-5 years"
       },
       {
@@ -595,15 +721,21 @@ const AdminJobPosting: React.FC = () => {
         "type": "Full-time",
         "sector": "Engineering",
         "salary": "₹4,50,000 - ₹9,00,000 PA",
-        "description": "Seeking a Mechanical Engineer for product design and development...",
+        "description": "Seeking a Mechanical Engineer for product design and development. Candidate should have experience with CAD software and manufacturing processes.",
         "requirements": [
           "Bachelor's degree in Mechanical Engineering",
           "Experience with CAD software",
-          "Knowledge of manufacturing processes"
+          "Knowledge of manufacturing processes",
+          "Project management skills",
+          "Quality control experience"
+        ],
+        "qualifications": [
+          "B.E/B.Tech in Mechanical Engineering",
+          "Diploma in Mechanical Engineering",
+          "M.E/M.Tech in Mechanical Design"
         ],
         "applyLink": "https://company.com/careers/mechanical-engineer",
         "featured": false,
-        // NEW: Experience field in template
         "experience": "1-3 years"
       },
       {
@@ -613,16 +745,46 @@ const AdminJobPosting: React.FC = () => {
         "type": "Full-time",
         "sector": "IT/Software",
         "salary": "₹3,00,000 - ₹5,00,000 PA",
-        "description": "Great opportunity for fresh graduates to start their career...",
+        "description": "Great opportunity for fresh graduates to start their career in software development. We provide comprehensive training and mentorship.",
         "requirements": [
           "Bachelor's degree in Computer Science",
           "Basic programming knowledge",
-          "Good problem-solving skills"
+          "Good problem-solving skills",
+          "Willingness to learn",
+          "Good communication skills"
+        ],
+        "qualifications": [
+          "B.E/B.Tech in Computer Science (2023/2024 Batch)",
+          "BCA/MCA",
+          "B.Sc in Computer Science"
         ],
         "applyLink": "mailto:hr@startup.com",
         "featured": false,
-        // NEW: Experience field in template
         "experience": "Fresher (0-1 years)"
+      },
+      {
+        "title": "Marketing Executive",
+        "company": "Digital Marketing Agency",
+        "location": "Mumbai, Maharashtra",
+        "type": "Full-time",
+        "sector": "Marketing",
+        "salary": "₹4,00,000 - ₹7,00,000 PA",
+        "description": "Looking for a dynamic Marketing Executive to handle digital marketing campaigns, social media management, and client communications.",
+        "requirements": [
+          "1-2 years of experience in digital marketing",
+          "Knowledge of SEO, SEM, and social media marketing",
+          "Excellent communication skills",
+          "Creative thinking and problem-solving abilities",
+          "Experience with analytics tools"
+        ],
+        "qualifications": [
+          "MBA in Marketing",
+          "BBA in Marketing",
+          "Any Graduate with digital marketing certification"
+        ],
+        "applyLink": "mailto:hr@marketingagency.com",
+        "featured": true,
+        "experience": "1-3 years"
       }
     ];
 
@@ -630,7 +792,7 @@ const AdminJobPosting: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'careercraft-job-postings-template.json';
+    link.download = 'careercraft-job-postings-template-with-qualifications.json';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -681,24 +843,23 @@ const AdminJobPosting: React.FC = () => {
     }
   };
 
-  const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Remote', 'Internship', 'Freelance'];
-  const sectors = [
-    'IT/Software', 'Engineering', 'Data Science', 'Marketing', 
-    'HR', 'Finance', 'Healthcare', 'Education', 'Sales', 'Design'
-  ];
-
-  const popularLocations = [
-    'Bangalore, Karnataka', 'Mumbai, Maharashtra', 'Delhi', 'Hyderabad, Telangana',
-    'Chennai, Tamil Nadu', 'Pune, Maharashtra', 'Kolkata, West Bengal', 
-    'Ahmedabad, Gujarat', 'Remote', 'Gurgaon, Haryana', 'Noida, Uttar Pradesh'
-  ];
+  // Quick qualification suggestion handler
+  const addQualificationSuggestion = (qualification: string) => {
+    setQualificationsInput(prev => {
+      const lines = prev.split('\n').filter(line => line.trim() !== '');
+      if (!lines.includes(qualification)) {
+        lines.push(qualification);
+      }
+      return lines.join('\n');
+    });
+  };
 
   return (
     <>
       <Helmet>
         <title>Admin Job Posting - Add Latest Job Opportunities | CareerCraft.in</title>
         <meta name="description" content="Post new latest job opportunities on CareerCraft.in - India's premier career platform for IT, engineering, marketing and business jobs. Auto-cleaned every 90 days." />
-        <meta name="keywords" content="post latest jobs India, admin job portal, career opportunities, hire candidates India, job posting platform, auto-clean jobs" />
+        <meta name="keywords" content="post latest jobs India, admin job portal, career opportunities, hire candidates India, job posting platform, auto-clean jobs, qualifications, experience" />
         <meta name="robots" content="noindex, nofollow" />
         <link rel="canonical" href="https://careercraft.in/admin/job-posting" />
         
@@ -725,36 +886,62 @@ const AdminJobPosting: React.FC = () => {
           {/* Header */}
           <div className="mb-8">
             <Link 
-              to="/latest-jobs-for-freshers-india" 
-              className="text-blue-600 hover:text-blue-800 mb-4 inline-block"
+              to="/job-applications" 
+              className="text-blue-600 hover:text-blue-800 mb-4 inline-block flex items-center gap-2"
               onClick={() => trackCTAClick('back_to_jobs', 'navigation', 'admin_job_posting')}
             >
               ← Back to Job Applications
             </Link>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Posting - Latest Jobs</h1>
-            <p className="text-gray-600">Add new job opportunities to CareerCraft.in. Jobs auto-clean after 90 days.</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Posting - Latest Jobs</h1>
+                <p className="text-gray-600">Add new job opportunities to CareerCraft.in. Jobs auto-clean after 90 days.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Database size={16} className="text-blue-600" />
+                    <span className="text-sm font-medium">
+                      {firebaseStatus?.firestore ? 'Firebase ✅' : 'Local Storage'}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={16} className="text-green-600" />
+                    <span className="text-sm">Auto-clean: 90 days</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Success Message */}
           {showSuccess && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-              Job posted successfully! It will now appear on the Job Applications page (showing latest first).
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              Job posted successfully! It will now appear on the Job Applications page.
             </div>
           )}
 
           {/* Sync Status */}
           {syncStatus.syncing && (
-            <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-6">
-              ⏳ {syncStatus.message}
+            <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-6 flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-spin"></div>
+              {syncStatus.message}
             </div>
           )}
 
           {syncStatus.message && !syncStatus.syncing && (
-            <div className={`border px-4 py-3 rounded mb-6 ${
+            <div className={`border px-4 py-3 rounded mb-6 flex items-center gap-2 ${
               syncStatus.message.includes('✅') ? 'bg-green-100 border-green-400 text-green-700' :
               syncStatus.message.includes('❌') ? 'bg-red-100 border-red-400 text-red-700' :
               'bg-blue-100 border-blue-400 text-blue-700'
             }`}>
+              <div className={`w-3 h-3 rounded-full ${
+                syncStatus.message.includes('✅') ? 'bg-green-500' :
+                syncStatus.message.includes('❌') ? 'bg-red-500' : 'bg-blue-500'
+              }`}></div>
               {syncStatus.message}
             </div>
           )}
@@ -836,6 +1023,7 @@ const AdminJobPosting: React.FC = () => {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
+                  <Briefcase size={16} className="inline mr-2" />
                   Single Job Posting
                 </button>
                 <button
@@ -849,6 +1037,7 @@ const AdminJobPosting: React.FC = () => {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
+                  <Upload size={16} className="inline mr-2" />
                   Bulk Job Upload
                 </button>
               </nav>
@@ -863,9 +1052,14 @@ const AdminJobPosting: React.FC = () => {
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">Post Latest Job on CareerCraft</h2>
-                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
-                      Shows as LATEST
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                        Shows as LATEST
+                      </span>
+                      <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                        Qualifications Added
+                      </span>
+                    </div>
                   </div>
                   
                   <form onSubmit={handleSubmit} className="space-y-6">
@@ -970,7 +1164,6 @@ const AdminJobPosting: React.FC = () => {
                         />
                       </div>
 
-                      {/* NEW: Experience Field */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Years of Experience *
@@ -1014,13 +1207,53 @@ const AdminJobPosting: React.FC = () => {
                         onChange={e => setRequirementsInput(e.target.value)}
                         placeholder="2+ years of experience with React...
 Proficiency in JavaScript...
-Bachelor's degree in Computer Science..."
+Bachelor's degree in Computer Science...
+Good communication skills..."
                         rows={4}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       <p className="text-sm text-gray-500 mt-1">
                         Enter each requirement on a new line. These will be displayed as bullet points.
                       </p>
+                    </div>
+
+                    {/* Qualifications - NEW SECTION */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <GraduationCap size={16} />
+                        Educational Qualifications (one per line) *
+                      </label>
+                      <textarea
+                        required
+                        value={qualificationsInput}
+                        onChange={e => setQualificationsInput(e.target.value)}
+                        placeholder="B.E/B.Tech in Computer Science...
+MCA...
+B.Sc in IT/Computer Science...
+Any Graduate..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-sm text-gray-500 mt-1 mb-2">
+                        Enter each qualification on a new line. Users can filter jobs by these qualifications.
+                      </p>
+                      
+                      {/* Quick Qualification Suggestions */}
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600 mb-2">Quick suggestions for Indian market:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {qualificationSuggestions.slice(0, 8).map(qual => (
+                            <button
+                              key={qual}
+                              type="button"
+                              onClick={() => addQualificationSuggestion(qual)}
+                              className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded"
+                            >
+                              + {qual}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Apply Link and Featured */}
@@ -1039,7 +1272,7 @@ Bachelor's degree in Computer Science..."
                         />
                       </div>
 
-                      <div className="flex items-center">
+                      <div className="flex items-center pt-6">
                         <input
                           type="checkbox"
                           id="featured"
@@ -1048,7 +1281,7 @@ Bachelor's degree in Computer Science..."
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                         <label htmlFor="featured" className="ml-2 block text-sm text-gray-700">
-                          Mark as Featured Job
+                          Mark as Featured Job (⭐ Featured badge)
                         </label>
                       </div>
                     </div>
@@ -1057,12 +1290,13 @@ Bachelor's degree in Computer Science..."
                     <div className="pt-4">
                       <button
                         type="submit"
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                       >
+                        <Briefcase size={18} />
                         Post Latest Job on CareerCraft
                       </button>
                       <p className="text-xs text-gray-500 text-center mt-2">
-                        Job will appear as "Latest" and auto-clean after 90 days
+                        Job will appear as "Latest" with qualifications filtering | Auto-clean after 90 days
                       </p>
                     </div>
                   </form>
@@ -1072,13 +1306,18 @@ Bachelor's degree in Computer Science..."
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">Bulk Job Upload</h2>
-                    <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
-                      All jobs marked as LATEST
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-1 rounded-full">
+                        All jobs marked as LATEST
+                      </span>
+                      <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full">
+                        Includes Qualifications
+                      </span>
+                    </div>
                   </div>
                   
                   {/* Batch Job Creator */}
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
                     <h4 className="font-semibold text-green-800 mb-3 flex items-center">
                       <Zap className="mr-2" size={20} />
                       Quick Batch Creator for Indian Market
@@ -1108,7 +1347,7 @@ Bachelor's degree in Computer Science..."
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Companies (one per line)</label>
                         <textarea
@@ -1139,12 +1378,23 @@ Bachelor's degree in Computer Science..."
                           placeholder="0-2 years\n2-5 years\n5+ years"
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Qualifications (one per line)</label>
+                        <textarea
+                          value={batchCreate.qualifications.join('\n')}
+                          onChange={e => setBatchCreate({...batchCreate, qualifications: e.target.value.split('\n')})}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="B.E/B.Tech\nAny Graduate\nMBA"
+                        />
+                      </div>
                     </div>
                     
                     <button
                       onClick={generateBatchJobs}
-                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 px-4 rounded text-sm font-medium hover:from-green-700 hover:to-emerald-700 transition-all"
+                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-2 px-4 rounded text-sm font-medium hover:from-green-700 hover:to-emerald-700 transition-all flex items-center justify-center gap-2"
                     >
+                      <Zap size={16} />
                       Generate Latest Batch Jobs for India
                     </button>
                   </div>
@@ -1162,7 +1412,7 @@ Bachelor's degree in Computer Science..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <p className="text-sm text-gray-500 mt-1">
-                      Upload a JSON file containing an array of job objects
+                      Upload a JSON file containing an array of job objects with qualifications field
                     </p>
                   </div>
 
@@ -1184,9 +1434,10 @@ Bachelor's degree in Computer Science..."
     "salary": "₹8,00,000 - ₹15,00,000 PA",
     "description": "Latest job for Indian market...",
     "requirements": ["Requirement 1", "Requirement 2"],
+    "qualifications": ["B.E/B.Tech", "Any Graduate"], // NEW: Qualifications field
     "applyLink": "mailto:careers@company.com",
     "featured": false,
-    "experience": "2-5 years" // NEW: Experience field
+    "experience": "2-5 years"
   }
 ]`}
                       rows={12}
@@ -1226,7 +1477,7 @@ Bachelor's degree in Computer Science..."
                       className="bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-700 transition-colors flex items-center justify-center"
                     >
                       <Download size={16} className="mr-2" />
-                      Template
+                      Download Template
                     </button>
                     <button
                       onClick={handleBulkUpload}
@@ -1241,7 +1492,7 @@ Bachelor's degree in Computer Science..."
                       className="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center justify-center"
                     >
                       <Copy size={16} className="mr-2" />
-                      Clear
+                      Clear JSON
                     </button>
                   </div>
                 </div>
@@ -1252,35 +1503,75 @@ Bachelor's degree in Computer Science..."
             <div className="space-y-6">
               {/* Quick Templates */}
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4">
-                <h4 className="font-semibold mb-3">🚀 Quick Templates (India)</h4>
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <Zap size={18} />
+                  🚀 Quick Templates (India)
+                </h4>
                 <div className="space-y-2">
                   <button 
                     onClick={() => applyTemplate('software_developer')}
                     className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
                   >
-                    <span>💻 Software Developer</span>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">2-5 yrs</span>
+                    <div className="flex items-center gap-2">
+                      <Briefcase size={14} />
+                      <span>Software Developer</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award size={12} className="text-amber-500" />
+                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">2-5 yrs</span>
+                    </div>
                   </button>
                   <button 
                     onClick={() => applyTemplate('data_analyst')}
                     className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
                   >
-                    <span>📊 Data Analyst</span>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">1-3 yrs</span>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={14} />
+                      <span>Data Analyst</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award size={12} className="text-amber-500" />
+                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">1-3 yrs</span>
+                    </div>
                   </button>
                   <button 
                     onClick={() => applyTemplate('mechanical_engineer')}
                     className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
                   >
-                    <span>🔧 Mechanical Engineer</span>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">1-3 yrs</span>
+                    <div className="flex items-center gap-2">
+                      <Building size={14} />
+                      <span>Mechanical Engineer</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award size={12} className="text-amber-500" />
+                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">1-3 yrs</span>
+                    </div>
                   </button>
                   <button 
                     onClick={() => applyTemplate('fresher_developer')}
                     className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
                   >
-                    <span>🎓 Fresher Developer</span>
-                    <span className="text-xs bg-green-100 text-green-800 px-1 rounded">0-1 yrs</span>
+                    <div className="flex items-center gap-2">
+                      <Users size={14} />
+                      <span>Fresher Developer</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award size={12} className="text-green-500" />
+                      <span className="text-xs bg-green-100 text-green-800 px-1 rounded">0-1 yrs</span>
+                    </div>
+                  </button>
+                  <button 
+                    onClick={() => applyTemplate('marketing_executive')}
+                    className="w-full bg-white text-blue-600 py-2 px-3 rounded text-sm font-medium hover:bg-blue-50 transition-colors text-left flex justify-between items-center"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Eye size={14} />
+                      <span>Marketing Executive</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award size={12} className="text-amber-500" />
+                      <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">1-3 yrs</span>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -1326,7 +1617,7 @@ Bachelor's degree in Computer Science..."
               {/* Preview and Existing Jobs */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800">Latest CareerCraft Jobs ({manualJobs.length})</h3>
+                  <h3 className="text-xl font-bold text-gray-800">Latest Jobs ({manualJobs.length})</h3>
                   <div className="flex gap-2">
                     <button
                       onClick={exportJobs}
@@ -1349,7 +1640,7 @@ Bachelor's degree in Computer Science..."
                   Showing newest first • Auto-cleaned every 90 days
                 </div>
                 {manualJobs.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No latest jobs posted yet on CareerCraft</p>
+                  <p className="text-gray-500 text-sm text-center py-4">No latest jobs posted yet</p>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {manualJobs.map(manualJob => {
@@ -1376,17 +1667,25 @@ Bachelor's degree in Computer Science..."
                                 )}
                                 {manualJob.featured && (
                                   <span className="inline-block bg-green-100 text-green-800 text-xs px-1 py-0.5 rounded">
-                                    Featured
+                                    ⭐ Featured
                                   </span>
                                 )}
-                                {/* NEW: Display experience badge */}
+                                {/* Experience badge */}
                                 {manualJob.experience && (
                                   <span className="inline-block bg-amber-100 text-amber-800 text-xs px-1 py-0.5 rounded">
+                                    <Award size={8} className="inline mr-1" />
                                     {manualJob.experience}
                                   </span>
                                 )}
-                                {manualJob.id.startsWith('manual-bulk-') && (
+                                {/* Qualifications badge */}
+                                {manualJob.qualifications && manualJob.qualifications.length > 0 && (
                                   <span className="inline-block bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">
+                                    <GraduationCap size={8} className="inline mr-1" />
+                                    {manualJob.qualifications.length} qual
+                                  </span>
+                                )}
+                                {manualJob.id.startsWith('manual-bulk-') && (
+                                  <span className="inline-block bg-purple-100 text-purple-800 text-xs px-1 py-0.5 rounded">
                                     Bulk
                                   </span>
                                 )}
@@ -1419,63 +1718,122 @@ Bachelor's degree in Computer Science..."
               </div>
 
               {/* Instructions */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <BookOpen size={16} />
                   {activeTab === 'single' ? 'Tips for Indian Job Market' : 'Bulk Upload Instructions'}
                 </h4>
                 {activeTab === 'single' ? (
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Jobs appear as "Latest" for 90 days</li>
-                    <li>• Use clear, descriptive job titles</li>
-                    <li>• Include specific requirements for Indian market</li>
-                    <li>• Provide realistic INR salary ranges</li>
-                    <li>• Specify years of experience clearly</li>
-                    <li>• Use Indian city names and states</li>
-                    <li>• Mark high-priority roles as "Featured"</li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Jobs appear as "Latest" for 90 days</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Include specific Indian qualifications</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Provide realistic INR salary ranges</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Specify years of experience clearly</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Use Indian city names and states</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Mark high-priority roles as "Featured"</span>
+                    </li>
                   </ul>
                 ) : (
                   <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Download the India-specific template</li>
-                    <li>• JSON must be an array of job objects</li>
-                    <li>• Required fields: title, company, location</li>
-                    <li>• Include experience field (e.g., "2-5 years")</li>
-                    <li>• Use arrays for requirements field</li>
-                    <li>• Include Indian salary ranges in INR</li>
-                    <li>• All jobs marked as "Latest"</li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Download the India-specific template</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>JSON must be an array of job objects</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Required fields: title, company, location</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Include experience field</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Include qualifications field (array)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>Use arrays for requirements field</span>
+                    </li>
                   </ul>
                 )}
               </div>
 
               {/* Quick Stats */}
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2">CareerCraft Latest Stats</h4>
-                <div className="text-sm text-green-700 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Total Latest Jobs:</span>
+                <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                  <TrendingUp size={16} />
+                  CareerCraft Latest Stats
+                </h4>
+                <div className="text-sm text-green-700 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <Briefcase size={12} />
+                      Total Jobs:
+                    </span>
                     <span className="font-bold">{manualJobs.length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Featured Jobs:</span>
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <Eye size={12} />
+                      Featured Jobs:
+                    </span>
                     <span className="font-bold">{manualJobs.filter(j => j.featured).length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>IT/Software Jobs:</span>
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <Building size={12} />
+                      IT/Software Jobs:
+                    </span>
                     <span className="font-bold">{manualJobs.filter(j => j.sector === 'IT/Software').length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Remote Jobs:</span>
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <MapPin size={12} />
+                      Remote Jobs:
+                    </span>
                     <span className="font-bold">{manualJobs.filter(j => j.type === 'Remote').length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Fresher Jobs:</span>
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <Users size={12} />
+                      Fresher Jobs:
+                    </span>
                     <span className="font-bold">{manualJobs.filter(j => j.experience?.includes('Fresher') || j.experience?.includes('0-1')).length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>New Today:</span>
-                    <span className="font-bold">{manualJobs.filter(j => j.isNew).length}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1">
+                      <GraduationCap size={12} />
+                      Jobs with Qualifications:
+                    </span>
+                    <span className="font-bold">{manualJobs.filter(j => j.qualifications && j.qualifications.length > 0).length}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Auto-clean in:</span>
+                  <div className="flex justify-between items-center pt-2 border-t border-green-200">
+                    <span className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      Auto-clean in:
+                    </span>
                     <span className="font-bold">90 days</span>
                   </div>
                 </div>

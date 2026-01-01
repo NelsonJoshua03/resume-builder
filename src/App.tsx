@@ -30,6 +30,7 @@ import GoogleAnalytics from './components/GoogleAnalytics';
 import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import EditResumePage from './components/EditResumePage';
+import LatestJobUpdatesIndia from "./components/LatestJobUpdatesIndia";
 
 // Analytics Dashboard Components (Admin only)
 import AnalyticsDashboard from './components/AnalyticsDashboard';
@@ -96,6 +97,7 @@ function App() {
             <Routes>
               {/* Main Pages */}
               <Route path="/" element={<HomePage />} />
+              <Route path="/latest-job-updates-india" element={<LatestJobUpdatesIndia />} />
               <Route path="/builder" element={<ResumeBuilder />} /> {/* Keep for backward compatibility */}
               <Route path="/job-disciplines" element={<JobDisciplines />} />
               {/* UPDATED: Changed from /job-applications to /latest-jobs-for-freshers-india for better SEO */}
