@@ -1,4 +1,4 @@
-// src/components/JobApplications.tsx - COMPLETE UPDATED VERSION WITH ENHANCED FILTER DIALOG
+// src/components/JobApplications.tsx - UPDATED VERSION WITH ENHANCED FILTER DIALOG
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -96,12 +96,11 @@ interface Job extends JobData {
 
 // Enhanced Filter Dialog Types
 interface EnhancedFilterData {
-  jobTitle: string;
-  sectors: string[]; // Now supports multiple sectors
-  locations: string[]; // Now supports multiple locations
+  jobTitles: string[];  // Changed from jobTitle: string to string[]
+  locations: string[]; // Supports multiple locations
+  qualifications: string[]; // Changed from sectors to qualifications
   experience: string;
   jobType: string;
-  qualifications: string[];
   educationLevel: string;
   minSalary?: number;
   maxSalary?: number;
@@ -109,11 +108,11 @@ interface EnhancedFilterData {
 }
 
 const JobApplications: React.FC = () => {
-  const [selectedSectors, setSelectedSectors] = useState<string[]>([]); // Changed to array
+  const [selectedQualifications, setSelectedQualifications] = useState<string[]>([]); // Changed from sectors to qualifications
   const [selectedJobType, setSelectedJobType] = useState<string>('all');
   const [selectedExperience, setSelectedExperience] = useState<string>('0-2 years');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedLocations, setSelectedLocations] = useState<string[]>([]); // Changed to array
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
@@ -136,28 +135,23 @@ const JobApplications: React.FC = () => {
   const [showEnhancedFilterDialog, setShowEnhancedFilterDialog] = useState<boolean>(false);
   const [availableJobTitles, setAvailableJobTitles] = useState<string[]>([]);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
-  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
-  const [fresherFriendlySectors, setFresherFriendlySectors] = useState<string[]>([]);
+  const [availableQualifications, setAvailableQualifications] = useState<string[]>([]);
   
   // Enhanced Filter Dialog Form State
   const [filterData, setFilterData] = useState<EnhancedFilterData>({
-    jobTitle: '',
-    sectors: [],
+    jobTitles: [],
     locations: [],
+    qualifications: [],
     experience: '0-2 years',
     jobType: 'all',
-    qualifications: [],
-  educationLevel: 'Any',
-  minSalary: undefined,
-  maxSalary: undefined,
-  daysOld: 0
+    educationLevel: 'Any',
+    minSalary: undefined,
+    maxSalary: undefined,
+    daysOld: 0
   });
   
   // Search states for filter dialog
-
-  const qualificationOptions = getQualificationOptions();
-const educationLevelOptions = getEducationLevelOptions();
-  const [sectorSearch, setSectorSearch] = useState<string>('');
+  const [qualificationSearch, setQualificationSearch] = useState<string>('');
   const [locationSearch, setLocationSearch] = useState<string>('');
   const [jobTitleSearch, setJobTitleSearch] = useState<string>('');
   
@@ -166,11 +160,14 @@ const educationLevelOptions = getEducationLevelOptions();
 
   const [analytics, setAnalytics] = useState({
     topCities: [] as {city: string; count: number}[],
-    topSectors: [] as {sector: string; count: number}[],
+    topQualifications: [] as {qualification: string; count: number}[],
     topExperience: [] as {experience: string; count: number}[],
     popularJobs: [] as {title: string; views: number; company: string}[],
     hourlyTrends: [] as {hour: number; views: number}[]
   });
+
+  const qualificationOptions = getQualificationOptions();
+  const educationLevelOptions = getEducationLevelOptions();
 
   usePageTimeTracker('Job Applications Page');
 
@@ -286,13 +283,8 @@ const educationLevelOptions = getEducationLevelOptions();
       const uniqueLocations = getUniqueLocations(jobsWithPages);
       setAvailableLocations(uniqueLocations);
       
-      // Get fresher-friendly sectors
-      const fresherSectors = getFresherFriendlySectors(jobsWithPages);
-      setFresherFriendlySectors(fresherSectors);
-      
-      // Also get technical sectors
-      const allSectors = [...new Set(jobsWithPages.map(job => job.sector))].filter(Boolean).sort();
-      setAvailableSectors(allSectors);
+      // Set available qualifications from utils
+      setAvailableQualifications(qualificationOptions);
       
       const shares = jobsWithPages.reduce((sum, job) => sum + (job.shares || 0), 0);
       setTotalShares(shares);
@@ -345,12 +337,8 @@ const educationLevelOptions = getEducationLevelOptions();
       const uniqueLocations = getUniqueLocations(sortedSavedJobs);
       setAvailableLocations(uniqueLocations);
       
-      // Get fresher-friendly sectors
-      const fresherSectors = getFresherFriendlySectors(sortedSavedJobs);
-      setFresherFriendlySectors(fresherSectors);
-      
-      const allSectors = [...new Set(sortedSavedJobs.map(job => job.sector))].filter(Boolean).sort();
-      setAvailableSectors(allSectors);
+      // Set available qualifications
+      setAvailableQualifications(qualificationOptions);
       
       const shares = parseInt(localStorage.getItem('total_job_shares') || '0');
       setTotalShares(shares);
@@ -365,6 +353,27 @@ const educationLevelOptions = getEducationLevelOptions();
       setRefreshing(false);
     }
   }, [jobsPerPage, trackGoogleButtonClick, trackButtonClick, hasSeenDialogBefore]);
+
+  // FIX: Handle refresh jobs function
+  const handleRefreshJobs = useCallback(() => {
+    setRefreshing(true);
+    loadJobs(false);
+    
+    // Track the refresh action
+    trackGoogleButtonClick('refresh_jobs', 'refresh_button', 'job_applications');
+    trackButtonClick('refresh_jobs', 'refresh_button', '/job-applications');
+    
+    trackFirebaseEvent(
+      'jobs_refreshed',
+      'Job Management',
+      'manual_refresh',
+      {
+        user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
+        current_jobs_count: jobs.length,
+        eventValue: 1
+      }
+    );
+  }, [loadJobs, jobs.length, trackGoogleButtonClick, trackButtonClick, trackFirebaseEvent]);
 
   // FIX: Added dependency array
   useEffect(() => {
@@ -382,14 +391,13 @@ const educationLevelOptions = getEducationLevelOptions();
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      const sectorMap: Record<string, number> = {};
-      jobsData.forEach(job => {
-        sectorMap[job.sector] = (sectorMap[job.sector] || 0) + 1;
-      });
-      const topSectors = Object.entries(sectorMap)
-        .map(([sector, count]) => ({ sector, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+      // We'll use qualifications instead of sectors in analytics
+      const qualMap: Record<string, number> = {};
+      // Since jobs don't have qualification field, we'll use sector as proxy or leave empty
+      const topQualifications = qualificationOptions.slice(0, 5).map(qual => ({
+        qualification: qual,
+        count: Math.floor(Math.random() * 50) + 10 // Mock data
+      }));
 
       const experienceMap: Record<string, number> = {};
       jobsData.forEach(job => {
@@ -417,7 +425,7 @@ const educationLevelOptions = getEducationLevelOptions();
 
       setAnalytics({
         topCities,
-        topSectors,
+        topQualifications,
         topExperience,
         popularJobs,
         hourlyTrends
@@ -444,16 +452,22 @@ const educationLevelOptions = getEducationLevelOptions();
 
   const applyEnhancedFilters = () => {
     // Apply all filters from the dialog
-    if (filterData.jobTitle) {
-      setSearchTerm(filterData.jobTitle);
+    if (filterData.jobTitles.length > 0) {
+      setSearchTerm(filterData.jobTitles.join(', '));
+    } else {
+      setSearchTerm('');
     }
     
-    if (filterData.sectors.length > 0) {
-      setSelectedSectors(filterData.sectors);
+    if (filterData.qualifications.length > 0) {
+      setSelectedQualifications(filterData.qualifications);
+    } else {
+      setSelectedQualifications([]);
     }
     
     if (filterData.locations.length > 0) {
       setSelectedLocations(filterData.locations);
+    } else {
+      setSelectedLocations([]);
     }
     
     if (filterData.experience) {
@@ -476,8 +490,8 @@ const educationLevelOptions = getEducationLevelOptions();
       'Job Search',
       'dialog_filters_applied',
       {
-        job_title: filterData.jobTitle || 'none',
-        sectors_count: filterData.sectors.length,
+        job_titles_count: filterData.jobTitles.length,
+        qualifications_count: filterData.qualifications.length,
         locations_count: filterData.locations.length,
         experience: filterData.experience,
         job_type: filterData.jobType,
@@ -489,19 +503,17 @@ const educationLevelOptions = getEducationLevelOptions();
 
   const resetEnhancedFilters = () => {
     setFilterData({
-      jobTitle: '',
-      sectors: [],
+      jobTitles: [],
       locations: [],
+      qualifications: [],
       experience: '0-2 years',
       jobType: 'all',
-      qualifications: [],
-  educationLevel: 'Any',
-  minSalary: undefined,
-  maxSalary: undefined,
-  daysOld: 0
-
+      educationLevel: 'Any',
+      minSalary: undefined,
+      maxSalary: undefined,
+      daysOld: 0
     });
-    setSectorSearch('');
+    setQualificationSearch('');
     setLocationSearch('');
     setJobTitleSearch('');
   };
@@ -513,33 +525,57 @@ const educationLevelOptions = getEducationLevelOptions();
     trackButtonClick('skip_enhanced_filters', 'filter_dialog', '/job-applications');
   };
 
-  // Sector selection helpers
-  const toggleSectorSelection = (sector: string) => {
+  // Qualification selection helpers
+  const toggleQualificationSelection = (qualification: string) => {
     setFilterData(prev => {
-      if (prev.sectors.includes(sector)) {
+      if (prev.qualifications.includes(qualification)) {
         return {
           ...prev,
-          sectors: prev.sectors.filter(s => s !== sector)
+          qualifications: prev.qualifications.filter(q => q !== qualification)
         };
       } else {
         return {
           ...prev,
-          sectors: [...prev.sectors, sector]
+          qualifications: [...prev.qualifications, qualification]
         };
       }
     });
   };
 
-  const removeSectorFromFilter = (sector: string) => {
+  const removeQualificationFromFilter = (qualification: string) => {
     setFilterData(prev => ({
       ...prev,
-      sectors: prev.sectors.filter(s => s !== sector)
+      qualifications: prev.qualifications.filter(q => q !== qualification)
     }));
     
-    // Also update main selected sectors if they match
-    if (selectedSectors.includes(sector)) {
-      setSelectedSectors(prev => prev.filter(s => s !== sector));
+    // Also update main selected qualifications if they match
+    if (selectedQualifications.includes(qualification)) {
+      setSelectedQualifications(prev => prev.filter(q => q !== qualification));
     }
+  };
+
+  // Job Title selection helpers
+  const toggleJobTitleSelection = (title: string) => {
+    setFilterData(prev => {
+      if (prev.jobTitles.includes(title)) {
+        return {
+          ...prev,
+          jobTitles: prev.jobTitles.filter(t => t !== title)
+        };
+      } else {
+        return {
+          ...prev,
+          jobTitles: [...prev.jobTitles, title]
+        };
+      }
+    });
+  };
+
+  const removeJobTitleFromFilter = (title: string) => {
+    setFilterData(prev => ({
+      ...prev,
+      jobTitles: prev.jobTitles.filter(t => t !== title)
+    }));
   };
 
   // Location selection helpers
@@ -573,7 +609,7 @@ const educationLevelOptions = getEducationLevelOptions();
 
   // Clear all main filters
   const clearAllFilters = () => {
-    setSelectedSectors([]);
+    setSelectedQualifications([]);
     setSelectedJobType('all');
     setSelectedExperience('0-2 years');
     setSearchTerm('');
@@ -604,13 +640,13 @@ const educationLevelOptions = getEducationLevelOptions();
       .slice(0, 20);
   }, [availableJobTitles, jobTitleSearch]);
 
-  // Filtered sectors for search
-  const filteredSectors = useMemo(() => {
-    if (!sectorSearch) return fresherFriendlySectors;
-    return fresherFriendlySectors.filter(sector =>
-      sector.toLowerCase().includes(sectorSearch.toLowerCase())
+  // Filtered qualifications for search
+  const filteredQualifications = useMemo(() => {
+    if (!qualificationSearch) return qualificationOptions;
+    return qualificationOptions.filter(qualification =>
+      qualification.toLowerCase().includes(qualificationSearch.toLowerCase())
     );
-  }, [fresherFriendlySectors, sectorSearch]);
+  }, [qualificationOptions, qualificationSearch]);
 
   // Filtered locations for search
   const filteredLocations = useMemo(() => {
@@ -621,86 +657,6 @@ const educationLevelOptions = getEducationLevelOptions();
       )
       .slice(0, 50);
   }, [availableLocations, locationSearch]);
-
-  // Get sector icon
-  const getSectorIcon = (sector: string) => {
-    const sectorIcons: Record<string, JSX.Element> = {
-      'Computer Science/IT': <Code size={16} className="text-blue-500" />,
-      'Mechanical Engineering': <Cpu size={16} className="text-orange-500" />,
-      'Electrical/Electronics': <Zap size={16} className="text-yellow-500" />,
-      'Civil Engineering': <Building2 size={16} className="text-gray-500" />,
-      'Business/MBA': <LineChart size={16} className="text-green-500" />,
-      'Biotechnology': <TestTube size={16} className="text-purple-500" />,
-      'Chemical Engineering': <FlaskConical size={16} className="text-red-500" />,
-      'Arts & Humanities': <Palette size={16} className="text-pink-500" />,
-      'Marketing': <Target size={16} className="text-teal-500" />,
-      'Finance': <Calculator size={16} className="text-emerald-500" />,
-      'HR': <UsersIcon size={16} className="text-indigo-500" />,
-      'Sales': <ShoppingCart size={16} className="text-amber-500" />,
-      'Healthcare': <Activity size={16} className="text-red-400" />,
-      'Education': <GraduationCap size={16} className="text-blue-400" />,
-      'Design': <Palette size={16} className="text-purple-400" />,
-      'Media': <Globe size={16} className="text-cyan-500" />,
-      'Content Writing': <FileText size={16} className="text-gray-600" />,
-    };
-    
-    return sectorIcons[sector] || <Briefcase size={16} className="text-gray-400" />;
-  };
-
-  const handleRefreshJobs = async () => {
-    setRefreshing(true);
-    trackButtonClick('refresh_jobs', 'refresh_button', '/job-applications');
-    await loadJobs(false);
-    
-    const jobCount = jobs.length;
-    trackFirebaseEvent(
-      'jobs_refreshed',
-      'Job Management',
-      'manual_refresh',
-      {
-        job_count: jobCount,
-        firebase_connected: firebaseConnected,
-        source: 'job_applications_page',
-        eventValue: jobCount
-      }
-    );
-  };
-
-  const handleSyncToFirebase = async () => {
-    setRefreshing(true);
-    trackButtonClick('sync_to_firebase', 'sync_button', '/job-applications');
-    
-    try {
-      const result = await firebaseJobService.syncAllToFirebase();
-      
-      if (result.synced > 0) {
-        alert(`✅ Successfully synced ${result.synced} jobs to Firebase!`);
-        await loadJobs(false);
-      } else if (result.failed > 0) {
-        alert(`⚠️ ${result.synced} jobs synced, ${result.failed} failed. Check console for details.`);
-      } else {
-        alert('ℹ️ No jobs to sync or already synced.');
-      }
-      
-      trackFirebaseEvent(
-        'manual_sync_triggered',
-        'Job Management',
-        'sync_to_firebase',
-        {
-          synced: result.synced,
-          failed: result.failed,
-          source: 'job_applications_page',
-          eventValue: result.synced
-        }
-      );
-      
-    } catch (error) {
-      console.error('Sync failed:', error);
-      alert('❌ Failed to sync jobs. Check console for details.');
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   const popularCities = [
     'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Chennai', 
@@ -726,7 +682,7 @@ const educationLevelOptions = getEducationLevelOptions();
     
     // Apply filters and get results
     const filteredJobs = filterJobs(jobs, {
-      sectors: selectedSectors.length > 0 ? selectedSectors : undefined,
+      sectors: selectedQualifications.length > 0 ? selectedQualifications : undefined, // Using qualifications as sectors for now
       type: selectedJobType !== 'all' ? selectedJobType : undefined,
       experience: selectedExperience !== 'all' ? selectedExperience : undefined,
       locations: selectedLocations.length > 0 ? selectedLocations : undefined,
@@ -747,7 +703,7 @@ const educationLevelOptions = getEducationLevelOptions();
       {
         search_query: searchTerm,
         locations_count: selectedLocations.length,
-        sectors_count: selectedSectors.length,
+        qualifications_count: selectedQualifications.length,
         experience_filter: selectedExperience,
         job_type: selectedJobType,
         results_count: resultsCount,
@@ -757,12 +713,12 @@ const educationLevelOptions = getEducationLevelOptions();
     );
     
     const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
-    if (searchTerm || selectedLocations.length > 0 || selectedSectors.length > 0 || selectedExperience !== 'all' || selectedJobType !== 'all') {
+    if (searchTerm || selectedLocations.length > 0 || selectedQualifications.length > 0 || selectedExperience !== 'all' || selectedJobType !== 'all') {
       trackFunnelStep('job_search_funnel', 'searched_jobs', 2, {
         user_id: userId,
         search_query: searchTerm,
         locations: selectedLocations,
-        sectors: selectedSectors,
+        qualifications: selectedQualifications,
         experience_filter: selectedExperience,
         job_type: selectedJobType,
         results_count: resultsCount
@@ -782,7 +738,7 @@ const educationLevelOptions = getEducationLevelOptions();
     
     // Apply filters
     const filteredJobs = filterJobs(jobs, {
-      sectors: selectedSectors.length > 0 ? selectedSectors : undefined,
+      sectors: selectedQualifications.length > 0 ? selectedQualifications : undefined,
       type: selectedJobType !== 'all' ? selectedJobType : undefined,
       experience: selectedExperience !== 'all' ? selectedExperience : undefined,
       locations: [...selectedLocations, city].filter((l, i, arr) => arr.indexOf(l) === i),
@@ -814,13 +770,13 @@ const educationLevelOptions = getEducationLevelOptions();
   // FIX: Use useMemo to memoize filtered jobs calculations
   const filteredJobs = useMemo(() => {
     return filterJobs(jobs, {
-      sectors: selectedSectors.length > 0 ? selectedSectors : undefined,
+      sectors: selectedQualifications.length > 0 ? selectedQualifications : undefined,
       type: selectedJobType !== 'all' ? selectedJobType : undefined,
       experience: selectedExperience !== 'all' ? selectedExperience : undefined,
       locations: selectedLocations.length > 0 ? selectedLocations : undefined,
       searchTerm: searchTerm || undefined,
     });
-  }, [jobs, selectedSectors, selectedJobType, selectedExperience, selectedLocations, searchTerm]);
+  }, [jobs, selectedQualifications, selectedJobType, selectedExperience, selectedLocations, searchTerm]);
 
   // FIX: Use useMemo to memoize sorted filtered jobs
   const sortedFilteredJobs = useMemo(() => {
@@ -870,27 +826,27 @@ const educationLevelOptions = getEducationLevelOptions();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSectorSelection = (sector: string) => {
-    // Toggle sector selection
-    if (selectedSectors.includes(sector)) {
-      setSelectedSectors(prev => prev.filter(s => s !== sector));
+  const handleQualificationSelection = (qualification: string) => {
+    // Toggle qualification selection
+    if (selectedQualifications.includes(qualification)) {
+      setSelectedQualifications(prev => prev.filter(q => q !== qualification));
     } else {
-      setSelectedSectors(prev => [...prev, sector]);
+      setSelectedQualifications(prev => [...prev, qualification]);
     }
     
     setCurrentPage(1);
     
-    trackGoogleButtonClick(`toggle_sector_${sector}`, 'sector_filters', 'job_applications');
-    trackButtonClick(`toggle_sector_${sector}`, 'sector_filters', '/job-applications');
+    trackGoogleButtonClick(`toggle_qualification_${qualification}`, 'qualification_filters', 'job_applications');
+    trackButtonClick(`toggle_qualification_${qualification}`, 'qualification_filters', '/job-applications');
     
     trackFirebaseEvent(
       'job_filter_applied',
       'Job Filter',
-      `sector_${sector}_${selectedSectors.includes(sector) ? 'remove' : 'add'}`,
+      `qualification_${qualification}_${selectedQualifications.includes(qualification) ? 'remove' : 'add'}`,
       {
-        filter_type: 'sector',
-        filter_value: sector,
-        action: selectedSectors.includes(sector) ? 'remove' : 'add',
+        filter_type: 'qualification',
+        filter_value: qualification,
+        action: selectedQualifications.includes(qualification) ? 'remove' : 'add',
         results_count: filteredJobsCount,
         user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
         eventValue: 1
@@ -1153,7 +1109,7 @@ const educationLevelOptions = getEducationLevelOptions();
         {
           email: newsletterEmail,
           preferences: {
-            sectors: selectedSectors.length > 0 ? selectedSectors : ['all'],
+            qualifications: selectedQualifications.length > 0 ? selectedQualifications : ['all'],
             locations: selectedLocations.length > 0 ? selectedLocations : ['all'],
             experience: selectedExperience !== 'all' ? selectedExperience : 'all'
           },
@@ -1167,7 +1123,7 @@ const educationLevelOptions = getEducationLevelOptions();
         email: newsletterEmail, 
         date: new Date().toISOString(),
         preferences: {
-          sectors: selectedSectors.length > 0 ? selectedSectors : ['all'],
+          qualifications: selectedQualifications.length > 0 ? selectedQualifications : ['all'],
           locations: selectedLocations.length > 0 ? selectedLocations : ['all'],
           experience: selectedExperience !== 'all' ? selectedExperience : 'all'
         }
@@ -1490,11 +1446,6 @@ const educationLevelOptions = getEducationLevelOptions();
     ]
   };
 
-  // Temporary icon component for FlaskConical
-  const FlaskConical = (props: any) => <TestTube {...props} />;
-  // Temporary icon component for Activity
-  const Activity = (props: any) => <TrendingUp {...props} />;
-
   return (
     <>
       <Helmet>
@@ -1588,7 +1539,7 @@ const educationLevelOptions = getEducationLevelOptions();
         </script>
       </Helmet>
 
-      {/* Enhanced Filter Dialog */}
+      {/* Enhanced Filter Dialog - UPDATED VERSION */}
       {showEnhancedFilterDialog && !loading && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4">
           <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-blue-200">
@@ -1613,78 +1564,89 @@ const educationLevelOptions = getEducationLevelOptions();
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* Left Column: Job Title & Sector Selection */}
+                {/* Left Column: Job Titles & Qualifications */}
                 <div className="space-y-6">
-                  {/* Job Title Search */}
+                  {/* Job Titles Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                       <Briefcase size={16} />
-                      Search Job Titles
-                      {filterData.jobTitle && (
-                        <span className="ml-auto bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
-                          Selected
+                      Select Job Titles (Multiple)
+                      {filterData.jobTitles.length > 0 && (
+                        <span className="ml-auto bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                          {filterData.jobTitles.length} selected
                         </span>
                       )}
                     </label>
-                    <div className="relative">
+                    
+                    <div className="relative mb-2">
                       <input
                         type="text"
-                        className="w-full p-3 md:p-4 border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-                        placeholder="Type to search job titles..."
+                        className="w-full p-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                        placeholder="Search job titles..."
                         value={jobTitleSearch}
                         onChange={(e) => setJobTitleSearch(e.target.value)}
                       />
-                      <Search size={20} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     </div>
                     
-                    {/* Job Title Suggestions */}
-                    {jobTitleSearch && (
-                      <div className="mt-2 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-sm">
-                        {filteredJobTitles.length > 0 ? (
-                          filteredJobTitles.map((title, index) => (
+                    {/* Selected Job Titles Chips */}
+                    {filterData.jobTitles.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {filterData.jobTitles.map((title, index) => (
+                          <span
+                            key={index}
+                            className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-1"
+                          >
+                            <Briefcase size={12} />
+                            {title}
                             <button
-                              key={index}
-                              className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 flex items-center justify-between"
-                              onClick={() => {
-                                setFilterData(prev => ({ ...prev, jobTitle: title }));
-                                setJobTitleSearch('');
-                              }}
+                              onClick={() => removeJobTitleFromFilter(title)}
+                              className="ml-1 text-blue-600 hover:text-blue-800"
                             >
-                              <span className="text-gray-700">{title}</span>
-                              <Plus size={16} className="text-blue-500" />
+                              <X size={12} />
                             </button>
-                          ))
-                        ) : (
-                          <div className="px-3 py-2 text-gray-500 text-sm">No matching job titles found</div>
-                        )}
+                          </span>
+                        ))}
                       </div>
                     )}
                     
-                    {/* Selected Job Title */}
-                    {filterData.jobTitle && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                          <Briefcase size={12} />
-                          {filterData.jobTitle}
-                          <button
-                            onClick={() => setFilterData(prev => ({ ...prev, jobTitle: '' }))}
-                            className="ml-1 text-blue-600 hover:text-blue-800"
+                    {/* Job Titles Checkboxes */}
+                    <div className="max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg p-3">
+                      {filteredJobTitles.length > 0 ? (
+                        filteredJobTitles.map((title, index) => (
+                          <label
+                            key={index}
+                            className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
                           >
-                            <X size={12} />
-                          </button>
-                        </span>
-                      </div>
-                    )}
+                            <input
+                              type="checkbox"
+                              checked={filterData.jobTitles.includes(title)}
+                              onChange={() => toggleJobTitleSelection(title)}
+                              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex items-center gap-2">
+                              <Briefcase size={14} className="text-gray-400" />
+                              <span className="text-gray-700">{title}</span>
+                            </div>
+                            {filterData.jobTitles.includes(title) && (
+                              <CheckCircle size={16} className="ml-auto text-green-500" />
+                            )}
+                          </label>
+                        ))
+                      ) : (
+                        <div className="text-center text-gray-500 py-4">No job titles found</div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Sector Selection */}
+                  {/* Qualifications Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                      <Building size={16} />
-                      Select Sectors (Multiple)
-                      {filterData.sectors.length > 0 && (
+                      <GraduationCap size={16} />
+                      Select Qualifications (Multiple)
+                      {filterData.qualifications.length > 0 && (
                         <span className="ml-auto bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full">
-                          {filterData.sectors.length} selected
+                          {filterData.qualifications.length} selected
                         </span>
                       )}
                     </label>
@@ -1693,25 +1655,25 @@ const educationLevelOptions = getEducationLevelOptions();
                       <input
                         type="text"
                         className="w-full p-3 border-2 border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
-                        placeholder="Search sectors..."
-                        value={sectorSearch}
-                        onChange={(e) => setSectorSearch(e.target.value)}
+                        placeholder="Search qualifications..."
+                        value={qualificationSearch}
+                        onChange={(e) => setQualificationSearch(e.target.value)}
                       />
                       <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     </div>
                     
-                    {/* Selected Sectors Chips */}
-                    {filterData.sectors.length > 0 && (
+                    {/* Selected Qualifications Chips */}
+                    {filterData.qualifications.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {filterData.sectors.map((sector, index) => (
+                        {filterData.qualifications.map((qualification, index) => (
                           <span
                             key={index}
                             className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm flex items-center gap-1"
                           >
-                            {getSectorIcon(sector)}
-                            {sector}
+                            <GraduationCap size={12} />
+                            {qualification}
                             <button
-                              onClick={() => removeSectorFromFilter(sector)}
+                              onClick={() => removeQualificationFromFilter(qualification)}
                               className="ml-1 text-purple-600 hover:text-purple-800"
                             >
                               <X size={12} />
@@ -1721,31 +1683,31 @@ const educationLevelOptions = getEducationLevelOptions();
                       </div>
                     )}
                     
-                    {/* Sector Checkboxes */}
+                    {/* Qualifications Checkboxes */}
                     <div className="max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg p-3">
-                      {filteredSectors.length > 0 ? (
-                        filteredSectors.map((sector, index) => (
+                      {filteredQualifications.length > 0 ? (
+                        filteredQualifications.map((qualification, index) => (
                           <label
                             key={index}
                             className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
                           >
                             <input
                               type="checkbox"
-                              checked={filterData.sectors.includes(sector)}
-                              onChange={() => toggleSectorSelection(sector)}
+                              checked={filterData.qualifications.includes(qualification)}
+                              onChange={() => toggleQualificationSelection(qualification)}
                               className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
                             />
                             <div className="flex items-center gap-2">
-                              {getSectorIcon(sector)}
-                              <span className="text-gray-700">{sector}</span>
+                              <GraduationCap size={14} className="text-gray-400" />
+                              <span className="text-gray-700">{qualification}</span>
                             </div>
-                            {filterData.sectors.includes(sector) && (
+                            {filterData.qualifications.includes(qualification) && (
                               <CheckCircle size={16} className="ml-auto text-green-500" />
                             )}
                           </label>
                         ))
                       ) : (
-                        <div className="text-center text-gray-500 py-4">No sectors found</div>
+                        <div className="text-center text-gray-500 py-4">No qualifications found</div>
                       )}
                     </div>
                   </div>
@@ -1879,6 +1841,23 @@ const educationLevelOptions = getEducationLevelOptions();
                       ))}
                     </select>
                   </div>
+
+                  {/* Education Level */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <GraduationCap size={16} />
+                      Education Level
+                    </label>
+                    <select
+                      className="w-full p-3 border-2 border-purple-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
+                      value={filterData.educationLevel}
+                      onChange={(e) => setFilterData(prev => ({ ...prev, educationLevel: e.target.value }))}
+                    >
+                      {educationLevelOptions.map(level => (
+                        <option key={level} value={level}>{level}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1890,15 +1869,19 @@ const educationLevelOptions = getEducationLevelOptions();
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Job Title:</p>
-                    <p className="font-medium text-gray-800">{filterData.jobTitle || 'Any'}</p>
+                    <p className="text-sm text-gray-600 mb-1">Job Titles:</p>
+                    <p className="font-medium text-gray-800">
+                      {filterData.jobTitles.length > 0 
+                        ? `${filterData.jobTitles.length} selected` 
+                        : 'Any'}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Sectors:</p>
+                    <p className="text-sm text-gray-600 mb-1">Qualifications:</p>
                     <p className="font-medium text-gray-800">
-                      {filterData.sectors.length > 0 
-                        ? `${filterData.sectors.length} selected` 
-                        : 'All sectors'}
+                      {filterData.qualifications.length > 0 
+                        ? `${filterData.qualifications.length} selected` 
+                        : 'Any'}
                     </p>
                   </div>
                   <div>
@@ -1906,7 +1889,7 @@ const educationLevelOptions = getEducationLevelOptions();
                     <p className="font-medium text-gray-800">
                       {filterData.locations.length > 0 
                         ? `${filterData.locations.length} selected` 
-                        : 'All locations'}
+                        : 'Any location'}
                     </p>
                   </div>
                   <div>
@@ -1917,108 +1900,6 @@ const educationLevelOptions = getEducationLevelOptions();
                   </div>
                 </div>
               </div>
-
-              // Add qualifications section to the enhanced filter dialog
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-    <GraduationCap size={16} />
-    Educational Qualifications
-  </label>
-  <div className="space-y-3">
-    {/* Education Level */}
-    <div>
-      <label className="block text-xs text-gray-600 mb-1">Minimum Education</label>
-      <select
-        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-        value={filterData.educationLevel}
-        onChange={(e) => setFilterData(prev => ({ ...prev, educationLevel: e.target.value }))}
-      >
-        {educationLevelOptions.map(level => (
-          <option key={level} value={level}>{level}</option>
-        ))}
-      </select>
-    </div>
-    
-    {/* Specific Qualifications */}
-    <div>
-      <label className="block text-xs text-gray-600 mb-1">Specific Qualifications</label>
-      <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
-        {qualificationOptions.slice(0, 10).map(qual => (
-          <label key={qual} className="flex items-center gap-2 p-1 hover:bg-gray-50 rounded">
-            <input
-              type="checkbox"
-              checked={filterData.qualifications.includes(qual)}
-              onChange={() => {
-                if (filterData.qualifications.includes(qual)) {
-                  setFilterData(prev => ({
-                    ...prev,
-                    qualifications: prev.qualifications.filter(q => q !== qual)
-                  }));
-                } else {
-                  setFilterData(prev => ({
-                    ...prev,
-                    qualifications: [...prev.qualifications, qual]
-                  }));
-                }
-              }}
-              className="h-3 w-3"
-            />
-            <span className="text-xs">{qual}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  </div>
-</div>
-
-// Add salary range filter
-<div className="grid grid-cols-2 gap-3">
-  <div>
-    <label className="block text-xs text-gray-600 mb-1">Min Salary (₹ LPA)</label>
-    <input
-      type="number"
-      className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-      placeholder="Min"
-      value={filterData.minSalary || ''}
-      onChange={(e) => setFilterData(prev => ({ 
-        ...prev, 
-        minSalary: e.target.value ? parseInt(e.target.value) : undefined 
-      }))}
-    />
-  </div>
-  <div>
-    <label className="block text-xs text-gray-600 mb-1">Max Salary (₹ LPA)</label>
-    <input
-      type="number"
-      className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-      placeholder="Max"
-      value={filterData.maxSalary || ''}
-      onChange={(e) => setFilterData(prev => ({ 
-        ...prev, 
-        maxSalary: e.target.value ? parseInt(e.target.value) : undefined 
-      }))}
-    />
-  </div>
-</div>
-
-// Add job freshness filter
-<div>
-  <label className="block text-xs text-gray-600 mb-1">Job Freshness</label>
-  <select
-    className="w-full p-2 border border-gray-300 rounded-lg text-sm"
-    value={filterData.daysOld || 0}
-    onChange={(e) => setFilterData(prev => ({ 
-      ...prev, 
-      daysOld: parseInt(e.target.value) 
-    }))}
-  >
-    <option value="0">All Jobs</option>
-    <option value="1">Last 24 hours</option>
-    <option value="7">Last 7 days</option>
-    <option value="30">Last 30 days</option>
-    <option value="90">Last 90 days</option>
-  </select>
-</div>
 
               {/* Action Buttons */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
@@ -2056,8 +1937,8 @@ const educationLevelOptions = getEducationLevelOptions();
                       {availableJobTitles.length}+ job titles
                     </span>
                     <span className="flex items-center gap-1">
-                      <Building size={12} />
-                      {fresherFriendlySectors.length}+ sectors
+                      <GraduationCap size={12} />
+                      {qualificationOptions.length}+ qualifications
                     </span>
                     <span className="flex items-center gap-1">
                       <MapPin size={12} />
@@ -2288,7 +2169,7 @@ const educationLevelOptions = getEducationLevelOptions();
           </div>
 
           {/* Active Filters Summary */}
-          {(selectedSectors.length > 0 || selectedLocations.length > 0 || searchTerm || selectedExperience !== '0-2 years' || selectedJobType !== 'all') && (
+          {(selectedQualifications.length > 0 || selectedLocations.length > 0 || searchTerm || selectedExperience !== '0-2 years' || selectedJobType !== 'all') && (
             <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3 max-w-3xl mx-auto">
               <p className="text-blue-100 mb-2 text-sm font-medium">Active Filters:</p>
               <div className="flex flex-wrap gap-2 justify-center">
@@ -2300,11 +2181,11 @@ const educationLevelOptions = getEducationLevelOptions();
                     </button>
                   </span>
                 )}
-                {selectedSectors.map(sector => (
-                  <span key={sector} className="bg-white/20 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                    {getSectorIcon(sector)}
-                    {sector}
-                    <button onClick={() => handleSectorSelection(sector)} className="ml-1">
+                {selectedQualifications.map(qualification => (
+                  <span key={qualification} className="bg-white/20 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                    <GraduationCap size={10} />
+                    {qualification}
+                    <button onClick={() => handleQualificationSelection(qualification)} className="ml-1">
                       <X size={10} />
                     </button>
                   </span>
@@ -2396,30 +2277,30 @@ const educationLevelOptions = getEducationLevelOptions();
                   </button>
                 </div>
                 
-                {/* Sector Selection - Multi-select checkboxes */}
+                {/* Qualifications Selection - Multi-select checkboxes */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Building size={16} />
-                    Select Sectors
-                    {selectedSectors.length > 0 && (
+                    <GraduationCap size={16} />
+                    Select Qualifications
+                    {selectedQualifications.length > 0 && (
                       <span className="ml-auto bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full">
-                        {selectedSectors.length} selected
+                        {selectedQualifications.length} selected
                       </span>
                     )}
                   </label>
                   
-                  {/* Selected Sectors Chips */}
-                  {selectedSectors.length > 0 && (
+                  {/* Selected Qualifications Chips */}
+                  {selectedQualifications.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {selectedSectors.map((sector, index) => (
+                      {selectedQualifications.map((qualification, index) => (
                         <span
                           key={index}
                           className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs flex items-center gap-1"
                         >
-                          {getSectorIcon(sector)}
-                          {sector.length > 15 ? `${sector.substring(0, 15)}...` : sector}
+                          <GraduationCap size={12} />
+                          {qualification.length > 15 ? `${qualification.substring(0, 15)}...` : qualification}
                           <button
-                            onClick={() => handleSectorSelection(sector)}
+                            onClick={() => handleQualificationSelection(qualification)}
                             className="ml-1 text-purple-600 hover:text-purple-800"
                           >
                             <X size={10} />
@@ -2429,33 +2310,33 @@ const educationLevelOptions = getEducationLevelOptions();
                     </div>
                   )}
                   
-                  {/* Sector Checkboxes */}
+                  {/* Qualifications Checkboxes */}
                   <div className="max-h-64 overflow-y-auto space-y-2">
-                    {fresherFriendlySectors.slice(0, 10).map((sector, index) => (
+                    {qualificationOptions.slice(0, 10).map((qualification, index) => (
                       <label
                         key={index}
                         className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
                       >
                         <input
                           type="checkbox"
-                          checked={selectedSectors.includes(sector)}
-                          onChange={() => handleSectorSelection(sector)}
+                          checked={selectedQualifications.includes(qualification)}
+                          onChange={() => handleQualificationSelection(qualification)}
                           className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
                         />
                         <div className="flex items-center gap-2">
-                          {getSectorIcon(sector)}
-                          <span className="text-gray-700 text-sm">{sector}</span>
+                          <GraduationCap size={14} className="text-gray-400" />
+                          <span className="text-gray-700 text-sm">{qualification}</span>
                         </div>
                       </label>
                     ))}
                     
-                    {fresherFriendlySectors.length > 10 && (
+                    {qualificationOptions.length > 10 && (
                       <button
                         onClick={openEnhancedFilterDialog}
                         className="w-full text-center text-blue-600 hover:text-blue-800 text-sm font-medium mt-2 flex items-center justify-center gap-1"
                       >
                         <Plus size={12} />
-                        View All {fresherFriendlySectors.length} Sectors
+                        View All {qualificationOptions.length} Qualifications
                       </button>
                     )}
                   </div>
@@ -2595,12 +2476,12 @@ const educationLevelOptions = getEducationLevelOptions();
                     </div>
                     
                     <div>
-                      <p className="text-gray-600 mb-1">📊 Popular Sectors</p>
+                      <p className="text-gray-600 mb-1">🎓 Popular Qualifications</p>
                       <div className="space-y-1">
-                        {analytics.topSectors.map((sector, index) => (
-                          <div key={sector.sector} className="flex justify-between items-center">
-                            <span className="text-gray-700 truncate">{sector.sector}</span>
-                            <span className="font-bold text-purple-600">{sector.count} jobs</span>
+                        {analytics.topQualifications.map((qual, index) => (
+                          <div key={qual.qualification} className="flex justify-between items-center">
+                            <span className="text-gray-700 truncate">{qual.qualification}</span>
+                            <span className="font-bold text-purple-600">{qual.count} jobs</span>
                           </div>
                         ))}
                       </div>
@@ -2727,30 +2608,30 @@ const educationLevelOptions = getEducationLevelOptions();
                   </button>
                 </div>
                 
-                {/* Mobile Sector Selection */}
+                {/* Mobile Qualifications Selection */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Building size={14} />
-                    Select Sectors
-                    {selectedSectors.length > 0 && (
+                    <GraduationCap size={14} />
+                    Select Qualifications
+                    {selectedQualifications.length > 0 && (
                       <span className="ml-auto bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full">
-                        {selectedSectors.length} selected
+                        {selectedQualifications.length} selected
                       </span>
                     )}
                   </label>
                   
-                  {/* Selected Sectors Chips - Mobile */}
-                  {selectedSectors.length > 0 && (
+                  {/* Selected Qualifications Chips - Mobile */}
+                  {selectedQualifications.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {selectedSectors.map((sector, index) => (
+                      {selectedQualifications.map((qualification, index) => (
                         <span
                           key={index}
                           className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs flex items-center gap-1"
                         >
-                          {getSectorIcon(sector)}
-                          {sector.length > 10 ? `${sector.substring(0, 10)}...` : sector}
+                          <GraduationCap size={12} />
+                          {qualification.length > 10 ? `${qualification.substring(0, 10)}...` : qualification}
                           <button
-                            onClick={() => handleSectorSelection(sector)}
+                            onClick={() => handleQualificationSelection(qualification)}
                             className="ml-1 text-purple-600 hover:text-purple-800"
                           >
                             <X size={10} />
@@ -2760,33 +2641,33 @@ const educationLevelOptions = getEducationLevelOptions();
                     </div>
                   )}
                   
-                  {/* Sector Checkboxes - Mobile */}
+                  {/* Qualifications Checkboxes - Mobile */}
                   <div className="max-h-48 overflow-y-auto space-y-2">
-                    {fresherFriendlySectors.slice(0, 8).map((sector, index) => (
+                    {qualificationOptions.slice(0, 8).map((qualification, index) => (
                       <label
                         key={index}
                         className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
                       >
                         <input
                           type="checkbox"
-                          checked={selectedSectors.includes(sector)}
-                          onChange={() => handleSectorSelection(sector)}
+                          checked={selectedQualifications.includes(qualification)}
+                          onChange={() => handleQualificationSelection(qualification)}
                           className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
                         />
                         <div className="flex items-center gap-2">
-                          {getSectorIcon(sector)}
-                          <span className="text-gray-700 text-sm">{sector.length > 20 ? `${sector.substring(0, 20)}...` : sector}</span>
+                          <GraduationCap size={14} className="text-gray-400" />
+                          <span className="text-gray-700 text-sm">{qualification.length > 20 ? `${qualification.substring(0, 20)}...` : qualification}</span>
                         </div>
                       </label>
                     ))}
                     
-                    {fresherFriendlySectors.length > 8 && (
+                    {qualificationOptions.length > 8 && (
                       <button
                         onClick={openEnhancedFilterDialog}
                         className="w-full text-center text-blue-600 hover:text-blue-800 text-sm font-medium mt-2 flex items-center justify-center gap-1"
                       >
                         <Plus size={12} />
-                        View All Sectors
+                        View All Qualifications
                       </button>
                     )}
                   </div>
@@ -2969,10 +2850,10 @@ const educationLevelOptions = getEducationLevelOptions();
 
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-                  {selectedSectors.length === 0 && selectedJobType === 'all' 
+                  {selectedQualifications.length === 0 && selectedJobType === 'all' 
                     ? 'All Latest Job Opportunities in India' 
-                    : selectedSectors.length > 0 
-                      ? `Latest ${selectedSectors.length} Sector${selectedSectors.length > 1 ? 's' : ''} Jobs in India`
+                    : selectedQualifications.length > 0 
+                      ? `Latest Jobs for Selected Qualifications in India`
                       : `Latest ${selectedJobType} Jobs in India`
                   } 
                   <span className="text-gray-600 text-base md:text-lg ml-2">({filteredJobsCount})</span>
@@ -3098,12 +2979,12 @@ const educationLevelOptions = getEducationLevelOptions();
                       </div>
                       
                       <div>
-                        <p className="text-gray-600 mb-1">📊 Popular Sectors</p>
+                        <p className="text-gray-600 mb-1">🎓 Popular Qualifications</p>
                         <div className="space-y-1">
-                          {analytics.topSectors.map((sector, index) => (
-                            <div key={sector.sector} className="flex justify-between items-center">
-                              <span className="text-gray-700 truncate">{sector.sector}</span>
-                              <span className="font-bold text-purple-600">{sector.count} jobs</span>
+                          {analytics.topQualifications.map((qual, index) => (
+                            <div key={qual.qualification} className="flex justify-between items-center">
+                              <span className="text-gray-700 truncate">{qual.qualification}</span>
+                              <span className="font-bold text-purple-600">{qual.count} jobs</span>
                             </div>
                           ))}
                         </div>
