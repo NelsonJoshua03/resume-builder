@@ -1,4 +1,4 @@
-// ResumeBuilder.tsx - COMPLETE WITH CUSTOM SECTION TITLES AND DUAL ANALYTICS
+// ResumeBuilder.tsx - UPDATED VERSION (without SEO component at top)
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useResume } from './ResumeContext';
@@ -8,13 +8,11 @@ import ResumePreview from './ResumePreview';
 import ColorCustomizer from './ColorCustomizer';
 import MobilePDFGenerator from './MobilePDFGenerator';
 import SocialSharing from './SocialSharing';
-import SEO from './SEO';
 import SectionOrderCustomizer from './SectionOrderCustomizer';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import type { TemplatesMap } from './types';
-import { isAdmin } from '../utils/adminAuth'; // This will work now
-import { getProfessionalResume } from '../firebase/professionalResumes';
+import { isAdmin } from '../utils/adminAuth';
 
 // Enhanced template configuration with unique styling for each template
 const TEMPLATES: TemplatesMap = {
@@ -312,11 +310,9 @@ const ResumeBuilder = () => {
     handleFileUpload,
     updateSelectedTemplate,
     updateCustomColors,
-    sectionTitles,  // NEW: Get custom section titles
     loadProfessionalResume
   } = useResume();
 
-  
   
   const [formKey, setFormKey] = useState(0);
   const resumeRef = useRef<HTMLDivElement>(null);
@@ -361,68 +357,68 @@ const ResumeBuilder = () => {
   const [isLoadingProfessionalResume, setIsLoadingProfessionalResume] = useState(false);
   const [professionalResumeLoaded, setProfessionalResumeLoaded] = useState(false);  
 
-   useEffect(() => {
-  const loadProfessionalResumeFromUrl = async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const resumeId = urlParams.get('resumeId');
-    const clientEmail = urlParams.get('clientEmail');
-    
-    // ✅ FIXED: Await the async function
-    const isAdminUser = await isAdmin();
-    
-    console.log('🔍 Checking for professional resume:', {
-      resumeId,
-      clientEmail,
-      isAdminUser,
-      hasLoadFunction: !!loadProfessionalResume
-    });
-    
-    if (resumeId && isAdminUser && loadProfessionalResume) {
-      try {
-        setIsLoadingProfessionalResume(true);
-        console.log('🔄 Loading professional resume:', resumeId);
-        
-        const result = await loadProfessionalResume(resumeId);
-        
-        if (result.success) {
-          console.log('✅ Professional resume loaded successfully:', result.data);
-          setProfessionalResumeLoaded(true);
+  useEffect(() => {
+    const loadProfessionalResumeFromUrl = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const resumeId = urlParams.get('resumeId');
+      const clientEmail = urlParams.get('clientEmail');
+      
+      // ✅ FIXED: Await the async function
+      const isAdminUser = await isAdmin();
+      
+      console.log('🔍 Checking for professional resume:', {
+        resumeId,
+        clientEmail,
+        isAdminUser,
+        hasLoadFunction: !!loadProfessionalResume
+      });
+      
+      if (resumeId && isAdminUser && loadProfessionalResume) {
+        try {
+          setIsLoadingProfessionalResume(true);
+          console.log('🔄 Loading professional resume:', resumeId);
           
-          trackFirebaseEvent(
-            'professional_resume_loaded_in_builder',
-            'Professional Resume',
-            'load_success',
-            {
-              resume_id: resumeId,
-              client_email: clientEmail,
-              sections_loaded: Object.keys(result.data?.resumeData || {}).length,
-              template: result.data?.resumeData?.selectedTemplate
-            }
-          );
-        } else {
-          console.error('❌ Failed to load professional resume:', result.error);
-          trackFirebaseEvent(
-            'professional_resume_load_failed',
-            'Professional Resume',
-            'load_failed',
-            {
-              resume_id: resumeId,
-              error: result.error
-            }
-          );
+          const result = await loadProfessionalResume(resumeId);
+          
+          if (result.success) {
+            console.log('✅ Professional resume loaded successfully:', result.data);
+            setProfessionalResumeLoaded(true);
+            
+            trackFirebaseEvent(
+              'professional_resume_loaded_in_builder',
+              'Professional Resume',
+              'load_success',
+              {
+                resume_id: resumeId,
+                client_email: clientEmail,
+                sections_loaded: Object.keys(result.data?.resumeData || {}).length,
+                template: result.data?.resumeData?.selectedTemplate
+              }
+            );
+          } else {
+            console.error('❌ Failed to load professional resume:', result.error);
+            trackFirebaseEvent(
+              'professional_resume_load_failed',
+              'Professional Resume',
+              'load_failed',
+              {
+                resume_id: resumeId,
+                error: result.error
+              }
+            );
+          }
+        } catch (error) {
+          console.error('❌ Error loading professional resume:', error);
+        } finally {
+          setIsLoadingProfessionalResume(false);
         }
-      } catch (error) {
-        console.error('❌ Error loading professional resume:', error);
-      } finally {
-        setIsLoadingProfessionalResume(false);
+      } else if (resumeId && !isAdminUser) {
+        console.log('🔒 Not an admin, cannot load professional resume');
       }
-    } else if (resumeId && !isAdminUser) {
-      console.log('🔒 Not an admin, cannot load professional resume');
-    }
-  };
-  
-  loadProfessionalResumeFromUrl();
-}, [loadProfessionalResume]);
+    };
+    
+    loadProfessionalResumeFromUrl();
+  }, [loadProfessionalResume]);
 
   // Track page view on mount - DUAL TRACKING
   useEffect(() => {
@@ -603,13 +599,6 @@ const ResumeBuilder = () => {
 
   return (
     <>
-      <SEO
-        title="Free Resume Builder - Create ATS-Friendly CV Online | CareerCraft"
-        description="Build professional, ATS-optimized resumes with CareerCraft's free online builder. 8+ templates for engineers, developers, and professionals. Download PDF instantly."
-        keywords="free resume builder, online CV maker, ATS resume template, professional resume download, resume builder no sign up, create resume free, career craft"
-        canonicalUrl="https://careercraft.in/builder"
-      />
-      
       {/* Success Download Prompt Modal */}
       {showDownloadPrompt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

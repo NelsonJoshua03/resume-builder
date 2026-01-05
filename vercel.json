@@ -84,7 +84,17 @@
       "status": 301
     },
     {
+      "src": "/resume-builder/",
+      "dest": "/free-resume-builder",
+      "status": 301
+    },
+    {
       "src": "/cv-builder",
+      "dest": "/cv-maker-online",
+      "status": 301
+    },
+    {
+      "src": "/cv-builder/",
       "dest": "/cv-maker-online",
       "status": 301
     },
@@ -94,7 +104,17 @@
       "status": 301
     },
     {
+      "src": "/resume-creator/",
+      "dest": "/online-resume-maker",
+      "status": 301
+    },
+    {
       "src": "/make-resume",
+      "dest": "/create-resume-online",
+      "status": 301
+    },
+    {
+      "src": "/make-resume/",
       "dest": "/create-resume-online",
       "status": 301
     },
@@ -104,8 +124,108 @@
       "status": 301
     },
     {
+      "src": "/create-resume/",
+      "dest": "/create-resume-online",
+      "status": 301
+    },
+    {
       "src": "/resume-maker",
       "dest": "/online-resume-maker",
+      "status": 301
+    },
+    {
+      "src": "/resume-maker/",
+      "dest": "/online-resume-maker",
+      "status": 301
+    },
+    {
+      "src": "/ats-resume",
+      "dest": "/ats-resume-builder",
+      "status": 301
+    },
+    {
+      "src": "/ats-resume/",
+      "dest": "/ats-resume-builder",
+      "status": 301
+    },
+    {
+      "src": "/online-resume",
+      "dest": "/online-resume-maker",
+      "status": 301
+    },
+    {
+      "src": "/online-resume/",
+      "dest": "/online-resume-maker",
+      "status": 301
+    },
+    {
+      "src": "/professional-resume",
+      "dest": "/professional-resume-builder",
+      "status": 301
+    },
+    {
+      "src": "/professional-resume/",
+      "dest": "/professional-resume-builder",
+      "status": 301
+    },
+    {
+      "src": "/fresher-resume",
+      "dest": "/resume-builder-for-freshers",
+      "status": 301
+    },
+    {
+      "src": "/fresher-resume/",
+      "dest": "/resume-builder-for-freshers",
+      "status": 301
+    },
+    {
+      "src": "/engineer-resume",
+      "dest": "/resume-builder-for-engineers",
+      "status": 301
+    },
+    {
+      "src": "/engineer-resume/",
+      "dest": "/resume-builder-for-engineers",
+      "status": 301
+    },
+    {
+      "src": "/it-resume",
+      "dest": "/resume-builder-for-it-jobs",
+      "status": 301
+    },
+    {
+      "src": "/it-resume/",
+      "dest": "/resume-builder-for-it-jobs",
+      "status": 301
+    },
+    {
+      "src": "/developer-resume",
+      "dest": "/resume-builder-for-developers",
+      "status": 301
+    },
+    {
+      "src": "/developer-resume/",
+      "dest": "/resume-builder-for-developers",
+      "status": 301
+    },
+    {
+      "src": "/free-cv-maker",
+      "dest": "/cv-maker-online",
+      "status": 301
+    },
+    {
+      "src": "/free-cv-maker/",
+      "dest": "/cv-maker-online",
+      "status": 301
+    },
+    {
+      "src": "/cv-creator",
+      "dest": "/cv-maker-online",
+      "status": 301
+    },
+    {
+      "src": "/cv-creator/",
+      "dest": "/cv-maker-online",
       "status": 301
     },
     {

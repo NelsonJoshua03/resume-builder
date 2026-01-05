@@ -1,10 +1,9 @@
-// src/App.tsx - ONLY ROUTE CHANGES
+// src/App.tsx - UPDATED WITH ALL SEPARATE PAGES
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
 import Layout from "./components/Layout";
 import ResumeBuilder from "./components/ResumeBuilder";
-import SEOOptimizedResumeBuilder from "./components/SEOOptimizedResumeBuilder";
 import HomePage from "./components/HomePage";
 import JobDisciplines from "./components/JobDisciplines";
 import JobApplications from "./components/JobApplications";
@@ -24,13 +23,25 @@ import FreshGraduateGuide from './components/FreshGraduateGuide';
 import TermsOfService from "./components/TermsOfService";
 import CookiePolicy from "./components/CookiePolicy";
 import Contact from "./components/Contact";
-import JobDrives from './components/JobDrives'; // KEEP OLD COMPONENT
+import JobDrives from './components/JobDrives';
 import AdminJobDrives from './components/AdminJobDrives';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import EditResumePage from './components/EditResumePage';
 import LatestJobUpdatesIndia from "./components/LatestJobUpdatesIndia";
+
+// SEO Pages
+import FreeResumeBuilderPage from './components/seo-pages/FreeResumeBuilderPage';
+import ATSResumeBuilderPage from './components/seo-pages/ATSResumeBuilderPage';
+import OnlineResumeMakerPage from './components/seo-pages/OnlineResumeMakerPage';
+import CVMakerOnlinePage from './components/seo-pages/CVMakerOnlinePage';
+import ProfessionalResumeBuilderPage from './components/seo-pages/ProfessionalResumeBuilderPage';
+import ResumeBuilderForFreshersPage from './components/seo-pages/ResumeBuilderForFreshersPage';
+import ResumeBuilderForEngineersPage from './components/seo-pages/ResumeBuilderForEngineersPage';
+import ResumeBuilderForITJobsPage from './components/seo-pages/ResumeBuilderForITJobsPage';
+import ResumeBuilderForDevelopersPage from './components/seo-pages/ResumeBuilderForDevelopersPage';
+import CreateResumeOnlinePage from './components/seo-pages/CreateResumeOnlinePage';
 
 // Analytics Dashboard Components (Admin only)
 import AnalyticsDashboard from './components/AnalyticsDashboard';
@@ -40,7 +51,7 @@ import ComprehensiveAnalyticsDashboard from './components/ComprehensiveAnalytics
 import FirebaseAnalyticsDashboardComponent from './components/FirebaseAnalyticsDashboardComponent';
 
 // Professional Resume Admin Components
-import AdminDashboard from './/components/AdminDashboard';
+import AdminDashboard from './components/AdminDashboard';
 import ProfessionalResumeDashboard from './components/ProfessionalResumeDashboard';
 
 // Auth Components
@@ -56,7 +67,6 @@ import { initializeFirebase } from './firebase/config';
 import { firebaseSyncService } from './firebase/syncService';
 import { anonymousTracking } from './firebase/anonymousTracking';
 import { useEffect } from 'react';
-import { isAdmin } from './utils/adminAuth';
 
 function App() {
   // Initialize Firebase on app start (no consent required)
@@ -98,34 +108,29 @@ function App() {
               {/* Main Pages */}
               <Route path="/" element={<HomePage />} />
               <Route path="/latest-job-updates-india" element={<LatestJobUpdatesIndia />} />
-              <Route path="/builder" element={<ResumeBuilder />} /> {/* Keep for backward compatibility */}
+              <Route path="/builder" element={<Navigate to="/free-resume-builder" replace />} /> {/* Redirect old builder */}
               <Route path="/job-disciplines" element={<JobDisciplines />} />
-              {/* UPDATED: Changed from /job-applications to /latest-jobs-for-freshers-india for better SEO */}
               <Route path="/latest-jobs-for-freshers-india" element={<JobApplications />} />
-              {/* Keep old route for redirect purposes */}
               <Route path="/job-applications" element={<Navigate to="/latest-jobs-for-freshers-india" replace />} />
               <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/edit" element={<EditResumePage />} />
-
-              {/* NEW SEO-OPTIMIZED ROUTE - SAME OLD COMPONENT */}
               <Route path="/latest-walk-in-drives-india" element={<JobDrives />} />
-              {/* Keep old route for redirect purposes */}
               <Route path="/job-drives" element={<Navigate to="/latest-walk-in-drives-india" replace />} />
 
-              {/* SEO-Optimized Resume Builder Routes */}
-              <Route path="/free-resume-builder" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/ats-resume-builder" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/online-resume-maker" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/cv-maker-online" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/professional-resume-builder" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/resume-builder-for-freshers" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/resume-builder-for-engineers" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/resume-builder-for-it-jobs" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/resume-builder-for-developers" element={<SEOOptimizedResumeBuilder />} />
-              <Route path="/create-resume-online" element={<SEOOptimizedResumeBuilder />} />
+              {/* SEO-Optimized Resume Builder Pages (Separate Components) */}
+              <Route path="/free-resume-builder" element={<FreeResumeBuilderPage />} />
+              <Route path="/ats-resume-builder" element={<ATSResumeBuilderPage />} />
+              <Route path="/online-resume-maker" element={<OnlineResumeMakerPage />} />
+              <Route path="/cv-maker-online" element={<CVMakerOnlinePage />} />
+              <Route path="/professional-resume-builder" element={<ProfessionalResumeBuilderPage />} />
+              <Route path="/resume-builder-for-freshers" element={<ResumeBuilderForFreshersPage />} />
+              <Route path="/resume-builder-for-engineers" element={<ResumeBuilderForEngineersPage />} />
+              <Route path="/resume-builder-for-it-jobs" element={<ResumeBuilderForITJobsPage />} />
+              <Route path="/resume-builder-for-developers" element={<ResumeBuilderForDevelopersPage />} />
+              <Route path="/create-resume-online" element={<CreateResumeOnlinePage />} />
 
               {/* Admin Login Page */}
               <Route path="/admin/login" element={<AdminLogin />} />
@@ -248,7 +253,7 @@ function App() {
               <Route path="/create-client-resume" element={<Navigate to="/edit?adminMode=true" replace />} />
 
               {/* Redirect any unknown routes to home */}
-              <Route path="*" element={<HomePage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>
         </ResumeProvider>

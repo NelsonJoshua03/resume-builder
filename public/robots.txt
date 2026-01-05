@@ -1,0 +1,546 @@
+# CareerCraft.in - SEO Optimized Robots.txt v2.0
+# India's #1 Free Resume Builder & Job Portal
+# Last Updated: January 2025
+# Sitemap: https://careercraft.in/sitemap.xml
+
+# ========================
+# ALLOWED PATHS FOR SEO
+# ========================
+User-agent: *
+Allow: /free-resume-builder
+Allow: /ats-resume-builder
+Allow: /online-resume-maker
+Allow: /cv-maker-online
+Allow: /professional-resume-builder
+Allow: /resume-builder-for-freshers
+Allow: /resume-builder-for-engineers
+Allow: /resume-builder-for-it-jobs
+Allow: /resume-builder-for-developers
+Allow: /create-resume-online
+Allow: /edit
+Allow: /latest-jobs-for-freshers-india
+Allow: /latest-walk-in-drives-india
+Allow: /latest-job-updates-india
+Allow: /job-disciplines
+Allow: /government-exams
+Allow: /blog
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /cookies
+Allow: /fresh-graduate-guide
+Allow: /job-disciplines/mechanical-engineering
+Allow: /job-disciplines/static-engineer
+Allow: /job-disciplines/civil-engineering
+Allow: /job-disciplines/electrical-engineering
+Allow: /job-disciplines/software-development
+Allow: /job-disciplines/data-science
+Allow: /job-disciplines/cybersecurity
+
+# ========================
+# DISALLOWED PATHS
+# ========================
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /backup/
+Disallow: /logs/
+Disallow: /cgi-bin/
+
+# Development files
+Disallow: /node_modules/
+Disallow: /src/
+Disallow: /config/
+Disallow: /.env
+Disallow: /.git/
+Disallow: /.github/
+Disallow: /package.json
+Disallow: /webpack.config.js
+Disallow: /tsconfig.json
+Disallow: /yarn.lock
+Disallow: /package-lock.json
+Disallow: /vite.config.js
+Disallow: /vercel.json
+Disallow: /.vercel/
+Disallow: /.vscode/
+
+# Temporary files
+Disallow: /uploads/temp/
+Disallow: /tmp/
+Disallow: /cache/
+Disallow: /temp/
+Disallow: /backups/
+
+# JSON/API endpoints
+Disallow: /*.json$
+Disallow: /*.json?*
+Disallow: /*/api/
+Disallow: /api/*
+Disallow: /graphql
+Disallow: /graphql/*
+
+# URL parameters for duplicate content
+Disallow: /*?search=
+Disallow: /*?filter=
+Disallow: /*?sort=
+Disallow: /*?page=
+Disallow: /*?ref=
+Disallow: /*?utm_
+Disallow: /*?sessionid=
+Disallow: /*?token=
+Disallow: /*?redirect=
+Disallow: /*?fbclid=
+Disallow: /*?gclid=
+Disallow: /*?mc_cid=
+Disallow: /*?mc_eid=
+Disallow: /*?fb_source=
+Disallow: /*?fb_action_ids=
+Disallow: /*?fb_action_types=
+Disallow: /*?fb_ref=
+Disallow: /*?source=
+Disallow: /*?medium=
+Disallow: /*?campaign=
+Disallow: /*?content=
+
+# Old/redirected paths (already redirected in vercel.json)
+Disallow: /builder
+Disallow: /builder/
+Disallow: /job-applications
+Disallow: /job-applications/
+Disallow: /job-drives
+Disallow: /job-drives/
+Disallow: /resume-builder
+Disallow: /resume-builder/
+Disallow: /cv-builder
+Disallow: /cv-builder/
+Disallow: /resume-creator
+Disallow: /resume-creator/
+Disallow: /make-resume
+Disallow: /make-resume/
+Disallow: /create-resume
+Disallow: /create-resume/
+Disallow: /resume-maker
+Disallow: /resume-maker/
+Disallow: /ats-resume
+Disallow: /ats-resume/
+Disallow: /online-resume
+Disallow: /online-resume/
+Disallow: /professional-resume
+Disallow: /professional-resume/
+Disallow: /fresher-resume
+Disallow: /fresher-resume/
+Disallow: /engineer-resume
+Disallow: /engineer-resume/
+Disallow: /it-resume
+Disallow: /it-resume/
+Disallow: /developer-resume
+Disallow: /developer-resume/
+Disallow: /free-cv-maker
+Disallow: /free-cv-maker/
+Disallow: /cv-creator
+Disallow: /cv-creator/
+
+# ========================
+# SEARCH ENGINE SPECIFIC
+# ========================
+
+# Google Bots (Full access with crawl delay)
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0.5
+Disallow: /*.pdf$
+Disallow: /*.doc$
+Disallow: /*.docx$
+Disallow: /*.zip$
+Disallow: /*.exe$
+Disallow: /*.rar$
+
+User-agent: Googlebot-Image
+Allow: /
+Crawl-delay: 1
+Disallow: /*.gif$
+
+User-agent: Googlebot-News
+Allow: /
+Crawl-delay: 1
+
+User-agent: Googlebot-Video
+Allow: /
+Crawl-delay: 1
+
+User-agent: AdsBot-Google
+Allow: /
+Crawl-delay: 2
+
+User-agent: AdsBot-Google-Mobile
+Allow: /
+Crawl-delay: 2
+
+User-agent: AdsBot-Google-Mobile-Apps
+Allow: /
+Crawl-delay: 2
+
+User-agent: Google-Extended
+Allow: /
+
+# Bing Bots
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: MSNBot
+Allow: /
+Crawl-delay: 1
+
+User-agent: MSNBot-Media
+Allow: /
+Crawl-delay: 1
+
+# Other Search Engines
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Yandex
+Allow: /
+Crawl-delay: 2
+
+User-agent: YandexBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: YandexImages
+Allow: /
+Crawl-delay: 2
+
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 5
+
+User-agent: Baiduspider-image
+Allow: /
+Crawl-delay: 5
+
+User-agent: Baiduspider-video
+Allow: /
+Crawl-delay: 5
+
+User-agent: Baiduspider-news
+Allow: /
+Crawl-delay: 5
+
+# Indian Search Engines
+User-agent: GurujiBot
+Allow: /
+Crawl-delay: 3
+
+User-agent: GurujiImageBot
+Allow: /
+Crawl-delay: 3
+
+# ========================
+# BLOCKED BOTS (AI/Scrapers)
+# ========================
+User-agent: ChatGPT-User
+Disallow: /
+User-agent: GPTBot
+Disallow: /
+User-agent: CCBot
+Disallow: /
+User-agent: FacebookBot
+Disallow: /
+User-agent: FacebookExternalHit
+Disallow: /
+User-agent: anthropic-ai
+Disallow: /
+User-agent: Claude-Web
+Disallow: /
+User-agent: ClaudeBot
+Disallow: /
+User-agent: PerplexityBot
+Disallow: /
+User-agent: Perplexity-ai
+Disallow: /
+
+# SEO Scrapers
+User-agent: AhrefsBot
+Disallow: /
+Crawl-delay: 10
+User-agent: SemrushBot
+Disallow: /
+Crawl-delay: 10
+User-agent: MJ12bot
+Disallow: /
+Crawl-delay: 10
+User-agent: dotbot
+Disallow: /
+User-agent: zoominfobot
+Disallow: /
+User-agent: MojeekBot
+Disallow: /
+User-agent: Barkrowler
+Disallow: /
+User-agent: BLEXBot
+Disallow: /
+User-agent: SiteAuditBot
+Disallow: /
+User-agent: Screaming Frog SEO Spider
+Disallow: /
+User-agent: ia_archiver-web
+Disallow: /
+User-agent: DataForSeoBot
+Disallow: /
+
+# Competitor/Malicious Bots
+User-agent: Sogou web spider
+Disallow: /
+User-agent: YoudaoBot
+Disallow: /
+User-agent: YisouSpider
+Disallow: /
+User-agent: EasouSpider
+Disallow: /
+User-agent: Exabot
+Disallow: /
+User-agent: MegaIndex.ru
+Disallow: /
+User-agent: Mail.RU_Bot
+Disallow: /
+User-agent: spbot
+Disallow: /
+User-agent: XoviBot
+Disallow: /
+User-agent: SeekportBot
+Disallow: /
+User-agent: trendictionbot
+Disallow: /
+User-agent: proximic
+Disallow: /
+User-agent: WeSEE:Search
+Disallow: /
+User-agent: careerbot
+Disallow: /
+User-agent: indeedbot
+Disallow: /
+User-agent: linkedinbot
+Disallow: /
+User-agent: glassdoor
+Disallow: /
+
+# Archive Bots
+User-agent: ia_archiver
+Disallow: /
+User-agent: archive.org_bot
+Disallow: /
+User-agent: Gigabot
+Disallow: /
+User-agent: Nutch
+Disallow: /
+User-agent: FlipboardProxy
+Disallow: /
+User-agent: FlipboardBot
+Disallow: /
+User-agent: PaperLiBot
+Disallow: /
+User-agent: Jetty
+Disallow: /
+User-agent: DomainCrawler
+Disallow: /
+
+# Scraping Tools
+User-agent: Java
+Disallow: /
+User-agent: curl
+Disallow: /
+User-agent: Wget
+Disallow: /
+User-agent: scrapbot
+Disallow: /
+User-agent: Scrapy
+Disallow: /
+User-agent: masscan
+Disallow: /
+User-agent: nmap
+Disallow: /
+User-agent: go-http-client
+Disallow: /
+User-agent: python-requests
+Disallow: /
+User-agent: http.client
+Disallow: /
+User-agent: libwww
+Disallow: /
+User-agent: lwp-trivial
+Disallow: /
+User-agent: PHP
+Disallow: /
+User-agent: PEAR
+Disallow: /
+User-agent: BOT/0.1
+Disallow: /
+User-agent: BOT for JCE
+Disallow: /
+
+# ========================
+# MOBILE CRAWLERS
+# ========================
+User-agent: Googlebot-Mobile
+Allow: /
+Crawl-delay: 1
+
+User-agent: Applebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: bingbot-mobile
+Allow: /
+Crawl-delay: 1
+
+# ========================
+# SOCIAL MEDIA BOTS
+# ========================
+User-agent: Twitterbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: LinkedInBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Pinterest
+Allow: /
+Crawl-delay: 2
+
+User-agent: Discordbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Slackbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: TelegramBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: WhatsApp
+Allow: /
+Crawl-delay: 2
+
+User-agent: Iframely
+Allow: /
+Crawl-delay: 2
+
+# ========================
+# FEED READERS
+# ========================
+User-agent: Feedfetcher-Google
+Allow: /
+Crawl-delay: 3
+
+User-agent: Apple-PubSub
+Allow: /
+Crawl-delay: 3
+
+User-agent: FeedBurner
+Allow: /
+Crawl-delay: 3
+
+User-agent: Feedly
+Allow: /
+Crawl-delay: 3
+
+User-agent: NewsBlur
+Allow: /
+Crawl-delay: 3
+
+User-agent: Inoreader
+Allow: /
+Crawl-delay: 3
+
+# ========================
+# TESTING TOOLS
+# ========================
+User-agent: Google-PageSpeed-Insights
+Allow: /
+Crawl-delay: 5
+
+User-agent: Google-Mobile-Friendly
+Allow: /
+Crawl-delay: 5
+
+User-agent: Lighthouse
+Allow: /
+Crawl-delay: 5
+
+User-agent: Speed Insights
+Allow: /
+Crawl-delay: 5
+
+User-agent: GTmetrix
+Allow: /
+Crawl-delay: 5
+
+User-agent: Pingdom
+Allow: /
+Crawl-delay: 5
+
+User-agent: UptimeRobot
+Allow: /
+Crawl-delay: 5
+
+User-agent: StatusCake
+Allow: /
+Crawl-delay: 5
+
+# ========================
+# SITEMAP REFERENCES
+# ========================
+Sitemap: https://careercraft.in/sitemap.xml
+Sitemap: https://careercraft.in/sitemap-index.xml
+Sitemap: https://careercraft.in/sitemap-resume.xml
+Sitemap: https://careercraft.in/sitemap-jobs.xml
+Sitemap: https://careercraft.in/sitemap-blog.xml
+
+# ========================
+# ADDITIONAL DIRECTIVES
+# ========================
+# Clean parameters to avoid duplicate content
+Clean-param: utm_source /free-resume-builder
+Clean-param: utm_medium /free-resume-builder
+Clean-param: utm_campaign /free-resume-builder
+Clean-param: utm_source /ats-resume-builder
+Clean-param: utm_medium /ats-resume-builder
+Clean-param: utm_campaign /ats-resume-builder
+Clean-param: utm_source /online-resume-maker
+Clean-param: utm_medium /online-resume-maker
+Clean-param: utm_campaign /online-resume-maker
+Clean-param: utm_source /cv-maker-online
+Clean-param: utm_medium /cv-maker-online
+Clean-param: utm_campaign /cv-maker-online
+Clean-param: ref /blog/
+Clean-param: source /job-applications/
+Clean-param: fbclid /
+Clean-param: gclid /
+Clean-param: mc_cid /
+Clean-param: mc_eid /
+
+# General crawl delay
+Crawl-delay: 0.5
+
+# ========================
+# SPECIAL NOTES
+# ========================
+# This site is built with React (SPA)
+# Googlebot can execute JavaScript
+# All main content routes are accessible
+# Canonical URLs are set for all pages
+# Contact: contact@careercraft.in
+# For indexing issues: webmaster@careercraft.in
+# Server: Vercel
+# Framework: React + Vite
+# Country: India (IN)
+# Language: English
+# Target Audience: Indian Job Seekers
