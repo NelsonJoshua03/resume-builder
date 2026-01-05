@@ -36,6 +36,8 @@ export interface JobData {
   
   // NEW FIELD: Experience in years
   experience?: string;
+  // NEW: Qualifications field (degree/certifications)
+  qualifications?: string[];
   
   // Analytics fields
   views?: number;
@@ -69,7 +71,10 @@ export interface JobFilters {
   searchTerm?: string;
   featured?: boolean;
   isActive?: boolean;
+  qualifications?: string[];
   experience?: string;
+  
+
 }
 
 export class FirebaseJobService {
@@ -206,6 +211,8 @@ export class FirebaseJobService {
       applications: 0,
       saves: 0,
       experience: jobData.experience || '0-2 years',
+      qualifications: jobData.qualifications || [],
+
       dataProcessingLocation: 'IN'
     };
 

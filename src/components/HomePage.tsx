@@ -1,4 +1,4 @@
-// HomePage.tsx - UPDATED VERSION - CLEANED MOBILE VIEW, FIXED EXIT MODAL
+// HomePage.tsx - UPDATED VERSION - EXIT INTENT WITH WHATSAPP
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -28,7 +28,8 @@ import {
   X,
   Smartphone,
   TrendingUp as TrendingUpIcon,
-  Edit
+  Edit,
+  MessageCircle
 } from 'lucide-react';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
@@ -136,15 +137,31 @@ const defaultSectionOrder = [
   { id: 'custom', label: 'Additional Sections', enabled: true, order: 6 }
 ];
 
-// Exit Intent Modal Component - UPDATED: Responsive mobile design
+// Exit Intent Modal Component - UPDATED: WhatsApp Contact CTA
 const ExitIntentModal = ({ onClose }: { 
   onClose: () => void;
 }) => {
-  const [selectedTemplate, setSelectedTemplate] = useState<'creative' | 'executive'>('creative');
   const navigate = useNavigate();
+  const { trackCTAClick } = useGoogleAnalytics();
+  const { trackCTAClick: trackFirebaseCTAClick } = useFirebaseAnalytics();
+  
+  // WhatsApp configuration - REPLACE WITH YOUR ACTUAL NUMBER
+  const whatsappPhone = "919500543620"; // Format: CountryCode + PhoneNumber (without + or 0)
+  const defaultMessage = "Hello! I want my CV to be polished with ATS optimized template specialized for my role. Can you help me?";
+  
+  // Generate WhatsApp URL with pre-filled message
+  const whatsappURL = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(defaultMessage)}`;
 
-  const handleGoToBuilder = () => {
-    navigate('/edit');
+  // Handle WhatsApp click with tracking
+  const handleWhatsAppClick = () => {
+    // Track the WhatsApp click event
+    trackCTAClick('whatsapp_contact', 'exit_intent_modal', 'homepage');
+    trackFirebaseCTAClick('whatsapp_contact', 'exit_intent_modal', 'homepage');
+    
+    // Open WhatsApp in new tab
+    window.open(whatsappURL, '_blank');
+    
+    // Close modal after click
     onClose();
   };
 
@@ -152,15 +169,15 @@ const ExitIntentModal = ({ onClose }: {
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4 animate-fadeIn overflow-y-auto">
       <div className="bg-white rounded-xl md:rounded-2xl max-w-4xl w-full max-h-[95vh] md:max-h-[90vh] overflow-hidden shadow-2xl animate-slideUp my-4">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 md:p-6 text-white">
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4 md:p-6 text-white">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2 md:gap-3">
               <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Rocket size={18} className="md:size-5" />
+                <MessageCircle size={18} className="md:size-5" />
               </div>
               <div>
-                <h3 className="text-lg md:text-xl font-bold">🚀 Ready to Build Your Perfect Resume?</h3>
-                <p className="text-blue-100 text-sm md:text-base">Start creating your professional resume now</p>
+                <h3 className="text-lg md:text-xl font-bold">✨ Professional CV Polishing Service</h3>
+                <p className="text-green-100 text-sm md:text-base">Get ATS-optimized CV tailored for your role</p>
               </div>
             </div>
             <button 
@@ -175,50 +192,53 @@ const ExitIntentModal = ({ onClose }: {
         {/* Content */}
         <div className="p-4 md:p-6">
           <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-            {/* Left - Template Selection */}
+            {/* Left - Service Details */}
             <div className="space-y-4">
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-4 rounded-xl border border-blue-200">
-                <h4 className="font-bold text-gray-800 mb-3">Choose Your Resume Template</h4>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                <h4 className="font-bold text-gray-800 mb-3">Why Get Professional CV Polishing?</h4>
                 
                 <div className="space-y-3">
-                  {/* Creative Template */}
-                  <div 
-                    className={`p-3 md:p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedTemplate === 'creative' ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-purple-300'}`}
-                    onClick={() => setSelectedTemplate('creative')}
-                  >
-                    <div className="flex items-center gap-2 md:gap-3 mb-2">
-                      <div className={`w-4 h-4 rounded-full border-2 ${selectedTemplate === 'creative' ? 'border-purple-500 bg-purple-500' : 'border-gray-300'}`}></div>
-                      <h5 className="font-semibold text-gray-800 text-sm md:text-base">Creative Template</h5>
+                  {[
+                    {
+                      title: "ATS Optimization",
+                      description: "Custom templates that pass through ATS filters used by Indian companies",
+                      icon: "🤖",
+                      color: "text-purple-600"
+                    },
+                    {
+                      title: "Role-Specific Formatting",
+                      description: "Tailored for your specific role (IT, Engineering, Management, etc.)",
+                      icon: "🎯",
+                      color: "text-blue-600"
+                    },
+                    {
+                      title: "Industry Keywords",
+                      description: "Inclusion of trending keywords for your industry",
+                      icon: "🔑",
+                      color: "text-amber-600"
+                    },
+                    {
+                      title: "Professional Review",
+                      description: "Reviewed by career experts with 10+ years experience",
+                      icon: "👔",
+                      color: "text-indigo-600"
+                    }
+                  ].map((feature, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 bg-white/80 rounded-lg hover:bg-white transition-colors">
+                      <div className={`text-xl flex-shrink-0 ${feature.color}`}>{feature.icon}</div>
+                      <div>
+                        <h5 className="font-semibold text-gray-800 text-sm md:text-base">{feature.title}</h5>
+                        <p className="text-xs md:text-sm text-gray-600">{feature.description}</p>
+                      </div>
                     </div>
-                    <p className="text-xs md:text-sm text-gray-600 mb-2">Colorful and expressive design for creative fields</p>
-                    <div className="flex gap-2">
-                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">Modern</span>
-                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">ATS-Friendly</span>
-                    </div>
-                  </div>
-                  
-                  {/* Executive Template */}
-                  <div 
-                    className={`p-3 md:p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedTemplate === 'executive' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
-                    onClick={() => setSelectedTemplate('executive')}
-                  >
-                    <div className="flex items-center gap-2 md:gap-3 mb-2">
-                      <div className={`w-4 h-4 rounded-full border-2 ${selectedTemplate === 'executive' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'}`}></div>
-                      <h5 className="font-semibold text-gray-800 text-sm md:text-base">Executive Template</h5>
-                    </div>
-                    <p className="text-xs md:text-sm text-gray-600 mb-2">Elegant corporate design for senior roles</p>
-                    <div className="flex gap-2">
-                      <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Professional</span>
-                      <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Corporate</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
               
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 md:px-4 md:py-2 rounded-full text-sm">
-                  <TrendingUpIcon size={14} className="md:size-4" />
-                  <span className="font-semibold">87% higher interview rate</span>
+                <div className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-700 px-3 py-1 md:px-4 md:py-2 rounded-full text-sm">
+                  <Star size={14} className="md:size-4" />
+                  <span className="font-semibold">1500+ CVs polished for Indian job market</span>
                 </div>
               </div>
             </div>
@@ -227,19 +247,19 @@ const ExitIntentModal = ({ onClose }: {
             <div className="space-y-4 md:space-y-6">
               <div>
                 <h4 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">
-                  <span className="text-blue-600">Start Building Your Resume Now</span>
+                  Want Your CV Polished with ATS-Optimized Template?
                 </h4>
                 <p className="text-gray-600 text-sm md:text-base mb-4">
-                  Create a professionally designed resume with your own information. No sample needed - build your real resume immediately.
+                  Specialized formatting for your specific role. Get your CV ATS-optimized and ready for Indian companies like TCS, Infosys, Amazon, and more.
                 </p>
                 
                 <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
                   {[
-                    "✅ ATS-optimized for Indian companies",
-                    "✅ Ready in under 5 minutes",
-                    "✅ No signup required",
-                    "✅ 8+ professional templates",
-                    "✅ Instant PDF download"
+                    "✅ Free initial consultation",
+                    "✅ ATS optimization for Indian companies",
+                    "✅ Role-specific template selection",
+                    "✅ 24-48 hour turnaround",
+                    "✅ Unlimited revisions"
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <CheckCircle size={14} className="md:size-4 text-green-500 flex-shrink-0" />
@@ -250,34 +270,51 @@ const ExitIntentModal = ({ onClose }: {
               </div>
 
               <div className="space-y-3 md:space-y-4">
+                {/* WhatsApp Button */}
                 <button
-                  onClick={handleGoToBuilder}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 md:py-4 rounded-xl font-bold text-base md:text-lg hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 md:gap-3 group"
+                  onClick={handleWhatsAppClick}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 md:py-4 rounded-xl font-bold text-base md:text-lg hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 md:gap-3 group active:scale-95"
                 >
-                  <Edit size={18} className="md:size-5" />
-                  Start Building My Resume
+                  <MessageCircle size={18} className="md:size-5" />
+                  Contact on WhatsApp for CV Polishing
                   <ArrowRight size={18} className="md:size-5 group-hover:translate-x-2 transition-transform" />
                 </button>
                 
-                <Link
-                  to="/free-resume-builder"  // CHANGED FROM '/builder'
-                  onClick={onClose}
-                  className="w-full bg-blue-600 text-white py-2 md:py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm md:text-base"
+                {/* Alternative: Continue Building Yourself */}
+                <button
+                  onClick={() => {
+                    trackCTAClick('continue_building', 'exit_intent_modal', 'homepage');
+                    trackFirebaseCTAClick('continue_building', 'exit_intent_modal', 'homepage');
+                    navigate('/free-resume-builder');
+                    onClose();
+                  }}
+                  className="w-full bg-blue-600 text-white py-2 md:py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm md:text-base active:scale-95"
                 >
                   <FileText size={18} className="md:size-5" />
-                  View All Templates First
-                </Link>
+                  Continue Building My Resume
+                </button>
                 
+                {/* Close Button */}
                 <button
                   onClick={onClose}
-                  className="w-full bg-gray-100 text-gray-700 py-2 md:py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors text-sm md:text-base"
+                  className="w-full bg-gray-100 text-gray-700 py-2 md:py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors text-sm md:text-base active:scale-95"
                 >
                   Maybe later, continue browsing
                 </button>
               </div>
 
               <div className="text-center text-xs md:text-sm text-gray-500 pt-3 md:pt-4 border-t">
-                <p>⏰ Limited time: Get <strong>free ATS optimization guide</strong> with your resume</p>
+                <p>⏰ Limited spots available this week for personalized CV polishing</p>
+              </div>
+
+              {/* WhatsApp Quick Info */}
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div className="flex items-center gap-2">
+                  <MessageCircle size={14} className="text-gray-500" />
+                  <span className="text-xs text-gray-600">
+                    Clicking WhatsApp button will open chat with CareerCraft expert
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -639,7 +676,7 @@ const HomePage = () => {
         structuredData={[]}
       />
 
-      {/* Exit Intent Modal - UPDATED: Responsive design */}
+      {/* Exit Intent Modal - UPDATED: WhatsApp Contact CTA */}
       {showExitModal && (
         <ExitIntentModal 
           onClose={handleExitModalClose}

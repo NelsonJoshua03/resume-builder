@@ -1,4 +1,3 @@
-// src/components/JobApplications.tsx - UPDATED VERSION WITH ENHANCED FILTER DIALOG
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
