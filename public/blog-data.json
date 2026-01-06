@@ -1,6 +1,33 @@
 {
   "posts": [
     {
+  "id": 39,
+  "slug": "resume-doesnt-match-job-description-ats-rejection",
+  "title": "If Your Resume Doesn’t Match the Job Description, ATS Won’t Show It to a Human",
+  "excerpt": "Most resumes are rejected before a recruiter sees them. Learn how ATS filters resumes based on job descriptions and how to fix ATS rejection in minutes.",
+  "category": "ats-optimization",
+  "date": "2026-01-06",
+  "readTime": "6 min read",
+  "author": "CareerCraft ATS Expert Team",
+  "authorBio": "ATS specialists helping Indian job seekers build resumes that actually reach recruiters.",
+  "contentFile": "resume-doesnt-match-job-description-ats-rejection.md",
+  "seo": {
+    "metaTitle": "Resume Not Matching Job Description? ATS Is Rejecting It | Fix Fast",
+    "metaDescription": "If your resume doesn’t match the job description, ATS will reject it before a recruiter sees it. Learn why this happens and how to fix it quickly.",
+    "keywords": [
+      "resume not matching job description",
+      "ATS resume rejection",
+      "ATS friendly resume India",
+      "why ATS rejects resumes",
+      "job description resume matching",
+      "ATS optimization tips",
+      "free ATS resume builder India",
+      "resume screening software India"
+    ]
+  }
+}
+,
+    {
   "id": 38,
   "slug": "tcs-mega-walkin-drive-january-2026-multiple-roles-across-4-cities-ats-resume-guide",
   "title": "TCS Mega Walk-in Drive 2026: Multiple Roles Across 4 Cities - Complete Guide with ATS Resume Tips",
