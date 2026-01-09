@@ -1,15 +1,15 @@
-// src/utils/jobFilters.ts
+// src/utils/jobFilters.ts - UPDATED
 import { JobData } from '../firebase/jobService';
 
 export interface JobFilters {
-  sectors?: string[];  // Changed from string to string[]
+  sectors?: string[];
   type?: string;
-  locations?: string[]; // Changed from string to string[]
+  locations?: string[];
   searchTerm?: string;
   featured?: boolean;
   isActive?: boolean;
   experience?: string;
-  jobTitle?: string;  // New field for job title filter
+  jobTitles?: string[];  // ADD THIS for enhanced filtering
 }
 
 // Fresher-friendly sector mapping
@@ -106,6 +106,15 @@ export const filterJobs = (
 ): JobData[] => {
   let filteredJobs = [...jobs];
 
+  // NEW: Filter by multiple job titles (enhanced filter)
+  if (filters.jobTitles && filters.jobTitles.length > 0) {
+    filteredJobs = filteredJobs.filter(job =>
+      filters.jobTitles!.some(title => 
+        job.title.toLowerCase().includes(title.toLowerCase())
+      )
+    );
+  }
+
   // Filter by multiple sectors
   if (filters.sectors && filters.sectors.length > 0) {
     const technicalSectors = getTechnicalSectorsFromFresherSelection(filters.sectors);
@@ -131,13 +140,6 @@ export const filterJobs = (
         job.location.toLowerCase().includes(location.toLowerCase().trim()) ||
         location.toLowerCase().trim().includes(job.location.toLowerCase())
       )
-    );
-  }
-
-  // Filter by specific job title
-  if (filters.jobTitle && filters.jobTitle.trim() !== '') {
-    filteredJobs = filteredJobs.filter(job =>
-      job.title.toLowerCase().includes(filters.jobTitle!.toLowerCase().trim())
     );
   }
 

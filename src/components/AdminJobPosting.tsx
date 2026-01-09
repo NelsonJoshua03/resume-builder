@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import { getFirebaseStatus } from '../firebase/config';
+
 import { firebaseJobService } from '../firebase/jobService';
 import { 
   Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle, 

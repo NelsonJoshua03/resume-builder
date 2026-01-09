@@ -73,9 +73,12 @@ export interface JobFilters {
   isActive?: boolean;
   qualifications?: string[];
   experience?: string;
-  
-
 }
+
+// Helper function to ensure array fields are safe
+const safeArray = (arr: any[] | undefined): any[] => {
+  return Array.isArray(arr) ? arr : [];
+};
 
 export class FirebaseJobService {
   private collectionName = 'jobs';
@@ -199,6 +202,9 @@ export class FirebaseJobService {
     
     const completeJobData = {
       ...jobData,
+      // Ensure arrays are properly initialized
+      requirements: safeArray(jobData.requirements),
+      qualifications: safeArray(jobData.qualifications),
       postedDate,
       id: jobId,
       createdAt: serverTimestamp(),
@@ -211,8 +217,6 @@ export class FirebaseJobService {
       applications: 0,
       saves: 0,
       experience: jobData.experience || '0-2 years',
-      qualifications: jobData.qualifications || [],
-
       dataProcessingLocation: 'IN'
     };
 
@@ -252,6 +256,9 @@ export class FirebaseJobService {
     
     const completeJobData: JobData = {
       ...jobData,
+      // Ensure arrays are properly initialized
+      requirements: safeArray(jobData.requirements),
+      qualifications: safeArray(jobData.qualifications),
       id: jobId,
       postedDate,
       createdAt: new Date(),
@@ -306,6 +313,9 @@ export class FirebaseJobService {
           const jobData: JobData = {
             id: snapshot.id,
             ...data,
+            // Ensure arrays are properly initialized
+            requirements: safeArray(data.requirements),
+            qualifications: safeArray(data.qualifications),
             createdAt: data.createdAt?.toDate(),
             updatedAt: data.updatedAt?.toDate(),
             expiresAt: data.expiresAt?.toDate()
@@ -330,6 +340,9 @@ export class FirebaseJobService {
         const cachedJobs = Array.isArray(parsed.jobs) ? parsed.jobs : [];
         const cachedJob = cachedJobs.find((job: JobData) => job.id === jobId);
         if (cachedJob) {
+          // Ensure arrays are properly initialized
+          cachedJob.requirements = safeArray(cachedJob.requirements);
+          cachedJob.qualifications = safeArray(cachedJob.qualifications);
           cachedJob.views = (cachedJob.views || 0) + 1;
           localStorage.setItem(this.localJobsKey, JSON.stringify({
             jobs: cachedJobs,
@@ -345,6 +358,9 @@ export class FirebaseJobService {
     const manualJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
     const manualJob = manualJobs.find((j: JobData) => j.id === jobId);
     if (manualJob) {
+      // Ensure arrays are properly initialized
+      manualJob.requirements = safeArray(manualJob.requirements);
+      manualJob.qualifications = safeArray(manualJob.qualifications);
       manualJob.views = (manualJob.views || 0) + 1;
       localStorage.setItem('manualJobs', JSON.stringify(manualJobs));
       return manualJob;
@@ -398,6 +414,9 @@ export class FirebaseJobService {
             return {
               id: doc.id,
               ...data,
+              // Ensure arrays are properly initialized
+              requirements: safeArray(data.requirements),
+              qualifications: safeArray(data.qualifications),
               createdAt: data.createdAt?.toDate(),
               updatedAt: data.updatedAt?.toDate(),
               expiresAt: data.expiresAt?.toDate()
@@ -437,6 +456,9 @@ export class FirebaseJobService {
             return {
               id: doc.id,
               ...data,
+              // Ensure arrays are properly initialized
+              requirements: safeArray(data.requirements),
+              qualifications: safeArray(data.qualifications),
               createdAt: data.createdAt?.toDate(),
               updatedAt: data.updatedAt?.toDate(),
               expiresAt: data.expiresAt?.toDate()
@@ -479,12 +501,19 @@ export class FirebaseJobService {
 
   private updateLocalCache(firebaseJobs: JobData[]): void {
     try {
+      // Ensure all jobs have properly initialized arrays
+      const sanitizedJobs = firebaseJobs.map(job => ({
+        ...job,
+        requirements: safeArray(job.requirements),
+        qualifications: safeArray(job.qualifications)
+      }));
+      
       localStorage.setItem(this.localJobsKey, JSON.stringify({
-        jobs: firebaseJobs,
+        jobs: sanitizedJobs,
         timestamp: Date.now()
       }));
       
-      localStorage.setItem('manualJobs', JSON.stringify(firebaseJobs));
+      localStorage.setItem('manualJobs', JSON.stringify(sanitizedJobs));
     } catch (error) {
       console.warn('Failed to update local cache:', error);
     }
@@ -506,6 +535,13 @@ export class FirebaseJobService {
     if (allJobs.length === 0) {
       allJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
     }
+    
+    // Ensure all jobs have properly initialized arrays
+    allJobs = allJobs.map(job => ({
+      ...job,
+      requirements: safeArray(job.requirements),
+      qualifications: safeArray(job.qualifications)
+    }));
     
     const now = Date.now();
     const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
@@ -574,6 +610,9 @@ export class FirebaseJobService {
         const jobRef = doc(firestore, this.collectionName, jobId);
         await updateDoc(jobRef, {
           ...updates,
+          // Ensure arrays are properly initialized
+          requirements: safeArray(updates.requirements),
+          qualifications: safeArray(updates.qualifications),
           updatedAt: serverTimestamp()
         });
       } catch (firestoreError) {
@@ -592,6 +631,9 @@ export class FirebaseJobService {
           cachedJobs[jobIndex] = {
             ...cachedJobs[jobIndex],
             ...updates,
+            // Ensure arrays are properly initialized
+            requirements: safeArray(updates.requirements || cachedJobs[jobIndex].requirements),
+            qualifications: safeArray(updates.qualifications || cachedJobs[jobIndex].qualifications),
             updatedAt: new Date()
           };
           
@@ -611,6 +653,9 @@ export class FirebaseJobService {
       manualJobs[jobIndex] = {
         ...manualJobs[jobIndex],
         ...updates,
+        // Ensure arrays are properly initialized
+        requirements: safeArray(updates.requirements || manualJobs[jobIndex].requirements),
+        qualifications: safeArray(updates.qualifications || manualJobs[jobIndex].qualifications),
         updatedAt: new Date()
       };
       localStorage.setItem('manualJobs', JSON.stringify(manualJobs));
@@ -755,6 +800,9 @@ export class FirebaseJobService {
             const jobRef = doc(firestore, this.collectionName, jobId);
             batch.set(jobRef, {
               ...jobData,
+              // Ensure arrays are properly initialized
+              requirements: safeArray(jobData.requirements),
+              qualifications: safeArray(jobData.qualifications),
               postedDate,
               id: jobId,
               createdAt: serverTimestamp(),
@@ -893,6 +941,9 @@ export class FirebaseJobService {
           
           batch.set(jobRef, {
             ...jobData,
+            // Ensure arrays are properly initialized
+            requirements: safeArray(jobData.requirements),
+            qualifications: safeArray(jobData.qualifications),
             id: jobId,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -961,6 +1012,7 @@ export class FirebaseJobService {
           await this.syncAllToFirebase();
         }
       } catch (error) {
+        // Silent error for background sync
       }
     }, 3000);
   }
@@ -1043,6 +1095,7 @@ export class FirebaseJobService {
             jobsByExperience: {}
           };
         } catch (e) {
+          // Fall through to default return
         }
       }
       
