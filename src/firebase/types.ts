@@ -1,4 +1,4 @@
-// src/firebase/types.ts - UPDATED VERSION
+// src/firebase/types.ts - COMPLETE UPDATED VERSION
 export interface UserEvent {
   id?: string;
   userId: string;
@@ -18,7 +18,7 @@ export interface UserEvent {
   // GDPR compliance fields
   consentGiven: boolean;
   dataProcessingLocation: 'IN'; // India
-  isAnonymous?: boolean; // ADD THIS
+  isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
 }
 
 export interface PageViewEvent {
@@ -32,7 +32,7 @@ export interface PageViewEvent {
   duration: number; // in seconds
   scrollDepth: number; // 0-100 percentage
   deviceType: 'mobile' | 'tablet' | 'desktop';
-  isAnonymous?: boolean; // ADD THIS
+  isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
 }
 
 export interface ResumeEvent {
@@ -51,7 +51,7 @@ export interface ResumeEvent {
   };
   resumeId?: string;
   metadata?: Record<string, any>;
-  isAnonymous?: boolean; // ADD THIS
+  isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
 }
 
 export interface JobApplicationEvent {
@@ -65,7 +65,7 @@ export interface JobApplicationEvent {
   applicationMethod: 'direct' | 'email' | 'linkedin' | 'company_portal';
   status?: 'applied' | 'pending' | 'rejected' | 'accepted' | 'viewed' | 'saved';
   metadata?: Record<string, any>;
-  isAnonymous?: boolean; // ADD THIS
+  isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
 }
 
 export interface BlogEngagementEvent {
@@ -79,7 +79,7 @@ export interface BlogEngagementEvent {
   readDuration?: number; // in seconds
   scrollPercentage?: number;
   searchTerm?: string;
-  isAnonymous?: boolean; // ADD THIS
+  isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
 }
 
 export interface UserProfile {
@@ -94,7 +94,7 @@ export interface UserProfile {
     screenResolution: string;
     language: string;
     deviceType: 'mobile' | 'tablet' | 'desktop';
-    isAnonymous?: boolean; // ADD THIS
+    isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
   };
   // GDPR compliance
   consentGiven: boolean;
@@ -103,10 +103,10 @@ export interface UserProfile {
     analytics: boolean;
     personalization: boolean;
     marketing: boolean;
-    
   };
   // Anonymous tracking ID for non-authenticated users
   anonymousId?: string;
+  isAnonymous: boolean; // ✅ ADDED: Also at root level
 }
 
 export interface DailyAnalytics {
@@ -121,7 +121,7 @@ export interface DailyAnalytics {
   conversions: number;
   bounceRate: number;
   avgSessionDuration: number;
-  isAnonymous?: boolean; // ADD THIS
+  isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
   topPages: Array<{
     pagePath: string;
     views: number;
@@ -140,7 +140,7 @@ export interface FunnelStep {
   timestamp: Date;
   timeToStep: number; // seconds from funnel start
   metadata?: Record<string, any>;
-  isAnonymous?: boolean; // ADD THIS
+  isAnonymous: boolean; // ✅ CHANGED: Now REQUIRED
 }
 
 // Collection names

@@ -1,4 +1,4 @@
-// src/firebase/analytics.ts - PRODUCTION VERSION WITH ANONYMOUS TRACKING
+// src/firebase/analytics.ts - UPDATED VERSION WITH isAnonymous FIELD
 import { 
   addDoc, 
   collection, 
@@ -132,6 +132,7 @@ export class FirebaseAnalyticsService {
     // We use the user's current consent status
     const isCurrentlyAnonymous = !hasConsent;
     
+    // ✅ FIXED: Added isAnonymous field to match UserEvent interface
     const event: UserEvent = {
       ...eventData,
       userId: this.userId,
@@ -140,6 +141,8 @@ export class FirebaseAnalyticsService {
       userAgent: navigator.userAgent,
       screenResolution: `${window.screen.width}x${window.screen.height}`,
       language: navigator.language,
+      // ✅ CRITICAL FIX: Add isAnonymous field (was missing!)
+      isAnonymous: isCurrentlyAnonymous,
       consentGiven: hasConsent,
       dataProcessingLocation: 'IN',
       metadata: {
@@ -197,6 +200,7 @@ export class FirebaseAnalyticsService {
   async trackPageView(pagePath: string, pageTitle: string): Promise<void> {
     const hasConsent = this.hasConsent();
     
+    // ✅ FIXED: Added isAnonymous field to match PageViewEvent interface
     const pageView: PageViewEvent = {
       userId: this.userId,
       sessionId: this.sessionId,
@@ -206,7 +210,9 @@ export class FirebaseAnalyticsService {
       timestamp: new Date(),
       duration: 0,
       scrollDepth: 0,
-      deviceType: this.getDeviceType() as 'mobile' | 'tablet' | 'desktop'
+      deviceType: this.getDeviceType() as 'mobile' | 'tablet' | 'desktop',
+      // ✅ CRITICAL FIX: Add isAnonymous field (was missing!)
+      isAnonymous: !hasConsent
     };
 
     try {
@@ -214,8 +220,8 @@ export class FirebaseAnalyticsService {
       if (this.firestore) {
         await addDoc(collection(this.firestore, COLLECTIONS.PAGE_VIEWS), {
           ...pageView,
-          timestamp: serverTimestamp(),
-          is_anonymous: !hasConsent
+          timestamp: serverTimestamp()
+          // Note: isAnonymous is already in pageView object above
         });
         
         console.log(`📊 Page view tracked: ${pagePath} (${hasConsent ? 'consented' : 'anonymous'})`);
@@ -268,7 +274,8 @@ export class FirebaseAnalyticsService {
         pageTitle,
         timestamp: new Date().toISOString(),
         userId: this.userId,
-        sessionId: this.sessionId
+        sessionId: this.sessionId,
+        isAnonymous: true
       });
       
       localStorage.setItem(key, JSON.stringify(pageviews.slice(-100))); // Keep last 100
@@ -417,11 +424,15 @@ export class FirebaseAnalyticsService {
     }
   }
 
-  async trackResumeEvent(eventData: Omit<ResumeEvent, 'userId' | 'timestamp'>): Promise<void> {
+  async trackResumeEvent(eventData: Omit<ResumeEvent, 'userId' | 'timestamp' | 'isAnonymous'>): Promise<void> {
+    const hasConsent = this.hasConsent();
+    
+    // ✅ FIXED: Added isAnonymous field
     const event: ResumeEvent = {
       ...eventData,
       userId: this.userId,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isAnonymous: !hasConsent
     };
 
     await this.trackEvent({
@@ -435,9 +446,9 @@ export class FirebaseAnalyticsService {
         format: eventData.format,
         fieldsCount: eventData.fieldsCount,
         resumeId: eventData.resumeId,
-        is_anonymous: this.isAnonymous
+        is_anonymous: !hasConsent
       },
-      consentGiven: !this.isAnonymous,
+      consentGiven: hasConsent,
       dataProcessingLocation: 'IN'
     });
 
@@ -445,8 +456,7 @@ export class FirebaseAnalyticsService {
       try {
         await addDoc(collection(this.firestore, COLLECTIONS.RESUME_EVENTS), {
           ...event,
-          timestamp: serverTimestamp(),
-          is_anonymous: this.isAnonymous
+          timestamp: serverTimestamp()
         });
       } catch (error) {
         console.error('Error tracking resume event:', error);
@@ -454,11 +464,15 @@ export class FirebaseAnalyticsService {
     }
   }
 
-  async trackJobEvent(eventData: Omit<JobApplicationEvent, 'userId' | 'timestamp'>): Promise<void> {
+  async trackJobEvent(eventData: Omit<JobApplicationEvent, 'userId' | 'timestamp' | 'isAnonymous'>): Promise<void> {
+    const hasConsent = this.hasConsent();
+    
+    // ✅ FIXED: Added isAnonymous field
     const event: JobApplicationEvent = {
       ...eventData,
       userId: this.userId,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isAnonymous: !hasConsent
     };
 
     await this.trackEvent({
@@ -472,9 +486,9 @@ export class FirebaseAnalyticsService {
         company: eventData.company,
         method: eventData.applicationMethod,
         status: eventData.status,
-        is_anonymous: this.isAnonymous
+        is_anonymous: !hasConsent
       },
-      consentGiven: !this.isAnonymous,
+      consentGiven: hasConsent,
       dataProcessingLocation: 'IN'
     });
 
@@ -482,8 +496,7 @@ export class FirebaseAnalyticsService {
       try {
         await addDoc(collection(this.firestore, COLLECTIONS.JOB_EVENTS), {
           ...event,
-          timestamp: serverTimestamp(),
-          is_anonymous: this.isAnonymous
+          timestamp: serverTimestamp()
         });
       } catch (error) {
         console.error('Error tracking job event:', error);
@@ -491,11 +504,15 @@ export class FirebaseAnalyticsService {
     }
   }
 
-  async trackBlogEvent(eventData: Omit<BlogEngagementEvent, 'userId' | 'timestamp'>): Promise<void> {
+  async trackBlogEvent(eventData: Omit<BlogEngagementEvent, 'userId' | 'timestamp' | 'isAnonymous'>): Promise<void> {
+    const hasConsent = this.hasConsent();
+    
+    // ✅ FIXED: Added isAnonymous field
     const event: BlogEngagementEvent = {
       ...eventData,
       userId: this.userId,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isAnonymous: !hasConsent
     };
 
     await this.trackEvent({
@@ -509,9 +526,9 @@ export class FirebaseAnalyticsService {
         category: eventData.category,
         readDuration: eventData.readDuration,
         searchTerm: eventData.searchTerm,
-        is_anonymous: this.isAnonymous
+        is_anonymous: !hasConsent
       },
-      consentGiven: !this.isAnonymous,
+      consentGiven: hasConsent,
       dataProcessingLocation: 'IN'
     });
 
@@ -519,8 +536,7 @@ export class FirebaseAnalyticsService {
       try {
         await addDoc(collection(this.firestore, COLLECTIONS.BLOG_EVENTS), {
           ...event,
-          timestamp: serverTimestamp(),
-          is_anonymous: this.isAnonymous
+          timestamp: serverTimestamp()
         });
       } catch (error) {
         console.error('Error tracking blog event:', error);
@@ -529,6 +545,9 @@ export class FirebaseAnalyticsService {
   }
 
   async trackFunnelStep(funnelName: string, stepName: string, stepNumber: number, metadata?: any): Promise<void> {
+    const hasConsent = this.hasConsent();
+    
+    // ✅ FIXED: Added isAnonymous field
     const funnelStep: FunnelStep = {
       funnelName,
       stepName,
@@ -536,7 +555,8 @@ export class FirebaseAnalyticsService {
       userId: this.userId,
       timestamp: new Date(),
       timeToStep: this.calculateTimeToStep(funnelName),
-      metadata
+      metadata,
+      isAnonymous: !hasConsent
     };
 
     try {
@@ -544,8 +564,7 @@ export class FirebaseAnalyticsService {
       if (this.firestore) {
         await addDoc(collection(this.firestore, COLLECTIONS.FUNNELS), {
           ...funnelStep,
-          timestamp: serverTimestamp(),
-          is_anonymous: this.isAnonymous
+          timestamp: serverTimestamp()
         });
       }
 
@@ -558,10 +577,10 @@ export class FirebaseAnalyticsService {
         metadata: {
           stepNumber,
           timeToStep: funnelStep.timeToStep,
-          is_anonymous: this.isAnonymous,
+          is_anonymous: !hasConsent,
           ...metadata
         },
-        consentGiven: !this.isAnonymous,
+        consentGiven: hasConsent,
         dataProcessingLocation: 'IN'
       });
     } catch (error) {
