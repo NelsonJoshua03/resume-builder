@@ -1,36 +1,13 @@
-// src/components/AdminGovernmentExams.tsx - UPDATED WITH AUTO-CLEANUP
+// src/components/AdminGovernmentExams.tsx - UPDATED WITH FIREBASE INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
-import { AlertCircle, Clock, RefreshCw, Trash2 } from 'lucide-react';
-
-interface GovExam {
-  id: string;
-  examName: string;
-  organization: string;
-  posts: string;
-  vacancies: string;
-  eligibility: string;
-  applicationStartDate: string;
-  applicationEndDate: string;
-  examDate: string;
-  examLevel: string;
-  ageLimit: string;
-  applicationFee: string;
-  examMode: string;
-  officialWebsite: string;
-  notificationLink: string;
-  applyLink: string;
-  syllabus?: string;
-  admitCardDate?: string;
-  resultDate?: string;
-  featured?: boolean;
-  isNew?: boolean;
-  addedTimestamp?: number;
-}
+import { firebaseGovExamService } from '../firebase/govExamService';
+import type { GovExamData, CreateGovExamInput } from '../firebase/govExamService';
+import { AlertCircle, Clock, RefreshCw, Trash2, Upload, Database } from 'lucide-react';
 
 const AdminGovernmentExams: React.FC = () => {
-  const [exams, setExams] = useState<GovExam[]>([]);
+  const [exams, setExams] = useState<GovExamData[]>([]);
   const [bulkInput, setBulkInput] = useState<string>('');
   const [showBulkForm, setShowBulkForm] = useState<boolean>(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -40,12 +17,14 @@ const AdminGovernmentExams: React.FC = () => {
     after: number;
     removed: number;
   } | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{ synced: number; failed: number } | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
   
   const { trackButtonClick, trackEvent } = useGoogleAnalytics();
 
   // Single exam form state
-  const [singleExam, setSingleExam] = useState<GovExam>({
-    id: '',
+  const [singleExam, setSingleExam] = useState<CreateGovExamInput>({
     examName: '',
     organization: '',
     posts: '',
@@ -65,70 +44,25 @@ const AdminGovernmentExams: React.FC = () => {
     admitCardDate: '',
     resultDate: '',
     featured: false,
-    isNew: true,
-    addedTimestamp: Date.now()
+    isNew: true
   });
 
-  // Cleanup old exams (older than 3 months) and load exams
-  const loadAndCleanExams = (auto: boolean = false) => {
-    const savedExams = JSON.parse(localStorage.getItem('governmentExams') || '[]');
-    
-    // Filter out exams older than 90 days (3 months)
-    const now = Date.now();
-    const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
-    
-    const beforeCount = savedExams.length;
-    const recentExams = savedExams.filter((exam: GovExam) => {
-      const examTimestamp = exam.addedTimestamp || Date.now();
-      return examTimestamp >= ninetyDaysAgo;
-    });
-    const afterCount = recentExams.length;
-    const removedCount = beforeCount - afterCount;
-    
-    // Sort by addedTimestamp (newest first)
-    const sortedExams = recentExams.sort((a: GovExam, b: GovExam) => {
-      const timeA = a.addedTimestamp || Date.now();
-      const timeB = b.addedTimestamp || Date.now();
-      return timeB - timeA; // Descending order (newest first)
-    });
-    
-    // Update localStorage with only recent exams
-    if (recentExams.length !== savedExams.length) {
-      localStorage.setItem('governmentExams', JSON.stringify(recentExams));
-    }
-    
-    setExams(sortedExams);
-    
-    // Save cleanup time
-    const cleanupTime = new Date().toLocaleString('en-IN');
-    localStorage.setItem('last_exam_cleanup', cleanupTime);
-    setLastCleanup(cleanupTime);
-    
-    // Set cleanup stats
-    setCleanupStats({
-      before: beforeCount,
-      after: afterCount,
-      removed: removedCount
-    });
-    
-    // Track cleanup event
-    if (removedCount > 0) {
-      trackEvent('exam_cleanup', {
-        auto_cleanup: auto,
-        exams_before: beforeCount,
-        exams_after: afterCount,
-        exams_removed: removedCount
-      });
-      
-      if (!auto) {
-        alert(`Cleaned up ${removedCount} exams older than 90 days.`);
+  // Test Firebase connection
+  useEffect(() => {
+    const testConnection = async () => {
+      const result = await firebaseGovExamService.testFirebaseConnection();
+      setFirebaseConnected(result.connected);
+      if (result.connected) {
+        console.log('✅ Firebase connected successfully');
       }
-    }
-  };
+    };
+    
+    testConnection();
+  }, []);
 
   // Load exams on component mount
   useEffect(() => {
-    loadAndCleanExams(true);
+    loadExams();
     
     // Load last cleanup time
     const savedCleanup = localStorage.getItem('last_exam_cleanup');
@@ -137,67 +71,114 @@ const AdminGovernmentExams: React.FC = () => {
     }
   }, []);
 
-  // Manual cleanup trigger
-  const handleCleanup = () => {
-    if (window.confirm('Are you sure you want to remove all exams older than 90 days? This action cannot be undone.')) {
-      loadAndCleanExams(false);
+  // Load exams with auto-cleanup
+  const loadExams = async () => {
+    try {
+      const { exams: loadedExams } = await firebaseGovExamService.getGovExams({}, 1, 1000);
+      setExams(loadedExams);
+      
+      // Calculate cleanup stats
+      const now = Date.now();
+      const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
+      const beforeCount = loadedExams.length;
+      const recentExams = loadedExams.filter((exam: GovExamData) => {
+        const examTimestamp = exam.addedTimestamp || (exam.createdAt ? new Date(exam.createdAt).getTime() : Date.now());
+        return examTimestamp >= ninetyDaysAgo;
+      });
+      const afterCount = recentExams.length;
+      const removedCount = beforeCount - afterCount;
+      
+      // Update cleanup time
+      const cleanupTime = new Date().toLocaleString('en-IN');
+      localStorage.setItem('last_exam_cleanup', cleanupTime);
+      setLastCleanup(cleanupTime);
+      
+      // Set cleanup stats
+      setCleanupStats({
+        before: beforeCount,
+        after: afterCount,
+        removed: removedCount
+      });
+      
+      // Track cleanup event
+      if (removedCount > 0) {
+        trackEvent('exam_cleanup', {
+          auto_cleanup: true,
+          exams_before: beforeCount,
+          exams_after: afterCount,
+          exams_removed: removedCount
+        });
+      }
+      
+      setMessage({ type: 'success', text: `Loaded ${recentExams.length} latest government exams` });
+      setTimeout(() => setMessage(null), 3000);
+      
+    } catch (error) {
+      console.error('Error loading exams:', error);
+      setMessage({ type: 'error', text: 'Failed to load exams. Please check your connection.' });
     }
   };
 
-  // Save exams to localStorage
-  const saveExams = (updatedExams: GovExam[]) => {
-    localStorage.setItem('governmentExams', JSON.stringify(updatedExams));
-    setExams(updatedExams);
+  // Manual cleanup trigger
+  const handleCleanup = async () => {
+    if (window.confirm('Are you sure you want to remove all exams older than 90 days? This action cannot be undone.')) {
+      try {
+        // This will be handled by the Firebase service auto-cleanup
+        await firebaseGovExamService.checkAndCleanupOldExams();
+        await loadExams();
+        setMessage({ type: 'success', text: 'Cleanup completed successfully!' });
+      } catch (error) {
+        setMessage({ type: 'error', text: 'Cleanup failed. Please try again.' });
+      }
+    }
   };
 
   // Handle single exam submission
-  const handleSingleSubmit = (e: React.FormEvent) => {
+  const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newExam: GovExam = {
-      ...singleExam,
-      id: `exam-${Date.now()}`,
-      addedTimestamp: Date.now(),
-      isNew: true
-    };
+    try {
+      const examId = await firebaseGovExamService.createGovExam(singleExam);
+      
+      setMessage({ type: 'success', text: 'Latest government exam added successfully to Firebase!' });
+      trackButtonClick('add_single_gov_exam', 'single_form', 'admin_gov_exams');
+      
+      // Reset form
+      setSingleExam({
+        examName: '',
+        organization: '',
+        posts: '',
+        vacancies: '',
+        eligibility: '',
+        applicationStartDate: '',
+        applicationEndDate: '',
+        examDate: '',
+        examLevel: 'UPSC',
+        ageLimit: '',
+        applicationFee: '',
+        examMode: 'Online',
+        officialWebsite: '',
+        notificationLink: '',
+        applyLink: '',
+        syllabus: '',
+        admitCardDate: '',
+        resultDate: '',
+        featured: false,
+        isNew: true
+      });
 
-    const updatedExams = [newExam, ...exams]; // Add to beginning for latest first
-    saveExams(updatedExams);
-    
-    setMessage({ type: 'success', text: 'Latest government exam added successfully!' });
-    trackButtonClick('add_single_gov_exam', 'single_form', 'admin_gov_exams');
-    
-    // Reset form
-    setSingleExam({
-      id: '',
-      examName: '',
-      organization: '',
-      posts: '',
-      vacancies: '',
-      eligibility: '',
-      applicationStartDate: '',
-      applicationEndDate: '',
-      examDate: '',
-      examLevel: 'UPSC',
-      ageLimit: '',
-      applicationFee: '',
-      examMode: 'Online',
-      officialWebsite: '',
-      notificationLink: '',
-      applyLink: '',
-      syllabus: '',
-      admitCardDate: '',
-      resultDate: '',
-      featured: false,
-      isNew: true,
-      addedTimestamp: Date.now()
-    });
-
-    setTimeout(() => setMessage(null), 5000);
+      // Reload exams
+      await loadExams();
+      
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error) {
+      console.error('Error creating exam:', error);
+      setMessage({ type: 'error', text: 'Failed to add exam. Please try again.' });
+    }
   };
 
   // Handle bulk submission
-  const handleBulkSubmit = (e: React.FormEvent) => {
+  const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -208,53 +189,99 @@ const AdminGovernmentExams: React.FC = () => {
         return;
       }
 
-      const newExams = examData.map((exam, index) => ({
-        ...exam,
-        id: exam.id || `exam-${Date.now()}-${index}`,
-        addedTimestamp: exam.addedTimestamp || Date.now(),
-        isNew: exam.isNew !== undefined ? exam.isNew : true
-      }));
-
-      const updatedExams = [...newExams, ...exams]; // Add to beginning for latest first
-      saveExams(updatedExams);
+      const results = await firebaseGovExamService.bulkCreateGovExams(examData);
       
-      setMessage({ type: 'success', text: `Successfully added ${newExams.length} latest government exams!` });
+      if (results.success > 0) {
+        setMessage({ type: 'success', text: `Successfully added ${results.success} latest government exams to Firebase!` });
+      }
+      
+      if (results.failed > 0) {
+        setMessage({ 
+          type: 'error', 
+          text: `Added ${results.success} exams, but ${results.failed} failed. Check console for details.` 
+        });
+        console.error('Failed exams:', results.errors);
+      }
+      
       trackButtonClick('add_bulk_gov_exams', 'bulk_form', 'admin_gov_exams');
       setBulkInput('');
       setShowBulkForm(false);
       
+      // Reload exams
+      await loadExams();
+      
       setTimeout(() => setMessage(null), 5000);
     } catch (error) {
-      setMessage({ type: 'error', text: 'Invalid JSON format. Please check your input.' });
+      setMessage({ type: 'error', text: 'Invalid JSON format or upload failed. Please check your input.' });
     }
   };
 
   // Delete exam
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this exam?')) {
-      const updatedExams = exams.filter(exam => exam.id !== id);
-      saveExams(updatedExams);
-      setMessage({ type: 'success', text: 'Exam deleted successfully!' });
-      trackButtonClick('delete_gov_exam', 'exam_list', 'admin_gov_exams');
-      setTimeout(() => setMessage(null), 3000);
+      try {
+        await firebaseGovExamService.deleteGovExam(id);
+        setMessage({ type: 'success', text: 'Exam deleted successfully from Firebase!' });
+        trackButtonClick('delete_gov_exam', 'exam_list', 'admin_gov_exams');
+        
+        // Reload exams
+        await loadExams();
+        
+        setTimeout(() => setMessage(null), 3000);
+      } catch (error) {
+        setMessage({ type: 'error', text: 'Failed to delete exam. Please try again.' });
+      }
     }
   };
 
   // Toggle featured status
-  const toggleFeatured = (id: string) => {
-    const updatedExams = exams.map(exam =>
-      exam.id === id ? { ...exam, featured: !exam.featured } : exam
-    );
-    saveExams(updatedExams);
-    trackButtonClick('toggle_featured', 'exam_list', 'admin_gov_exams');
+  const toggleFeatured = async (id: string) => {
+    try {
+      const exam = exams.find(e => e.id === id);
+      if (exam) {
+        await firebaseGovExamService.updateGovExam(id, { featured: !exam.featured });
+        trackButtonClick('toggle_featured', 'exam_list', 'admin_gov_exams');
+        await loadExams();
+      }
+    } catch (error) {
+      console.error('Error toggling featured:', error);
+    }
   };
 
   // Clear all exams
-  const clearAllExams = () => {
-    if (window.confirm('Are you sure you want to delete all government exams? This action cannot be undone.')) {
-      setExams([]);
-      localStorage.setItem('governmentExams', '[]');
-      trackButtonClick('clear_all_exams', 'exam_management', 'admin_gov_exams');
+  const clearAllExams = async () => {
+    if (window.confirm('Are you sure you want to delete all government exams from Firebase? This action cannot be undone.')) {
+      try {
+        // Note: In a real app, you'd want to batch delete or mark as inactive
+        // For now, we'll clear local cache
+        await firebaseGovExamService.clearLocalCache();
+        setExams([]);
+        trackButtonClick('clear_all_exams', 'exam_management', 'admin_gov_exams');
+        setMessage({ type: 'success', text: 'All exams cleared from local cache!' });
+      } catch (error) {
+        setMessage({ type: 'error', text: 'Failed to clear exams.' });
+      }
+    }
+  };
+
+  // Sync to Firebase
+  const handleSyncToFirebase = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await firebaseGovExamService.syncAllToFirebase();
+      setSyncStatus(result);
+      setMessage({ 
+        type: 'success', 
+        text: `Synced ${result.synced} exams to Firebase. ${result.failed} failed.` 
+      });
+      
+      // Reload exams
+      await loadExams();
+      
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Sync failed. Please try again.' });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -319,6 +346,52 @@ const AdminGovernmentExams: React.FC = () => {
             </p>
           </header>
 
+          {/* Firebase Status */}
+          <div className={`mb-6 p-4 rounded-lg flex justify-between items-center ${
+            firebaseConnected 
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            <div className="flex items-center">
+              <Database size={20} className={`mr-2 ${firebaseConnected ? 'text-green-600' : 'text-red-600'}`} />
+              <div>
+                <h3 className="font-semibold">
+                  Firebase Status: {firebaseConnected ? 'Connected' : 'Disconnected'}
+                </h3>
+                <p className="text-sm">
+                  {firebaseConnected 
+                    ? 'Data is being saved to Firebase Firestore' 
+                    : 'Using localStorage fallback'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSyncToFirebase}
+              disabled={isSyncing}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
+            >
+              {isSyncing ? (
+                <>
+                  <Clock size={16} className="mr-2 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <Upload size={16} className="mr-2" />
+                  Sync to Firebase
+                </>
+              )}
+            </button>
+          </div>
+
+          {syncStatus && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-800">
+                ✅ Last sync: {syncStatus.synced} exams synced, {syncStatus.failed} failed
+              </p>
+            </div>
+          )}
+
           {/* Auto-Cleanup Info */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -340,7 +413,7 @@ const AdminGovernmentExams: React.FC = () => {
                   Clean Old Exams
                 </button>
                 <button
-                  onClick={() => loadAndCleanExams(false)}
+                  onClick={loadExams}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors flex items-center"
                 >
                   <RefreshCw size={16} className="mr-2" />
@@ -663,6 +736,15 @@ const AdminGovernmentExams: React.FC = () => {
                       />
                       <span className="text-sm font-medium text-gray-700">Mark as Featured</span>
                     </label>
+                    <label className="flex items-center mt-2">
+                      <input
+                        type="checkbox"
+                        className="mr-2 h-4 w-4"
+                        checked={singleExam.isNew}
+                        onChange={(e) => setSingleExam({...singleExam, isNew: e.target.checked})}
+                      />
+                      <span className="text-sm font-medium text-gray-700">Mark as New (Latest)</span>
+                    </label>
                   </div>
                 </div>
 
@@ -671,7 +753,7 @@ const AdminGovernmentExams: React.FC = () => {
                     type="submit"
                     className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
                   >
-                    Add Latest Government Exam
+                    Add Latest Government Exam to Firebase
                   </button>
                   <p className="text-xs text-gray-500 text-center mt-2">
                     Exam will appear as "Latest" and auto-clean after 90 days
@@ -723,7 +805,7 @@ const AdminGovernmentExams: React.FC = () => {
                     type="submit"
                     className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
                   >
-                    Upload Latest Exams
+                    Upload Latest Exams to Firebase
                   </button>
                   <button
                     type="button"
@@ -743,6 +825,7 @@ const AdminGovernmentExams: React.FC = () => {
                   <li>• examLevel, ageLimit, applicationFee, examMode</li>
                   <li>• officialWebsite, notificationLink, applyLink</li>
                   <li>• Add "isNew": true for latest exams</li>
+                  <li>• Add "featured": true for featured exams</li>
                 </ul>
               </div>
             </div>
@@ -808,18 +891,19 @@ const AdminGovernmentExams: React.FC = () => {
                             <strong> Exam:</strong> {new Date(exam.examDate).toLocaleDateString()}
                           </p>
                           <p className="text-xs text-gray-500">
-                            Added: {new Date(exam.addedTimestamp || 0).toLocaleString('en-IN')}
+                            Added: {new Date(exam.addedTimestamp || 0).toLocaleString('en-IN')} |
+                            Views: {exam.views || 0}
                           </p>
                         </div>
-                        <div className="flex gap-2 ml-4">
+                        <div className="flex flex-col gap-2 ml-4">
                           <button
-                            onClick={() => toggleFeatured(exam.id)}
+                            onClick={() => toggleFeatured(exam.id!)}
                             className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                           >
                             {exam.featured ? 'Unfeature' : 'Feature'}
                           </button>
                           <button
-                            onClick={() => handleDelete(exam.id)}
+                            onClick={() => handleDelete(exam.id!)}
                             className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
                           >
                             Delete

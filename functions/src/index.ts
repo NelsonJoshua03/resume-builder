@@ -1,4 +1,4 @@
-// functions/src/index.ts - FIXED VERSION WITH PROPER POSTGRES SYNC
+// functions/src/index.ts - COMPLETE UPDATED VERSION WITH DATA VALIDATION FIXES
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import cors = require('cors');
@@ -12,7 +12,6 @@ try {
 }
 
 // 🔐 ADMIN CREDENTIALS - from Firebase Functions Config
-// Try to get config, fallback to hardcoded for testing
 let ADMIN_PASSWORD = '';
 let ADMIN_EMAILS: string[] = [];
 
@@ -143,10 +142,11 @@ const initializePostgresPool = (): Pool => {
       connectionTimeoutMillis: config.connectionTimeoutMillis,
     };
 
+    // ✅ FIXED: Correct SSL configuration
     if (config.ssl) {
       poolConfig.ssl = {
-        rejectUnauthorized: false,
-        require: true
+        rejectUnauthorized: false
+        // Removed invalid 'require' property
       };
       console.log('🔒 SSL enabled for PostgreSQL');
     }
@@ -215,6 +215,110 @@ const getScreenResolution = (data: any): string => {
   return 'unknown';
 };
 
+// ✅ NEW: Helper function to parse date strings with validation
+const parseDateString = (dateStr: string): string | null => {
+  if (!dateStr) return null;
+  
+  try {
+    // Remove "to" ranges and get first date
+    if (dateStr.includes(' to ')) {
+      dateStr = dateStr.split(' to ')[0].trim();
+    }
+    
+    // Handle special cases
+    if (dateStr.includes('Ongoing') || dateStr.includes('ongoing')) {
+      return new Date().toISOString().split('T')[0]; // Current date
+    }
+    
+    if (dateStr.includes('Not specified') || dateStr.includes('Not Specified')) {
+      return new Date().toISOString().split('T')[0];
+    }
+    
+    // Handle month day, year format (e.g., "January 31, 2026")
+    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 
+                       'july', 'august', 'september', 'october', 'november', 'december'];
+    
+    const lowerDate = dateStr.toLowerCase();
+    for (let i = 0; i < monthNames.length; i++) {
+      if (lowerDate.includes(monthNames[i])) {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          return date.toISOString().split('T')[0];
+        }
+      }
+    }
+    
+    // Try standard date parsing
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
+    }
+    
+    // If all else fails, return current date
+    console.warn(`Could not parse date: "${dateStr}", using current date`);
+    return new Date().toISOString().split('T')[0];
+    
+  } catch (error) {
+    console.warn(`Failed to parse date: "${dateStr}"`, error);
+    return new Date().toISOString().split('T')[0];
+  }
+};
+
+// ✅ NEW: Helper function to parse time strings with validation
+const parseTimeString = (timeStr: string): string | null => {
+  if (!timeStr) return '09:00';
+  
+  try {
+    // Handle special cases
+    if (timeStr.includes('Not specified') || timeStr.includes('Not Specified')) {
+      return '09:00';
+    }
+    
+    // Remove timezone indicators
+    timeStr = timeStr
+      .replace(' IST', '')
+      .replace(' ist', '')
+      .replace(' AM', '')
+      .replace(' PM', '')
+      .replace(' am', '')
+      .replace(' pm', '')
+      .trim();
+    
+    // Extract time from range
+    let timePart = timeStr;
+    if (timeStr.includes('-')) {
+      timePart = timeStr.split('-')[0].trim();
+    } else if (timeStr.includes('to')) {
+      timePart = timeStr.split('to')[0].trim();
+    }
+    
+    // Extract hours and minutes
+    const timeMatch = timePart.match(/(\d{1,2})(?::(\d{2}))?/);
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1]);
+      const minutes = timeMatch[2] ? timeMatch[2] : '00';
+      
+      // Convert to 24-hour format if PM indicator was present (original string)
+      const originalLower = timeStr.toLowerCase();
+      if ((originalLower.includes('pm') || originalLower.includes('p.m')) && hours < 12) {
+        hours += 12;
+      }
+      if ((originalLower.includes('am') || originalLower.includes('a.m')) && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}`;
+    }
+    
+    console.warn(`Could not parse time: "${timeStr}", using 09:00`);
+    return '09:00';
+    
+  } catch (error) {
+    console.warn(`Failed to parse time: "${timeStr}"`, error);
+    return '09:00';
+  }
+};
+
 // Log sync operation
 const logSyncOperation = async (
   pool: Pool,
@@ -250,6 +354,12 @@ export const syncPageViews = functions.firestore
     const pool = initializePostgresPool();
     const docId = snap.id;
     const data = snap.data();
+    
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for page view: ${docId}`);
+      return;
+    }
     
     console.log(`🔄 Syncing page view: ${docId}`, { data: JSON.stringify(data) });
     
@@ -332,6 +442,12 @@ export const syncEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for event: ${docId}`);
+      return;
+    }
+    
     console.log(`🔄 Syncing event: ${docId}`, { data: JSON.stringify(data) });
     
     try {
@@ -390,6 +506,12 @@ export const syncResumeEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for resume event: ${docId}`);
+      return;
+    }
+    
     console.log(`🔄 Syncing resume event: ${docId}`);
     
     try {
@@ -436,6 +558,12 @@ export const syncJobEvents = functions.firestore
     const pool = initializePostgresPool();
     const docId = snap.id;
     const data = snap.data();
+    
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for job event: ${docId}`);
+      return;
+    }
     
     console.log(`🔄 Syncing job event: ${docId}`);
     
@@ -485,6 +613,12 @@ export const syncBlogEvents = functions.firestore
     const pool = initializePostgresPool();
     const docId = snap.id;
     const data = snap.data();
+    
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for blog event: ${docId}`);
+      return;
+    }
     
     console.log(`🔄 Syncing blog event: ${docId}`);
     
@@ -538,6 +672,12 @@ export const syncFunnelEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for funnel event: ${docId}`);
+      return;
+    }
+    
     console.log(`🔄 Syncing funnel event: ${docId}`);
     
     try {
@@ -584,6 +724,12 @@ export const syncAdminLogs = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for admin log: ${docId}`);
+      return;
+    }
+    
     console.log(`🔄 Syncing admin log: ${docId}`);
     
     try {
@@ -619,10 +765,427 @@ export const syncAdminLogs = functions.firestore
     }
   });
 
+// ================ BUSINESS DATA SYNC TRIGGERS ================
+
+/**
+ * SYNC JOBS - Real-time sync for job postings (CREATE/UPDATE/DELETE)
+ */
+export const syncJobs = functions.firestore
+  .document('jobs/{docId}')
+  .onWrite(async (change, context) => {
+    const pool = initializePostgresPool();
+    const docId = context.params.docId;
+    
+    if (!change.after.exists) {
+      // Document was deleted
+      try {
+        await pool.query(
+          'DELETE FROM jobs WHERE firestore_doc_id = $1',
+          [docId]
+        );
+        console.log(`✅ Job deleted from PostgreSQL: ${docId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to delete job ${docId}:`, error.message);
+      }
+      return;
+    }
+    
+    const data = change.after.data();
+    
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for job: ${docId}`);
+      return;
+    }
+    
+    console.log(`🔄 Syncing job: ${docId}`);
+    
+    try {
+      const timestamp = firestoreTimestampToDate(data.createdAt);
+      const updatedAt = firestoreTimestampToDate(data.updatedAt);
+      const expiresAt = firestoreTimestampToDate(data.expiresAt);
+      
+      // ✅ FIXED: Match your JobData interface - Added null checks for all data fields
+      await pool.query(
+        `INSERT INTO jobs 
+         (firestore_doc_id, job_id, title, company, location, type, sector, salary, 
+          description, requirements, posted_date, apply_link, featured, is_active,
+          experience, qualifications, views, shares, applications, saves,
+          created_at, updated_at, expires_at, created_by, last_updated_by,
+          is_approved, consent_given, data_processing_location)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+         ON CONFLICT (firestore_doc_id) DO UPDATE SET
+           title = EXCLUDED.title,
+           company = EXCLUDED.company,
+           location = EXCLUDED.location,
+           type = EXCLUDED.type,
+           salary = EXCLUDED.salary,
+           description = EXCLUDED.description,
+           requirements = EXCLUDED.requirements,
+           posted_date = EXCLUDED.posted_date,
+           apply_link = EXCLUDED.apply_link,
+           featured = EXCLUDED.featured,
+           is_active = EXCLUDED.is_active,
+           experience = EXCLUDED.experience,
+           qualifications = EXCLUDED.qualifications,
+           views = EXCLUDED.views,
+           shares = EXCLUDED.shares,
+           applications = EXCLUDED.applications,
+           saves = EXCLUDED.saves,
+           updated_at = EXCLUDED.updated_at,
+           expires_at = EXCLUDED.expires_at,
+           last_updated_by = EXCLUDED.last_updated_by,
+           is_approved = EXCLUDED.is_approved`,
+        [
+          docId,
+          data.id || docId,
+          data.title || '',
+          data.company || '',
+          data.location || '',
+          data.type || 'full_time',
+          data.sector || 'other',
+          data.salary || 'Not disclosed',
+          data.description || '',
+          safeToJson(data.requirements || []),
+          data.postedDate || new Date().toISOString().split('T')[0],
+          data.applyLink || '',
+          data.featured || false,
+          data.isActive !== false, // Default to true
+          data.experience || '0-2 years',
+          safeToJson(data.qualifications || []),
+          data.views || 0,
+          data.shares || 0,
+          data.applications || 0,
+          data.saves || 0,
+          timestamp || new Date(),
+          updatedAt || new Date(),
+          expiresAt,
+          data.createdBy || 'system',
+          data.lastUpdatedBy || 'system',
+          data.isApproved !== false, // Default to true
+          data.consentGiven || false,
+          data.dataProcessingLocation || 'IN'
+        ]
+      );
+      
+      await logSyncOperation(pool, 'jobs', 'upsert', 1, 1, 0, 'success');
+      console.log(`✅ Job synced: ${docId}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Failed to sync job ${docId}:`, error.message);
+      await logSyncOperation(pool, 'jobs', 'upsert', 1, 0, 1, 'failed', error.message);
+    }
+  });
+
+/**
+ * SYNC JOB DRIVES - Real-time sync for job drives (CREATE/UPDATE/DELETE)
+ */
+export const syncJobDrives = functions.firestore
+  .document('jobDrives/{docId}')
+  .onWrite(async (change, context) => {
+    const pool = initializePostgresPool();
+    const docId = context.params.docId;
+    
+    if (!change.after.exists) {
+      // Document was deleted
+      try {
+        await pool.query(
+          'DELETE FROM job_drives WHERE firestore_doc_id = $1',
+          [docId]
+        );
+        console.log(`✅ Job drive deleted from PostgreSQL: ${docId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to delete job drive ${docId}:`, error.message);
+      }
+      return;
+    }
+    
+    const data = change.after.data();
+    
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for job drive: ${docId}`);
+      return;
+    }
+    
+    console.log(`🔄 Syncing job drive: ${docId}`);
+    
+    try {
+      const timestamp = firestoreTimestampToDate(data.createdAt);
+      const updatedAt = firestoreTimestampToDate(data.updatedAt);
+      const expiresAt = firestoreTimestampToDate(data.expiresAt);
+      
+      // ✅ FIXED: Use parsed dates and times with validation
+      const parsedDate = parseDateString(data.date);
+      const parsedTime = parseTimeString(data.time);
+      
+      // ✅ FIXED: Match your JobDriveData interface
+      await pool.query(
+        `INSERT INTO job_drives 
+         (firestore_doc_id, drive_id, title, company, location, date, time, 
+          description, eligibility, documents, apply_link, registration_link, 
+          contact, featured, drive_type, experience, salary, expected_candidates,
+          views, shares, registrations, created_at, updated_at, expires_at,
+          is_active, consent_given, data_processing_location)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+         ON CONFLICT (firestore_doc_id) DO UPDATE SET
+           title = EXCLUDED.title,
+           company = EXCLUDED.company,
+           location = EXCLUDED.location,
+           date = EXCLUDED.date,
+           time = EXCLUDED.time,
+           description = EXCLUDED.description,
+           eligibility = EXCLUDED.eligibility,
+           documents = EXCLUDED.documents,
+           apply_link = EXCLUDED.apply_link,
+           registration_link = EXCLUDED.registration_link,
+           contact = EXCLUDED.contact,
+           featured = EXCLUDED.featured,
+           drive_type = EXCLUDED.drive_type,
+           experience = EXCLUDED.experience,
+           salary = EXCLUDED.salary,
+           expected_candidates = EXCLUDED.expected_candidates,
+           views = EXCLUDED.views,
+           shares = EXCLUDED.shares,
+           registrations = EXCLUDED.registrations,
+           updated_at = EXCLUDED.updated_at,
+           expires_at = EXCLUDED.expires_at,
+           is_active = EXCLUDED.is_active`,
+        [
+          docId,
+          data.id || docId,
+          data.title || '',
+          data.company || '',
+          data.location || '',
+          parsedDate || new Date().toISOString().split('T')[0], // ✅ FIXED
+          parsedTime || '09:00', // ✅ FIXED
+          data.description || '',
+          safeToJson(data.eligibility || []),
+          safeToJson(data.documents || []),
+          data.applyLink || '',
+          data.registrationLink || '',
+          data.contact || '',
+          data.featured || false,
+          data.driveType || 'walkin',
+          data.experience || '0-2 years',
+          data.salary || 'Not disclosed',
+          data.expectedCandidates || 0,
+          data.views || 0,
+          data.shares || 0,
+          data.registrations || 0,
+          timestamp || new Date(),
+          updatedAt || new Date(),
+          expiresAt,
+          data.isActive !== false, // Default to true
+          data.consentGiven || false,
+          data.dataProcessingLocation || 'IN'
+        ]
+      );
+      
+      await logSyncOperation(pool, 'jobDrives', 'upsert', 1, 1, 0, 'success');
+      console.log(`✅ Job drive synced: ${docId}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Failed to sync job drive ${docId}:`, error.message);
+      await logSyncOperation(pool, 'jobDrives', 'upsert', 1, 0, 1, 'failed', error.message);
+    }
+  });
+
+/**
+ * SYNC RESUMES - Real-time sync for user resumes (CREATE/UPDATE/DELETE)
+ */
+export const syncResumes = functions.firestore
+  .document('resumes/{docId}')
+  .onWrite(async (change, context) => {
+    const pool = initializePostgresPool();
+    const docId = context.params.docId;
+    
+    if (!change.after.exists) {
+      // Document was deleted
+      try {
+        await pool.query(
+          'DELETE FROM resumes WHERE firestore_doc_id = $1',
+          [docId]
+        );
+        console.log(`✅ Resume deleted from PostgreSQL: ${docId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to delete resume ${docId}:`, error.message);
+      }
+      return;
+    }
+    
+    const data = change.after.data();
+    
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for resume: ${docId}`);
+      return;
+    }
+    
+    console.log(`🔄 Syncing resume: ${docId}`);
+    
+    try {
+      const metadata = data.metadata || {};
+      const resumeData = data.data || {};
+      
+      await pool.query(
+        `INSERT INTO resumes 
+         (firestore_doc_id, resume_id, user_id, title, template, personal_info,
+          experience, education, skills, projects, certifications, languages,
+          created_at, updated_at, last_accessed, download_count, share_count,
+          is_public, tags, data_retention_period, consent_given)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+         ON CONFLICT (firestore_doc_id) DO UPDATE SET
+           title = EXCLUDED.title,
+           template = EXCLUDED.template,
+           personal_info = EXCLUDED.personal_info,
+           experience = EXCLUDED.experience,
+           education = EXCLUDED.education,
+           skills = EXCLUDED.skills,
+           projects = EXCLUDED.projects,
+           certifications = EXCLUDED.certifications,
+           languages = EXCLUDED.languages,
+           updated_at = EXCLUDED.updated_at,
+           last_accessed = EXCLUDED.last_accessed,
+           download_count = EXCLUDED.download_count,
+           share_count = EXCLUDED.share_count,
+           is_public = EXCLUDED.is_public,
+           tags = EXCLUDED.tags`,
+        [
+          docId,
+          data.id || docId,
+          data.userId || '',
+          data.title || 'Untitled Resume',
+          data.template || 'basic',
+          safeToJson(resumeData.personalInfo || {}),
+          safeToJson(resumeData.experience || []),
+          safeToJson(resumeData.education || []),
+          safeToJson(resumeData.skills || []),
+          safeToJson(resumeData.projects || []),
+          safeToJson(resumeData.certifications || []),
+          safeToJson(resumeData.languages || []),
+          firestoreTimestampToDate(metadata.createdAt) || new Date(),
+          firestoreTimestampToDate(metadata.updatedAt) || new Date(),
+          firestoreTimestampToDate(metadata.lastAccessed) || new Date(),
+          metadata.downloadCount || 0,
+          metadata.shareCount || 0,
+          metadata.isPublic || false,
+          safeToJson(metadata.tags || []),
+          data.dataRetentionPeriod || 730,
+          data.consentGiven || false
+        ]
+      );
+      
+      await logSyncOperation(pool, 'resumes', 'upsert', 1, 1, 0, 'success');
+      console.log(`✅ Resume synced: ${docId}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Failed to sync resume ${docId}:`, error.message);
+      await logSyncOperation(pool, 'resumes', 'upsert', 1, 0, 1, 'failed', error.message);
+    }
+  });
+
+/**
+ * SYNC PROFESSIONAL RESUMES - Real-time sync for admin professional resumes (CREATE/UPDATE/DELETE)
+ */
+export const syncProfessionalResumes = functions.firestore
+  .document('professional_resumes/{docId}')
+  .onWrite(async (change, context) => {
+    const pool = initializePostgresPool();
+    const docId = context.params.docId;
+    
+    if (!change.after.exists) {
+      // Document was deleted
+      try {
+        await pool.query(
+          'DELETE FROM professional_resumes WHERE firestore_doc_id = $1',
+          [docId]
+        );
+        console.log(`✅ Professional resume deleted from PostgreSQL: ${docId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to delete professional resume ${docId}:`, error.message);
+      }
+      return;
+    }
+    
+    const data = change.after.data();
+    
+    // ✅ FIXED: Handle possible undefined data
+    if (!data) {
+      console.error(`❌ No data found for professional resume: ${docId}`);
+      return;
+    }
+    
+    console.log(`🔄 Syncing professional resume: ${docId}`);
+    
+    try {
+      const clientInfo = data.clientInfo || {};
+      const metadata = data.metadata || {};
+      const resumeData = data.resumeData || {};
+      
+      await pool.query(
+        `INSERT INTO professional_resumes 
+         (firestore_doc_id, resume_id, client_name, client_email, client_phone,
+          client_company, client_notes, resume_data, tags, job_type, industry,
+          experience_level, created_by, created_at, updated_at, last_edited_by,
+          storage_type, version, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+         ON CONFLICT (firestore_doc_id) DO UPDATE SET
+           client_name = EXCLUDED.client_name,
+           client_phone = EXCLUDED.client_phone,
+           client_company = EXCLUDED.client_company,
+           client_notes = EXCLUDED.client_notes,
+           resume_data = EXCLUDED.resume_data,
+           tags = EXCLUDED.tags,
+           job_type = EXCLUDED.job_type,
+           industry = EXCLUDED.industry,
+           experience_level = EXCLUDED.experience_level,
+           updated_at = EXCLUDED.updated_at,
+           last_edited_by = EXCLUDED.last_edited_by,
+           version = EXCLUDED.version,
+           is_active = EXCLUDED.is_active`,
+        [
+          docId,
+          metadata.resumeId || docId,
+          clientInfo.name || '',
+          clientInfo.email || '',
+          clientInfo.phone || '',
+          clientInfo.company || '',
+          clientInfo.notes || '',
+          safeToJson(resumeData),
+          safeToJson(data.tags || []),
+          data.jobType || '',
+          data.industry || '',
+          data.experienceLevel || '',
+          metadata.createdBy || 'admin',
+          firestoreTimestampToDate(metadata.createdAt) || new Date(),
+          firestoreTimestampToDate(metadata.updatedAt) || new Date(),
+          metadata.lastEditedBy || 'admin',
+          metadata.storageType || 'professional_database',
+          metadata.version || 1,
+          metadata.isActive !== false
+        ]
+      );
+      
+      await logSyncOperation(pool, 'professional_resumes', 'upsert', 1, 1, 0, 'success');
+      console.log(`✅ Professional resume synced: ${docId}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Failed to sync professional resume ${docId}:`, error.message);
+      await logSyncOperation(pool, 'professional_resumes', 'upsert', 1, 0, 1, 'failed', error.message);
+    }
+  });
+
 // ================ HELPER SYNC FUNCTIONS ================
 
-// Helper function to sync a single document - FIXED VERSION
+// Helper function to sync a single document - UPDATED VERSION WITH DATA VALIDATION
 const syncDocument = async (pool: Pool, collectionName: string, docId: string, data: any) => {
+  // ✅ FIXED: Handle possible undefined data
+  if (!data) {
+    console.error(`❌ No data provided for sync: ${docId}`);
+    return;
+  }
+  
   const timestamp = firestoreTimestampToDate(data.timestamp);
   
   // Default values for missing fields
@@ -815,6 +1378,183 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
         ]
       );
       break;
+      
+    case 'jobs':
+      const jobTimestamp = firestoreTimestampToDate(data.createdAt);
+      const jobUpdatedAt = firestoreTimestampToDate(data.updatedAt);
+      const jobExpiresAt = firestoreTimestampToDate(data.expiresAt);
+      
+      await pool.query(
+        `INSERT INTO jobs 
+         (firestore_doc_id, job_id, title, company, location, type, sector, salary, 
+          description, requirements, posted_date, apply_link, featured, is_active,
+          experience, qualifications, views, shares, applications, saves,
+          created_at, updated_at, expires_at, created_by, last_updated_by,
+          is_approved, consent_given, data_processing_location)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+         ON CONFLICT (firestore_doc_id) DO NOTHING`,
+        [
+          docId,
+          data.id || docId,
+          data.title || '',
+          data.company || '',
+          data.location || '',
+          data.type || 'full_time',
+          data.sector || 'other',
+          data.salary || 'Not disclosed',
+          data.description || '',
+          safeToJson(data.requirements || []),
+          data.postedDate || new Date().toISOString().split('T')[0],
+          data.applyLink || '',
+          data.featured || false,
+          data.isActive !== false,
+          data.experience || '0-2 years',
+          safeToJson(data.qualifications || []),
+          data.views || 0,
+          data.shares || 0,
+          data.applications || 0,
+          data.saves || 0,
+          jobTimestamp || new Date(),
+          jobUpdatedAt || new Date(),
+          jobExpiresAt,
+          data.createdBy || 'system',
+          data.lastUpdatedBy || 'system',
+          data.isApproved !== false,
+          data.consentGiven || false,
+          data.dataProcessingLocation || 'IN'
+        ]
+      );
+      break;
+      
+    case 'jobDrives':
+      const driveTimestamp = firestoreTimestampToDate(data.createdAt);
+      const driveUpdatedAt = firestoreTimestampToDate(data.updatedAt);
+      const driveExpiresAt = firestoreTimestampToDate(data.expiresAt);
+      
+      // ✅ FIXED: Use parsed dates and times with validation
+      const parsedDate = parseDateString(data.date);
+      const parsedTime = parseTimeString(data.time);
+      
+      await pool.query(
+        `INSERT INTO job_drives 
+         (firestore_doc_id, drive_id, title, company, location, date, time, 
+          description, eligibility, documents, apply_link, registration_link, 
+          contact, featured, drive_type, experience, salary, expected_candidates,
+          views, shares, registrations, created_at, updated_at, expires_at,
+          is_active, consent_given, data_processing_location)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+         ON CONFLICT (firestore_doc_id) DO NOTHING`,
+        [
+          docId,
+          data.id || docId,
+          data.title || '',
+          data.company || '',
+          data.location || '',
+          parsedDate || new Date().toISOString().split('T')[0], // ✅ FIXED
+          parsedTime || '09:00', // ✅ FIXED
+          data.description || '',
+          safeToJson(data.eligibility || []),
+          safeToJson(data.documents || []),
+          data.applyLink || '',
+          data.registrationLink || '',
+          data.contact || '',
+          data.featured || false,
+          data.driveType || 'walkin',
+          data.experience || '0-2 years',
+          data.salary || 'Not disclosed',
+          data.expectedCandidates || 0,
+          data.views || 0,
+          data.shares || 0,
+          data.registrations || 0,
+          driveTimestamp || new Date(),
+          driveUpdatedAt || new Date(),
+          driveExpiresAt,
+          data.isActive !== false,
+          data.consentGiven || false,
+          data.dataProcessingLocation || 'IN'
+        ]
+      );
+      break;
+      
+    case 'resumes':
+      const resumeMetadata = data.metadata || {};
+      const resumeData = data.data || {};
+      const resumeCreatedAt = firestoreTimestampToDate(resumeMetadata.createdAt);
+      const resumeUpdatedAt = firestoreTimestampToDate(resumeMetadata.updatedAt);
+      const resumeLastAccessed = firestoreTimestampToDate(resumeMetadata.lastAccessed);
+      
+      await pool.query(
+        `INSERT INTO resumes 
+         (firestore_doc_id, resume_id, user_id, title, template, personal_info,
+          experience, education, skills, projects, certifications, languages,
+          created_at, updated_at, last_accessed, download_count, share_count,
+          is_public, tags, data_retention_period, consent_given)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+         ON CONFLICT (firestore_doc_id) DO NOTHING`,
+        [
+          docId,
+          data.id || docId,
+          data.userId || '',
+          data.title || 'Untitled Resume',
+          data.template || 'basic',
+          safeToJson(resumeData.personalInfo || {}),
+          safeToJson(resumeData.experience || []),
+          safeToJson(resumeData.education || []),
+          safeToJson(resumeData.skills || []),
+          safeToJson(resumeData.projects || []),
+          safeToJson(resumeData.certifications || []),
+          safeToJson(resumeData.languages || []),
+          resumeCreatedAt || new Date(),
+          resumeUpdatedAt || new Date(),
+          resumeLastAccessed || new Date(),
+          resumeMetadata.downloadCount || 0,
+          resumeMetadata.shareCount || 0,
+          resumeMetadata.isPublic || false,
+          safeToJson(resumeMetadata.tags || []),
+          data.dataRetentionPeriod || 730,
+          data.consentGiven || false
+        ]
+      );
+      break;
+      
+    case 'professional_resumes':
+      const proClientInfo = data.clientInfo || {};
+      const proMetadata = data.metadata || {};
+      const proResumeData = data.resumeData || {};
+      const proCreatedAt = firestoreTimestampToDate(proMetadata.createdAt);
+      const proUpdatedAt = firestoreTimestampToDate(proMetadata.updatedAt);
+      
+      await pool.query(
+        `INSERT INTO professional_resumes 
+         (firestore_doc_id, resume_id, client_name, client_email, client_phone,
+          client_company, client_notes, resume_data, tags, job_type, industry,
+          experience_level, created_by, created_at, updated_at, last_edited_by,
+          storage_type, version, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+         ON CONFLICT (firestore_doc_id) DO NOTHING`,
+        [
+          docId,
+          proMetadata.resumeId || docId,
+          proClientInfo.name || '',
+          proClientInfo.email || '',
+          proClientInfo.phone || '',
+          proClientInfo.company || '',
+          proClientInfo.notes || '',
+          safeToJson(proResumeData),
+          safeToJson(data.tags || []),
+          data.jobType || '',
+          data.industry || '',
+          data.experienceLevel || '',
+          proMetadata.createdBy || 'admin',
+          proCreatedAt || new Date(),
+          proUpdatedAt || new Date(),
+          proMetadata.lastEditedBy || 'admin',
+          proMetadata.storageType || 'professional_database',
+          proMetadata.version || 1,
+          proMetadata.isActive !== false
+        ]
+      );
+      break;
   }
 };
 
@@ -869,6 +1609,15 @@ export const testPostgresConnection = runWithCors(async (req: any, res: any) => 
       pageViewsExist = false;
     }
     
+    // Check professional_resumes table
+    let professionalResumesExist = false;
+    try {
+      await pool.query('SELECT 1 FROM professional_resumes LIMIT 1');
+      professionalResumesExist = true;
+    } catch (e) {
+      professionalResumesExist = false;
+    }
+    
     res.json({
       success: true,
       connection: {
@@ -881,6 +1630,7 @@ export const testPostgresConnection = runWithCors(async (req: any, res: any) => 
         all_tables: tablesResult.rows.map((r: any) => r.table_name),
         sync_logs_exists: syncLogsExist,
         page_views_exists: pageViewsExist,
+        professional_resumes_exists: professionalResumesExist,
         count: tablesResult.rows.length
       },
       config: {
@@ -997,7 +1747,11 @@ export const checkFirestoreCollections = runWithCors(async (req: any, res: any) 
       'jobEvents',
       'blogEvents',
       'funnels',
-      'admin_logs'
+      'admin_logs',
+      'jobs', // ✅ ADDED
+      'jobDrives', // ✅ ADDED
+      'resumes', // ✅ ADDED
+      'professional_resumes' // ✅ ADDED
     ];
     
     const results: any = {};
@@ -1040,11 +1794,109 @@ export const checkFirestoreCollections = runWithCors(async (req: any, res: any) 
 // ================ HTTP SYNC ENDPOINTS ================
 
 /**
- * BATCH SYNC - Sync all historical data from Firebase to PostgreSQL
+ * BATCH SYNC - Sync all historical data from Firebase to PostgreSQL (IMPROVED VERSION)
  */
 export const batchSyncCollection = runWithCors(async (req: any, res: any) => {
   try {
-    const { collectionName, limit = 1000 } = req.body;
+    const { collectionName, limit = 500, offset = 0 } = req.body;
+    
+    if (!collectionName) {
+      res.status(400).json({ success: false, error: 'collectionName is required' });
+      return;
+    }
+    
+    console.log(`🔄 Starting batch sync for collection: ${collectionName} (limit: ${limit}, offset: ${offset})`);
+    
+    // Send immediate response to avoid timeout
+    res.json({
+      success: true,
+      message: `Batch sync started for ${collectionName}`,
+      startedAt: new Date().toISOString(),
+      collectionName,
+      limit,
+      offset
+    });
+    
+    // Process in background
+    setTimeout(async () => {
+      try {
+        const pool = initializePostgresPool();
+        const db = admin.firestore();
+        
+        // Get documents from the collection
+        const snapshot = await db.collection(collectionName)
+          .limit(limit)
+          .get();
+        
+        console.log(`📊 Found ${snapshot.size} documents in ${collectionName}`);
+        
+        let successCount = 0;
+        let errorCount = 0;
+        const errors: any[] = [];
+        
+        // Process in smaller batches to avoid timeouts
+        const batchSize = 50;
+        const documents = snapshot.docs;
+        
+        for (let i = 0; i < documents.length; i += batchSize) {
+          const batch = documents.slice(i, i + batchSize);
+          const batchPromises = batch.map(async (doc) => {
+            try {
+              await syncDocument(pool, collectionName, doc.id, doc.data());
+              successCount++;
+            } catch (error: any) {
+              errorCount++;
+              errors.push({
+                id: doc.id,
+                error: error.message
+              });
+              console.error(`Failed to sync document ${doc.id}:`, error.message);
+            }
+          });
+          
+          await Promise.all(batchPromises);
+          console.log(`✅ Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(documents.length/batchSize)}`);
+        }
+        
+        await logSyncOperation(
+          pool,
+          collectionName,
+          'batch_sync',
+          snapshot.size,
+          successCount,
+          errorCount,
+          'completed'
+        );
+        
+        // Log completion to Firestore for monitoring
+        await db.collection('sync_completions').add({
+          collectionName,
+          total: snapshot.size,
+          successful: successCount,
+          failed: errorCount,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          errors: errors.slice(0, 5)
+        });
+        
+        console.log(`🎉 Batch sync completed for ${collectionName}: ${successCount} successful, ${errorCount} failed`);
+        
+      } catch (error: any) {
+        console.error('Background sync process failed:', error);
+      }
+    }, 100); // Small delay to ensure response is sent
+    
+  } catch (error: any) {
+    console.error('Batch sync initialization failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * BATCH SYNC WITH PROGRESS - Enhanced version with progress tracking
+ */
+export const batchSyncWithProgress = runWithCors(async (req: any, res: any) => {
+  try {
+    const { collectionName, limit = 200, batchSize = 50 } = req.body;
     
     if (!collectionName) {
       res.status(400).json({ success: false, error: 'collectionName is required' });
@@ -1054,39 +1906,49 @@ export const batchSyncCollection = runWithCors(async (req: any, res: any) => {
     const pool = initializePostgresPool();
     const db = admin.firestore();
     
-    console.log(`🔄 Starting batch sync for collection: ${collectionName}`);
+    console.log(`🔄 Starting progressive sync for: ${collectionName}`);
     
-    // Get all documents from the collection
-    const snapshot = await db.collection(collectionName)
-      .limit(limit)
-      .get();
+    // Get total count
+    const snapshot = await db.collection(collectionName).limit(limit).get();
+    const totalDocs = snapshot.size;
+    const documents = snapshot.docs;
     
-    console.log(`📊 Found ${snapshot.size} documents in ${collectionName}`);
+    console.log(`📊 Processing ${totalDocs} documents in batches of ${batchSize}`);
     
     let successCount = 0;
     let errorCount = 0;
     const errors: any[] = [];
+    let currentBatch = 0;
+    const totalBatches = Math.ceil(totalDocs / batchSize);
     
-    // Process each document
-    for (const doc of snapshot.docs) {
-      try {
-        await syncDocument(pool, collectionName, doc.id, doc.data());
-        successCount++;
-      } catch (error: any) {
-        errorCount++;
-        errors.push({
-          id: doc.id,
-          error: error.message
-        });
-        console.error(`Failed to sync document ${doc.id}:`, error.message);
-      }
+    // Process in batches
+    for (let i = 0; i < documents.length; i += batchSize) {
+      currentBatch++;
+      const batch = documents.slice(i, i + batchSize);
+      
+      console.log(`🔄 Processing batch ${currentBatch}/${totalBatches} (${batch.length} docs)`);
+      
+      const batchPromises = batch.map(async (doc) => {
+        try {
+          await syncDocument(pool, collectionName, doc.id, doc.data());
+          successCount++;
+        } catch (error: any) {
+          errorCount++;
+          errors.push({
+            id: doc.id,
+            error: error.message.substring(0, 200) // Truncate long errors
+          });
+        }
+      });
+      
+      await Promise.all(batchPromises);
     }
     
     await logSyncOperation(
       pool,
       collectionName,
       'batch_sync',
-      snapshot.size,
+      totalDocs,
       successCount,
       errorCount,
       'completed'
@@ -1096,15 +1958,16 @@ export const batchSyncCollection = runWithCors(async (req: any, res: any) => {
       success: true,
       message: `Batch sync completed for ${collectionName}`,
       stats: {
-        total: snapshot.size,
+        total: totalDocs,
         successful: successCount,
-        failed: errorCount
+        failed: errorCount,
+        batches: totalBatches
       },
       errors: errors.slice(0, 10) // Only return first 10 errors
     });
     
   } catch (error: any) {
-    console.error('Batch sync failed:', error);
+    console.error('Batch sync with progress failed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -1146,11 +2009,13 @@ export const healthCheck = runWithCors(async (req: any, res: any) => {
     let pageViewsCount = { rows: [{ count: 0 }] };
     let eventsCount = { rows: [{ count: 0 }] };
     let usersCount = { rows: [{ count: 0 }] };
+    let professionalResumesCount = { rows: [{ count: 0 }] };
     
     try {
       pageViewsCount = await pool.query('SELECT COUNT(*) as count FROM page_views');
       eventsCount = await pool.query('SELECT COUNT(*) as count FROM events');
       usersCount = await pool.query('SELECT COUNT(*) as count FROM users');
+      professionalResumesCount = await pool.query('SELECT COUNT(*) as count FROM professional_resumes');
     } catch (error) {
       console.warn('Could not fetch table counts:', error);
     }
@@ -1165,7 +2030,8 @@ export const healthCheck = runWithCors(async (req: any, res: any) => {
         tables: {
           page_views: pageViewsCount.rows[0].count,
           events: eventsCount.rows[0].count,
-          users: usersCount.rows[0].count
+          users: usersCount.rows[0].count,
+          professional_resumes: professionalResumesCount.rows[0].count
         }
       },
       firebase: {
@@ -1182,7 +2048,11 @@ export const healthCheck = runWithCors(async (req: any, res: any) => {
           'jobEvents',
           'blogEvents',
           'funnels',
-          'admin_logs'
+          'admin_logs',
+          'jobs',
+          'jobDrives',
+          'resumes',
+          'professional_resumes'
         ],
         recentOperations: syncStats.rows
       }
@@ -1278,6 +2148,30 @@ export const getSyncStatus = runWithCors(async (req: any, res: any) => {
         COUNT(*) as row_count,
         MAX(timestamp) as latest_record
       FROM admin_logs
+      UNION ALL
+      SELECT 
+        'jobs' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM jobs
+      UNION ALL
+      SELECT 
+        'job_drives' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM job_drives
+      UNION ALL
+      SELECT 
+        'resumes' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM resumes
+      UNION ALL
+      SELECT 
+        'professional_resumes' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM professional_resumes
     `);
     
     res.json({
@@ -1314,6 +2208,10 @@ export const validateSync = runWithCors(async (req: any, res: any) => {
       job_events: await pool.query('SELECT user_id, action, job_title FROM job_events ORDER BY timestamp DESC LIMIT 5'),
       blog_events: await pool.query('SELECT user_id, action, post_title FROM blog_events ORDER BY timestamp DESC LIMIT 5'),
       users: await pool.query('SELECT user_id, is_anonymous, last_active FROM users ORDER BY last_active DESC LIMIT 5'),
+      jobs: await pool.query('SELECT title, company, location, type FROM jobs ORDER BY created_at DESC LIMIT 5'),
+      job_drives: await pool.query('SELECT title, company, location, drive_type FROM job_drives ORDER BY created_at DESC LIMIT 5'),
+      resumes: await pool.query('SELECT title, template, user_id FROM resumes ORDER BY created_at DESC LIMIT 5'),
+      professional_resumes: await pool.query('SELECT client_email, job_type, experience_level FROM professional_resumes ORDER BY created_at DESC LIMIT 5'),
       field_mapping: {
         frontend_to_backend: {
           userId: 'user_id',

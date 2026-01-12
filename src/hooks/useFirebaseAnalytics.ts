@@ -1,7 +1,8 @@
-// src/hooks/useFirebaseAnalytics.ts - UPDATED WITH ALL METHODS INCLUDING trackFirebaseCTAClick
+// src/hooks/useFirebaseAnalytics.ts - UPDATED WITH ANONYMOUS/CONSENTED TRACKING & GOV EXAMS
 import { useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { firebaseAnalytics } from '../firebase/analytics';
+import { firebaseGovExamService } from '../firebase/govExamService';
 
 // Define the event data structure
 interface FirebaseEventData {
@@ -29,7 +30,7 @@ export const useFirebaseAnalytics = () => {
     trackPageView();
   }, [location]);
 
-  // ✅ FIXED: trackEvent method with proper typing
+  // ✅ CORE TRACKING: trackEvent method for both anonymous and consented users
   const trackEvent = useCallback(async (eventData: FirebaseEventData) => {
     try {
       // Get consent status
@@ -45,18 +46,52 @@ export const useFirebaseAnalytics = () => {
         eventValue: eventData.eventValue,
         metadata: {
           ...eventData.metadata,
-          is_anonymous: !hasConsent
+          is_anonymous: !hasConsent,
+          user_type: hasConsent ? 'consented' : 'anonymous'
         },
-        // These will be added by firebaseAnalytics.trackEvent
         consentGiven: hasConsent,
         dataProcessingLocation: 'IN' as const
       };
 
       await firebaseAnalytics.trackEvent(completeEventData);
+      
+      // Log for debugging
+      console.log(`📊 Firebase Event: ${eventData.eventName} (${hasConsent ? 'consented' : 'anonymous'})`, {
+        category: eventData.eventCategory,
+        label: eventData.eventLabel,
+        anonymous: !hasConsent
+      });
     } catch (error) {
       console.error('Firebase tracking error:', error);
+      
+      // Fallback to localStorage for anonymous users
+      const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+      if (!hasConsent) {
+        storeAnonymousEventInLocalStorage(eventData);
+      }
     }
   }, []);
+
+  // ✅ HELPER: Store anonymous events in localStorage
+  const storeAnonymousEventInLocalStorage = (eventData: FirebaseEventData) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const key = `anon_events_${today}`;
+      const events = JSON.parse(localStorage.getItem(key) || '[]');
+      
+      events.push({
+        ...eventData,
+        timestamp: new Date().toISOString(),
+        storedAt: Date.now(),
+        is_anonymous: true
+      });
+      
+      // Keep only last 50 events per day
+      localStorage.setItem(key, JSON.stringify(events.slice(-50)));
+    } catch (error) {
+      console.warn('Failed to store anonymous event in localStorage:', error);
+    }
+  };
 
   // ✅ FIXED: trackFirebaseEvent method (string parameters)
   const trackFirebaseEvent = useCallback(async (
@@ -80,6 +115,76 @@ export const useFirebaseAnalytics = () => {
       console.error('Firebase tracking error:', error);
     }
   }, [trackEvent]);
+
+  // ✅ ANONYMOUS TRACKING: Track user behavior regardless of consent
+  const trackAnonymousInteraction = useCallback(async (
+    interactionType: string,
+    elementId: string,
+    elementType: string,
+    metadata?: Record<string, any>
+  ) => {
+    try {
+      const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+      
+      // Always track interactions, consent is handled internally
+      await trackFirebaseEvent(
+        'user_interaction',
+        'Anonymous Tracking',
+        interactionType,
+        {
+          elementId,
+          elementType,
+          is_anonymous: !hasConsent,
+          ...metadata
+        }
+      );
+    } catch (error) {
+      console.error('Anonymous interaction tracking error:', error);
+    }
+  }, [trackFirebaseEvent]);
+
+  // ✅ CONSENT MANAGEMENT: Handle GDPR consent changes
+  const handleConsentUpdate = useCallback(async (consentGiven: boolean) => {
+    try {
+      if (consentGiven) {
+        localStorage.setItem('gdpr_consent', 'accepted');
+        
+        // Migrate anonymous user to consented
+        await firebaseAnalytics.migrateToConsentedUser();
+        
+        // Track consent event
+        await trackFirebaseEvent(
+          'gdpr_consent_given',
+          'User Privacy',
+          'consent_granted',
+          {
+            consent_type: 'analytics',
+            timestamp: new Date().toISOString()
+          }
+        );
+        
+        console.log('✅ User gave consent, migrated to consented tracking');
+      } else {
+        localStorage.removeItem('gdpr_consent');
+        
+        // Track consent withdrawal
+        await trackFirebaseEvent(
+          'gdpr_consent_withdrawn',
+          'User Privacy',
+          'consent_withdrawn'
+        );
+        
+        console.log('✅ User withdrew consent, switching to anonymous tracking');
+      }
+      
+      // Reload the page to apply consent changes
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('Error handling consent update:', error);
+    }
+  }, [trackFirebaseEvent]);
 
   // ✅ ADDED: Exit Intent tracking method
   const trackExitIntent = useCallback(async (
@@ -105,7 +210,7 @@ export const useFirebaseAnalytics = () => {
     }
   }, [trackFirebaseEvent]);
 
-  // ✅ ADDED: trackFirebaseCTAClick method (alias for trackCTAClick)
+  // ✅ ADDED: trackFirebaseCTAClick method
   const trackFirebaseCTAClick = useCallback(async (
     ctaName: string,
     location: string,
@@ -123,7 +228,7 @@ export const useFirebaseAnalytics = () => {
     }
   }, [trackFirebaseEvent]);
 
-  // Resume Builder tracking
+  // ============ RESUME BUILDER TRACKING ============
   const trackResumeGeneration = useCallback(async (
     templateType: string,
     fieldsCount: any,
@@ -162,7 +267,250 @@ export const useFirebaseAnalytics = () => {
     );
   }, [trackFirebaseEvent]);
 
-  // Button Click tracking
+  // ============ JOB PORTAL TRACKING ============
+  const trackJobView = useCallback(async (
+    jobId: string,
+    jobTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_viewed',
+      'Job Portal',
+      jobTitle,
+      { jobId, company, action: 'view' }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobApplication = useCallback(async (
+    jobId: string,
+    jobTitle: string,
+    company: string,
+    method: string = 'direct'
+  ) => {
+    await trackFirebaseEvent(
+      'job_applied',
+      'Job Portal',
+      jobTitle,
+      { jobId, company, method, action: 'apply' }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobSave = useCallback(async (
+    jobId: string,
+    jobTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_saved',
+      'Job Portal',
+      jobTitle,
+      { jobId, company, action: 'save' }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobSearch = useCallback(async (
+    query: string,
+    resultsCount: number,
+    location?: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_searched',
+      'Job Portal',
+      query,
+      { query, resultsCount, location }
+    );
+  }, [trackFirebaseEvent]);
+
+  // ============ GOVERNMENT EXAMS TRACKING ============
+  const trackGovExamView = useCallback(async (
+    examId: string,
+    examName: string,
+    organization: string
+  ) => {
+    try {
+      await trackFirebaseEvent(
+        'gov_exam_viewed',
+        'Government Exams',
+        examName,
+        { examId, organization, action: 'view' }
+      );
+      
+      // Increment view count in Firebase
+      await firebaseGovExamService.incrementViewCount(examId);
+    } catch (error) {
+      console.error('Error tracking government exam view:', error);
+    }
+  }, [trackFirebaseEvent]);
+
+  const trackGovExamApplication = useCallback(async (
+    examId: string,
+    examName: string,
+    organization: string
+  ) => {
+    try {
+      await trackFirebaseEvent(
+        'gov_exam_applied',
+        'Government Exams',
+        examName,
+        { examId, organization, action: 'apply' }
+      );
+      
+      // Increment application count in Firebase
+      await firebaseGovExamService.incrementApplicationCount(examId);
+    } catch (error) {
+      console.error('Error tracking government exam application:', error);
+    }
+  }, [trackFirebaseEvent]);
+
+  const trackGovExamSave = useCallback(async (
+    examId: string,
+    examName: string,
+    organization: string
+  ) => {
+    try {
+      await trackFirebaseEvent(
+        'gov_exam_saved',
+        'Government Exams',
+        examName,
+        { examId, organization, action: 'save' }
+      );
+      
+      // Increment save count in Firebase
+      await firebaseGovExamService.incrementSaveCount(examId);
+    } catch (error) {
+      console.error('Error tracking government exam save:', error);
+    }
+  }, [trackFirebaseEvent]);
+
+  const trackGovExamShare = useCallback(async (
+    examId: string,
+    examName: string,
+    organization: string,
+    platform: string
+  ) => {
+    try {
+      await trackFirebaseEvent(
+        'gov_exam_shared',
+        'Government Exams',
+        examName,
+        { examId, organization, platform, action: 'share' }
+      );
+      
+      // Increment share count in Firebase
+      await firebaseGovExamService.incrementShareCount(examId);
+    } catch (error) {
+      console.error('Error tracking government exam share:', error);
+    }
+  }, [trackFirebaseEvent]);
+
+  const trackGovExamSearch = useCallback(async (
+    searchTerm: string,
+    resultsCount: number,
+    filters?: any
+  ) => {
+    await trackFirebaseEvent(
+      'gov_exam_searched',
+      'Government Exams',
+      searchTerm,
+      { searchTerm, resultsCount, filters, action: 'search' }
+    );
+  }, [trackFirebaseEvent]);
+
+  // ============ JOB DRIVES TRACKING ============
+  const trackWalkinDriveView = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'walkin_drive_view',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackWalkinDriveRegistration = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'walkin_drive_registration',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobDriveView = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    source: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_drive_view',
+      'Job Drives',
+      driveTitle,
+      { driveId, source }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackJobDriveRegistration = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'job_drive_registration',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackWalkinDriveRegistrationEnhanced = useCallback(async (
+    driveId: string,
+    driveTitle: string,
+    company: string
+  ) => {
+    await trackFirebaseEvent(
+      'walkin_drive_registration_enhanced',
+      'Job Drives',
+      driveTitle,
+      { driveId, company }
+    );
+  }, [trackFirebaseEvent]);
+
+  // ============ BLOG TRACKING ============
+  const trackBlogView = useCallback(async (
+    postSlug: string,
+    postTitle: string,
+    category: string,
+    readDuration?: number
+  ) => {
+    await trackFirebaseEvent(
+      'blog_viewed',
+      'Blog',
+      postTitle,
+      { postSlug, category, readDuration, action: readDuration && readDuration > 30 ? 'read' : 'view' }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackBlogSearch = useCallback(async (
+    searchTerm: string,
+    resultsCount: number,
+    category?: string
+  ) => {
+    await trackFirebaseEvent(
+      'blog_searched',
+      'Blog',
+      searchTerm,
+      { searchTerm, resultsCount, category }
+    );
+  }, [trackFirebaseEvent]);
+
+  // ============ USER INTERACTION TRACKING ============
   const trackButtonClick = useCallback(async (
     buttonName: string,
     section: string,
@@ -276,155 +624,7 @@ export const useFirebaseAnalytics = () => {
     );
   }, [trackFirebaseEvent]);
 
-  // Job tracking methods
-  const trackJobView = useCallback(async (
-    jobId: string,
-    jobTitle: string,
-    company: string
-  ) => {
-    await trackFirebaseEvent(
-      'job_viewed',
-      'Job Portal',
-      jobTitle,
-      { jobId, company, action: 'view' }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackJobApplication = useCallback(async (
-    jobId: string,
-    jobTitle: string,
-    company: string,
-    method: string = 'direct'
-  ) => {
-    await trackFirebaseEvent(
-      'job_applied',
-      'Job Portal',
-      jobTitle,
-      { jobId, company, method, action: 'apply' }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackJobSave = useCallback(async (
-    jobId: string,
-    jobTitle: string,
-    company: string
-  ) => {
-    await trackFirebaseEvent(
-      'job_saved',
-      'Job Portal',
-      jobTitle,
-      { jobId, company, action: 'save' }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackJobSearch = useCallback(async (
-    query: string,
-    resultsCount: number,
-    location?: string
-  ) => {
-    await trackFirebaseEvent(
-      'job_searched',
-      'Job Portal',
-      query,
-      { query, resultsCount, location }
-    );
-  }, [trackFirebaseEvent]);
-
-  // Blog tracking methods
-  const trackBlogView = useCallback(async (
-    postSlug: string,
-    postTitle: string,
-    category: string,
-    readDuration?: number
-  ) => {
-    await trackFirebaseEvent(
-      'blog_viewed',
-      'Blog',
-      postTitle,
-      { postSlug, category, readDuration, action: readDuration && readDuration > 30 ? 'read' : 'view' }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackBlogSearch = useCallback(async (
-    searchTerm: string,
-    resultsCount: number,
-    category?: string
-  ) => {
-    await trackFirebaseEvent(
-      'blog_searched',
-      'Blog',
-      searchTerm,
-      { searchTerm, resultsCount, category }
-    );
-  }, [trackFirebaseEvent]);
-
-  // ✅ ADDED: Job Drives tracking methods
-  const trackWalkinDriveView = useCallback(async (
-    driveId: string,
-    driveTitle: string,
-    company: string
-  ) => {
-    await trackFirebaseEvent(
-      'walkin_drive_view',
-      'Job Drives',
-      driveTitle,
-      { driveId, company }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackWalkinDriveRegistration = useCallback(async (
-    driveId: string,
-    driveTitle: string,
-    company: string
-  ) => {
-    await trackFirebaseEvent(
-      'walkin_drive_registration',
-      'Job Drives',
-      driveTitle,
-      { driveId, company }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackJobDriveView = useCallback(async (
-    driveId: string,
-    driveTitle: string,
-    source: string
-  ) => {
-    await trackFirebaseEvent(
-      'job_drive_view',
-      'Job Drives',
-      driveTitle,
-      { driveId, source }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackJobDriveRegistration = useCallback(async (
-    driveId: string,
-    driveTitle: string,
-    company: string
-  ) => {
-    await trackFirebaseEvent(
-      'job_drive_registration',
-      'Job Drives',
-      driveTitle,
-      { driveId, company }
-    );
-  }, [trackFirebaseEvent]);
-
-  const trackWalkinDriveRegistrationEnhanced = useCallback(async (
-    driveId: string,
-    driveTitle: string,
-    company: string
-  ) => {
-    await trackFirebaseEvent(
-      'walkin_drive_registration_enhanced',
-      'Job Drives',
-      driveTitle,
-      { driveId, company }
-    );
-  }, [trackFirebaseEvent]);
-
-  // Daily Analytics methods
+  // ============ ENHANCED ANALYTICS METHODS ============
   const trackDailyPageView = useCallback(async (
     pageName: string,
     pagePath: string
@@ -503,16 +703,17 @@ export const useFirebaseAnalytics = () => {
     );
   }, [trackFirebaseEvent]);
 
-  const trackGovExamApplication = useCallback(async (
+  const trackGovExamApplicationEnhanced = useCallback(async (
     examId: string,
     examName: string,
-    organization: string
+    organization: string,
+    applicationType: string = 'direct'
   ) => {
     await trackFirebaseEvent(
-      'gov_exam_application',
+      'gov_exam_application_enhanced',
       'Government Exams',
       examName,
-      { examId, organization }
+      { examId, organization, applicationType }
     );
   }, [trackFirebaseEvent]);
 
@@ -543,71 +744,183 @@ export const useFirebaseAnalytics = () => {
     }
   }, [trackFirebaseEvent]);
 
-  // Simplified subscribe to events
+  // ============ USER SESSION TRACKING ============
+  const trackSessionStart = useCallback(async () => {
+    await trackFirebaseEvent(
+      'session_started',
+      'User Session',
+      'new_session',
+      {
+        sessionId: firebaseAnalytics.getSessionId(),
+        userId: firebaseAnalytics.getUserId(),
+        isAnonymous: firebaseAnalytics.isUserAnonymous()
+      }
+    );
+  }, [trackFirebaseEvent]);
+
+  const trackSessionEnd = useCallback(async (duration: number) => {
+    await trackFirebaseEvent(
+      'session_ended',
+      'User Session',
+      'session_end',
+      {
+        sessionId: firebaseAnalytics.getSessionId(),
+        duration,
+        userId: firebaseAnalytics.getUserId(),
+        isAnonymous: firebaseAnalytics.isUserAnonymous()
+      }
+    );
+  }, [trackFirebaseEvent]);
+
+  // ============ GDPR & PRIVACY METHODS ============
+  const getConsentStatus = useCallback(() => {
+    return localStorage.getItem('gdpr_consent') === 'accepted';
+  }, []);
+
+  const isUserAnonymous = useCallback(() => {
+    return firebaseAnalytics.isUserAnonymous();
+  }, []);
+
+  const getUserTrackingInfo = useCallback(() => {
+    return {
+      userId: firebaseAnalytics.getUserId(),
+      sessionId: firebaseAnalytics.getSessionId(),
+      isAnonymous: firebaseAnalytics.isUserAnonymous(),
+      hasConsent: localStorage.getItem('gdpr_consent') === 'accepted'
+    };
+  }, []);
+
+  // ============ REAL-TIME ANALYTICS ============
   const subscribeToEvents = useCallback((callback: (events: any[]) => void) => {
     return firebaseAnalytics.subscribeToAnalytics(callback);
   }, []);
 
+  // Get anonymous stats
+  const getAnonymousStats = useCallback(() => {
+    return firebaseAnalytics.getAnonymousStats();
+  }, []);
+
+  // ============ FIREBASE SERVICE INTEGRATION ============
+  const getFirebaseStatus = useCallback(async () => {
+    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+    
+    return {
+      connected: true, // Assuming Firebase is initialized
+      analytics: !!firebaseAnalytics,
+      userId: firebaseAnalytics.getUserId(),
+      sessionId: firebaseAnalytics.getSessionId(),
+      isAnonymous: !hasConsent,
+      hasConsent,
+      userType: hasConsent ? 'consented' : 'anonymous'
+    };
+  }, []);
+
+  // Initialize session tracking
+  useEffect(() => {
+    // Track session start on component mount
+    trackSessionStart();
+    
+    // Track session end on page unload
+    const handleBeforeUnload = () => {
+      const sessionStart = performance.now();
+      const sessionDuration = Math.round((performance.now() - sessionStart) / 1000);
+      trackSessionEnd(sessionDuration);
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [trackSessionStart, trackSessionEnd]);
+
   return {
-    // Core tracking methods
+    // ============ CORE TRACKING METHODS ============
     trackEvent,
     trackFirebaseEvent,
     trackPageView,
     trackExitIntent,
     
-    // ✅ ADDED: trackFirebaseCTAClick method
+    // ============ ANONYMOUS & CONSENT TRACKING ============
+    trackAnonymousInteraction,
+    handleConsentUpdate,
+    getConsentStatus,
+    isUserAnonymous,
+    getUserTrackingInfo,
+    
+    // ============ BUTTON & CTA TRACKING ============
+    trackButtonClick,
+    trackCTAClick,
     trackFirebaseCTAClick,
     
-    // Resume Builder
+    // ============ RESUME BUILDER ============
     trackResumeGeneration,
     trackResumeDownload,
     trackResumePreview,
     trackResumeGenerationEnhanced,
+    trackTemplateChange,
     
-    // Job Portal
+    // ============ JOB PORTAL ============
     trackJobView,
     trackJobApplication,
     trackJobSave,
     trackJobSearch,
+    trackJobViewEnhanced,
+    trackJobApplicationSubmitEnhanced,
+    trackJobSearchEnhanced,
+    trackJobDisciplineViewEnhanced,
     
-    // Job Drives
+    // ============ GOVERNMENT EXAMS ============
+    trackGovExamView,
+    trackGovExamApplication,
+    trackGovExamSave,
+    trackGovExamShare,
+    trackGovExamSearch,
+    trackGovExamApplicationEnhanced,
+    
+    // ============ JOB DRIVES ============
     trackWalkinDriveView,
     trackWalkinDriveRegistration,
     trackJobDriveView,
     trackJobDriveRegistration,
     trackWalkinDriveRegistrationEnhanced,
     
-    // Blog
+    // ============ BLOG ============
     trackBlogView,
     trackBlogSearch,
     trackBlogPostReadEnhanced,
     
-    // Government Exams
-    trackGovExamApplication,
-    
-    // User Interactions
-    trackButtonClick,
-    trackCTAClick, // Original method
-    trackFunnelStep,
+    // ============ SOCIAL & SHARING ============
     trackSocialShare,
+    
+    // ============ USER ONBOARDING ============
     trackSignup,
-    trackTemplateChange,
+    
+    // ============ USER FLOW & NAVIGATION ============
     trackUserFlow,
+    trackFunnelStep,
+    
+    // ============ ERROR TRACKING ============
     trackError,
     
-    // Enhanced Analytics
+    // ============ ENHANCED ANALYTICS ============
     trackDailyPageView,
     trackDailyUniqueUser,
-    trackJobViewEnhanced,
-    trackJobApplicationSubmitEnhanced,
-    trackJobSearchEnhanced,
-    trackJobDisciplineViewEnhanced,
     
-    // Real-time analytics
+    // ============ SESSION TRACKING ============
+    trackSessionStart,
+    trackSessionEnd,
+    
+    // ============ REAL-TIME ANALYTICS ============
     subscribeToEvents,
+    getAnonymousStats,
     
-    // User info
+    // ============ FIREBASE SERVICE INFO ============
+    getFirebaseStatus,
+    
+    // ============ USER INFO ============
     getUserId: () => firebaseAnalytics.getUserId(),
-    getSessionId: () => firebaseAnalytics.getSessionId()
+    getSessionId: () => firebaseAnalytics.getSessionId(),
+    getUserType: () => firebaseAnalytics.getUserType()
   };
 };
