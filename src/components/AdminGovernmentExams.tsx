@@ -1,4 +1,4 @@
-// src/components/AdminGovernmentExams.tsx - UPDATED WITH FIREBASE INTEGRATION
+// src/components/AdminGovernmentExams.tsx - FIREBASE ONLY VERSION
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
@@ -20,6 +20,7 @@ const AdminGovernmentExams: React.FC = () => {
   const [syncStatus, setSyncStatus] = useState<{ synced: number; failed: number } | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   
   const { trackButtonClick, trackEvent } = useGoogleAnalytics();
 
@@ -50,10 +51,25 @@ const AdminGovernmentExams: React.FC = () => {
   // Test Firebase connection
   useEffect(() => {
     const testConnection = async () => {
-      const result = await firebaseGovExamService.testFirebaseConnection();
-      setFirebaseConnected(result.connected);
-      if (result.connected) {
-        console.log('✅ Firebase connected successfully');
+      try {
+        const result = await firebaseGovExamService.testFirebaseConnection();
+        setFirebaseConnected(result.connected);
+        if (result.connected) {
+          console.log('✅ Firebase connected successfully');
+        } else {
+          console.error('❌ Firebase connection failed:', result.message);
+          setMessage({ 
+            type: 'error', 
+            text: `Firebase connection failed: ${result.message}. Please check your Firebase configuration.` 
+          });
+        }
+      } catch (error) {
+        console.error('❌ Firebase test error:', error);
+        setFirebaseConnected(false);
+        setMessage({ 
+          type: 'error', 
+          text: 'Firebase connection test failed. Please check console for details.' 
+        });
       }
     };
     
@@ -73,6 +89,7 @@ const AdminGovernmentExams: React.FC = () => {
 
   // Load exams with auto-cleanup
   const loadExams = async () => {
+    setLoading(true);
     try {
       const { exams: loadedExams } = await firebaseGovExamService.getGovExams({}, 1, 1000);
       setExams(loadedExams);
@@ -110,12 +127,17 @@ const AdminGovernmentExams: React.FC = () => {
         });
       }
       
-      setMessage({ type: 'success', text: `Loaded ${recentExams.length} latest government exams` });
+      setMessage({ type: 'success', text: `Loaded ${recentExams.length} latest government exams from Firebase` });
       setTimeout(() => setMessage(null), 3000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading exams:', error);
-      setMessage({ type: 'error', text: 'Failed to load exams. Please check your connection.' });
+      setMessage({ 
+        type: 'error', 
+        text: `Failed to load exams: ${error.message || 'Please check your Firebase connection.'}` 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,12 +145,14 @@ const AdminGovernmentExams: React.FC = () => {
   const handleCleanup = async () => {
     if (window.confirm('Are you sure you want to remove all exams older than 90 days? This action cannot be undone.')) {
       try {
-        // This will be handled by the Firebase service auto-cleanup
         await firebaseGovExamService.checkAndCleanupOldExams();
         await loadExams();
         setMessage({ type: 'success', text: 'Cleanup completed successfully!' });
-      } catch (error) {
-        setMessage({ type: 'error', text: 'Cleanup failed. Please try again.' });
+      } catch (error: any) {
+        setMessage({ 
+          type: 'error', 
+          text: `Cleanup failed: ${error.message || 'Please try again.'}` 
+        });
       }
     }
   };
@@ -171,9 +195,12 @@ const AdminGovernmentExams: React.FC = () => {
       await loadExams();
       
       setTimeout(() => setMessage(null), 5000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating exam:', error);
-      setMessage({ type: 'error', text: 'Failed to add exam. Please try again.' });
+      setMessage({ 
+        type: 'error', 
+        text: `Failed to add exam: ${error.message || 'Please check Firebase connection.'}` 
+      });
     }
   };
 
@@ -211,8 +238,11 @@ const AdminGovernmentExams: React.FC = () => {
       await loadExams();
       
       setTimeout(() => setMessage(null), 5000);
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Invalid JSON format or upload failed. Please check your input.' });
+    } catch (error: any) {
+      setMessage({ 
+        type: 'error', 
+        text: `Invalid JSON format or upload failed: ${error.message || 'Please check your input.'}` 
+      });
     }
   };
 
@@ -228,8 +258,11 @@ const AdminGovernmentExams: React.FC = () => {
         await loadExams();
         
         setTimeout(() => setMessage(null), 3000);
-      } catch (error) {
-        setMessage({ type: 'error', text: 'Failed to delete exam. Please try again.' });
+      } catch (error: any) {
+        setMessage({ 
+          type: 'error', 
+          text: `Failed to delete exam: ${error.message || 'Please try again.'}` 
+        });
       }
     }
   };
@@ -243,45 +276,12 @@ const AdminGovernmentExams: React.FC = () => {
         trackButtonClick('toggle_featured', 'exam_list', 'admin_gov_exams');
         await loadExams();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling featured:', error);
-    }
-  };
-
-  // Clear all exams
-  const clearAllExams = async () => {
-    if (window.confirm('Are you sure you want to delete all government exams from Firebase? This action cannot be undone.')) {
-      try {
-        // Note: In a real app, you'd want to batch delete or mark as inactive
-        // For now, we'll clear local cache
-        await firebaseGovExamService.clearLocalCache();
-        setExams([]);
-        trackButtonClick('clear_all_exams', 'exam_management', 'admin_gov_exams');
-        setMessage({ type: 'success', text: 'All exams cleared from local cache!' });
-      } catch (error) {
-        setMessage({ type: 'error', text: 'Failed to clear exams.' });
-      }
-    }
-  };
-
-  // Sync to Firebase
-  const handleSyncToFirebase = async () => {
-    setIsSyncing(true);
-    try {
-      const result = await firebaseGovExamService.syncAllToFirebase();
-      setSyncStatus(result);
       setMessage({ 
-        type: 'success', 
-        text: `Synced ${result.synced} exams to Firebase. ${result.failed} failed.` 
+        type: 'error', 
+        text: `Failed to toggle featured: ${error.message || 'Please try again.'}` 
       });
-      
-      // Reload exams
-      await loadExams();
-      
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Sync failed. Please try again.' });
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -361,26 +361,16 @@ const AdminGovernmentExams: React.FC = () => {
                 <p className="text-sm">
                   {firebaseConnected 
                     ? 'Data is being saved to Firebase Firestore' 
-                    : 'Using localStorage fallback'}
+                    : 'Firebase connection failed. Please check configuration.'}
                 </p>
               </div>
             </div>
             <button
-              onClick={handleSyncToFirebase}
-              disabled={isSyncing}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center"
             >
-              {isSyncing ? (
-                <>
-                  <Clock size={16} className="mr-2 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} className="mr-2" />
-                  Sync to Firebase
-                </>
-              )}
+              <RefreshCw size={16} className="mr-2" />
+              Reconnect
             </button>
           </div>
 
@@ -407,17 +397,19 @@ const AdminGovernmentExams: React.FC = () => {
               <div className="flex gap-2 mt-2 md:mt-0">
                 <button
                   onClick={handleCleanup}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors flex items-center"
+                  disabled={!firebaseConnected || loading}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors flex items-center disabled:opacity-50"
                 >
                   <Trash2 size={16} className="mr-2" />
                   Clean Old Exams
                 </button>
                 <button
                   onClick={loadExams}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors flex items-center"
+                  disabled={loading}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors flex items-center disabled:opacity-50"
                 >
                   <RefreshCw size={16} className="mr-2" />
-                  Refresh
+                  {loading ? 'Loading...' : 'Refresh'}
                 </button>
               </div>
             </div>
@@ -449,10 +441,11 @@ const AdminGovernmentExams: React.FC = () => {
                 setShowBulkForm(false);
                 trackButtonClick('show_single_form', 'form_toggle', 'admin_gov_exams');
               }}
+              disabled={!firebaseConnected || loading}
               className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                !showBulkForm
+                !showBulkForm && firebaseConnected
                   ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50'
               }`}
             >
               Single Exam Form
@@ -462,10 +455,11 @@ const AdminGovernmentExams: React.FC = () => {
                 setShowBulkForm(true);
                 trackButtonClick('show_bulk_form', 'form_toggle', 'admin_gov_exams');
               }}
+              disabled={!firebaseConnected || loading}
               className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                showBulkForm
+                showBulkForm && firebaseConnected
                   ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50'
               }`}
             >
               Bulk Upload (JSON)
@@ -751,9 +745,10 @@ const AdminGovernmentExams: React.FC = () => {
                 <div className="mt-6">
                   <button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
+                    disabled={!firebaseConnected || loading}
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
                   >
-                    Add Latest Government Exam to Firebase
+                    {loading ? 'Loading...' : 'Add Latest Government Exam to Firebase'}
                   </button>
                   <p className="text-xs text-gray-500 text-center mt-2">
                     Exam will appear as "Latest" and auto-clean after 90 days
@@ -803,9 +798,10 @@ const AdminGovernmentExams: React.FC = () => {
                 <div className="flex gap-4">
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all"
+                    disabled={!firebaseConnected || loading}
+                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50"
                   >
-                    Upload Latest Exams to Firebase
+                    {loading ? 'Processing...' : 'Upload Latest Exams to Firebase'}
                   </button>
                   <button
                     type="button"
@@ -840,19 +836,19 @@ const AdminGovernmentExams: React.FC = () => {
                 </h2>
                 <p className="text-sm text-gray-600">Auto-cleaned every 90 days • Sorted by newest first</p>
               </div>
-              {exams.length > 0 && (
-                <button
-                  onClick={clearAllExams}
-                  className="text-red-600 hover:text-red-800 text-sm font-medium"
-                >
-                  Clear All Exams
-                </button>
+              {loading && (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
               )}
             </div>
             
-            {exams.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
+                <p className="text-gray-600">Loading government exams from Firebase...</p>
+              </div>
+            ) : exams.length === 0 ? (
               <p className="text-gray-600 text-center py-8">
-                No latest government exams added yet. Add your first exam using the form above.
+                No government exams found in Firebase. Add your first exam using the form above.
               </p>
             ) : (
               <div className="space-y-4">
