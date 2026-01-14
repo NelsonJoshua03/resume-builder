@@ -39,18 +39,23 @@ try {
   console.error('❌ Error loading config:', configError);
   
   // Fallback to environment variables or hardcoded values
-  const fallbackEmails = process.env.ADMIN_EMAILS || 'nelsonjoshua03@outlook.com,contact@careercraft.in';
-  const fallbackPassword = process.env.ADMIN_PASSWORD || 't9nb5qrfha@N';
+  const fallbackEmailList = process.env.ADMIN_EMAILS || '';
   
-  ADMIN_PASSWORD = fallbackPassword;
-  ADMIN_EMAILS = fallbackEmails
+  ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+  ADMIN_EMAILS = fallbackEmailList
     .split(',')
     .map((email: string) => email.trim().toLowerCase())
     .filter((email: string) => email.length > 0);
     
-  console.log('⚠️ Using fallback config:', {
-    emails: ADMIN_EMAILS,
-    emailsCount: ADMIN_EMAILS.length
+  if (!ADMIN_PASSWORD || ADMIN_EMAILS.length === 0) {
+    console.error('❌ CRITICAL: Admin credentials not configured!');
+    console.error('   Run: firebase functions:config:set admin.emails="email1,email2" admin.password="yourpassword"');
+    console.error('   Or set ADMIN_EMAILS and ADMIN_PASSWORD environment variables');
+  }
+    
+  console.log('⚠️ Using environment variables for config:', {
+    emailsCount: ADMIN_EMAILS.length,
+    hasPassword: !!ADMIN_PASSWORD
   });
 }
 

@@ -1,4 +1,4 @@
-// src/firebase/config.ts - PRODUCTION READY VERSION WITH ANONYMOUS TRACKING
+// src/firebase/config.ts - SECURE VERSION FOR VERCEL
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -17,12 +17,26 @@ import {
   isSupported 
 } from 'firebase/analytics';
 import { getAuth, Auth } from 'firebase/auth';
-
 import { getPerformance } from 'firebase/performance';
 
-// Firebase Configuration - Using hardcoded values for production
+// ✅ SECURE: Get API key from Vercel environment variables
+// For development, it will fall back to a placeholder
+const getFirebaseApiKey = (): string => {
+  // In Vercel, this will be set via Environment Variables
+  // In local development, you can set it in .env.local
+  if (typeof window !== 'undefined') {
+    // Client-side: Use public environment variable
+    return process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 
+           (window.location.hostname === 'localhost' 
+             ? "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU" // Development fallback
+             : ""); // Production requires environment variable
+  }
+  return ""; // Server-side doesn't need API key
+};
+
+// Firebase Configuration - SECURE VERSION
 const firebaseConfig = {
-  apiKey: "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU",
+  apiKey: getFirebaseApiKey(), // ✅ Securely retrieved
   authDomain: "careercraft-36711.firebaseapp.com",
   projectId: "careercraft-36711",
   storageBucket: "careercraft-36711.firebasestorage.app",
@@ -33,10 +47,13 @@ const firebaseConfig = {
 
 // Check if config is valid
 const isConfigValid = () => {
-  return firebaseConfig.apiKey && 
+  const apiKey = firebaseConfig.apiKey;
+  return apiKey && 
          firebaseConfig.projectId && 
-         !firebaseConfig.apiKey.includes('your-') &&
-         firebaseConfig.apiKey.length > 20;
+         !apiKey.includes('your-') &&
+         apiKey.length > 20 &&
+         // ✅ Extra security: Make sure it's not the original exposed key
+         apiKey !== "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU";
 };
 
 // Initialize Firebase only once
@@ -83,16 +100,30 @@ export const initializeFirebase = async (): Promise<{
       console.error('❌ Invalid Firebase configuration:', {
         apiKeyLength: firebaseConfig.apiKey?.length || 0,
         projectId: firebaseConfig.projectId,
-        isValid: hasValidConfig
+        isValid: hasValidConfig,
+        environment: typeof window !== 'undefined' ? 'client' : 'server'
       });
+      
+      // Log helpful message for debugging
+      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+        console.warn('⚠️ Production site detected but Firebase API key is invalid.');
+        console.warn('💡 Solution: Set NEXT_PUBLIC_FIREBASE_API_KEY in Vercel Environment Variables');
+      }
       
       isInitializing = false;
       return { app: null, firestore: null, analytics: null, auth: null, performance: null };
     }
 
+    // ✅ SECURITY: Don't log full API key in production
+    const maskedApiKey = firebaseConfig.apiKey ? 
+      `${firebaseConfig.apiKey.substring(0, 10)}...${firebaseConfig.apiKey.substring(firebaseConfig.apiKey.length - 4)}` : 
+      'Missing';
+    
     console.log('✅ Firebase Config:', {
       projectId: firebaseConfig.projectId,
-      authDomain: firebaseConfig.authDomain
+      authDomain: firebaseConfig.authDomain,
+      apiKey: maskedApiKey,
+      environment: window.location.hostname.includes('localhost') ? 'development' : 'production'
     });
 
     // Initialize Firebase App
@@ -189,7 +220,9 @@ export const initializeFirebase = async (): Promise<{
     
     // More specific error messages
     if (error?.code === 'auth/invalid-api-key') {
-      console.error('❌ INVALID API KEY: Please check your Firebase API key');
+      console.error('❌ INVALID API KEY: Please check your Firebase API key in Vercel Environment Variables');
+      console.error('   Go to Vercel Dashboard → Project → Settings → Environment Variables');
+      console.error('   Add: NEXT_PUBLIC_FIREBASE_API_KEY = your_new_firebase_api_key');
     } else if (error?.code === 'permission-denied') {
       console.error('❌ PERMISSION DENIED: Check Firestore security rules');
     } else if (error?.code === 'project/not-found') {
@@ -253,6 +286,11 @@ export const getFirebaseStatus = () => {
   const configValid = isConfigValid();
   const isAnonymous = !hasConsent;
   
+  // ✅ SECURITY: Mask API key in status output
+  const maskedApiKey = firebaseConfig.apiKey ? 
+    `${firebaseConfig.apiKey.substring(0, 6)}...${firebaseConfig.apiKey.substring(firebaseConfig.apiKey.length - 4)}` : 
+    'Missing';
+  
   return {
     app: !!app,
     firestore: !!firestore,
@@ -265,10 +303,12 @@ export const getFirebaseStatus = () => {
     projectId: firebaseConfig.projectId,
     environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
     configDetails: {
-      apiKey: firebaseConfig.apiKey ? `✓ Set (${firebaseConfig.apiKey.substring(0, 10)}...)` : '✗ Missing',
+      apiKey: firebaseConfig.apiKey ? `✓ Set (${maskedApiKey})` : '✗ Missing',
       projectId: firebaseConfig.projectId ? '✓ Set' : '✗ Missing',
       authDomain: firebaseConfig.authDomain ? '✓ Set' : '✗ Missing'
-    }
+    },
+    // ✅ Security check
+    usingSecureKey: configValid && firebaseConfig.apiKey !== "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU"
   };
 };
 
@@ -329,7 +369,8 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
           firestore: true,
           analytics: !!analytics,
           auth: !!auth,
-          anonymous_tracking_enabled: true
+          anonymous_tracking_enabled: true,
+          usingSecureKey: status.usingSecureKey
         }
       };
     } catch (error: any) {
@@ -356,7 +397,7 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
     let errorMessage = 'Firebase connection failed. ';
     
     if (error?.code === 'auth/invalid-api-key') {
-      errorMessage = '❌ Invalid API key. Please check your Firebase API key.';
+      errorMessage = '❌ Invalid API key. Please check your Firebase API key in Vercel Environment Variables.';
     } else if (error?.code === 'project/not-found') {
       errorMessage = `❌ Project not found: ${firebaseConfig.projectId}. Check your Firebase project.`;
     } else if (error?.code === 'unavailable') {
