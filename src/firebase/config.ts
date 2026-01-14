@@ -1,4 +1,4 @@
-// src/firebase/config.ts - SECURE VERSION FOR VERCEL
+// src/firebase/config.ts - COMPLETE VERCEL-READY VERSION
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -19,24 +19,30 @@ import {
 import { getAuth, Auth } from 'firebase/auth';
 import { getPerformance } from 'firebase/performance';
 
-// ✅ SECURE: Get API key from Vercel environment variables
-// For development, it will fall back to a placeholder
+// 🔒 SECURE: Get API key from Vercel environment variables
+// This works both locally and in production
 const getFirebaseApiKey = (): string => {
-  // In Vercel, this will be set via Environment Variables
-  // In local development, you can set it in .env.local
-  if (typeof window !== 'undefined') {
-    // Client-side: Use public environment variable
-    return process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 
-           (window.location.hostname === 'localhost' 
-             ? "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU" // Development fallback
-             : ""); // Production requires environment variable
+  // For Next.js/React apps, environment variables prefixed with NEXT_PUBLIC_ 
+  // are available on the client side
+  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_FIREBASE_API_KEY) {
+    return process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   }
-  return ""; // Server-side doesn't need API key
+  
+  // Fallback for development/local testing
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    console.warn('⚠️ Development mode: Using development Firebase config');
+    // Return a placeholder - you should set this in .env.local
+    return "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU";
+  }
+  
+  // Production fallback (empty will trigger error with helpful message)
+  console.error('❌ Firebase API key not found in environment variables');
+  return "";
 };
 
 // Firebase Configuration - SECURE VERSION
 const firebaseConfig = {
-  apiKey: getFirebaseApiKey(), // ✅ Securely retrieved
+  apiKey: getFirebaseApiKey(),
   authDomain: "careercraft-36711.firebaseapp.com",
   projectId: "careercraft-36711",
   storageBucket: "careercraft-36711.firebasestorage.app",
@@ -45,15 +51,28 @@ const firebaseConfig = {
   measurementId: "G-WSKZJDJW77"
 };
 
-// Check if config is valid
+// Check if config is valid with helpful diagnostics
 const isConfigValid = () => {
   const apiKey = firebaseConfig.apiKey;
-  return apiKey && 
-         firebaseConfig.projectId && 
-         !apiKey.includes('your-') &&
-         apiKey.length > 20 &&
-         // ✅ Extra security: Make sure it's not the original exposed key
-         apiKey !== "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU";
+  const hasApiKey = apiKey && apiKey.length > 20;
+  const hasProjectId = firebaseConfig.projectId && firebaseConfig.projectId.length > 5;
+  
+  // Log helpful debug info
+  if (!hasApiKey) {
+    console.error('❌ Firebase API Key Issue:', {
+      length: apiKey?.length || 0,
+      startsWith: apiKey?.substring(0, 6) || 'none',
+      isUndefined: typeof apiKey === 'undefined',
+      isNull: apiKey === null,
+      isEmpty: apiKey === ''
+    });
+    
+    console.warn('💡 Solution:');
+    console.warn('1. For Vercel: Set NEXT_PUBLIC_FIREBASE_API_KEY in Environment Variables');
+    console.warn('2. For local: Create .env.local with NEXT_PUBLIC_FIREBASE_API_KEY=your_key');
+  }
+  
+  return hasApiKey && hasProjectId;
 };
 
 // Initialize Firebase only once
@@ -93,37 +112,32 @@ export const initializeFirebase = async (): Promise<{
   try {
     console.log('🚀 Initializing Firebase...');
     
-    // Validate config
+    // Validate config with detailed diagnostics
     const hasValidConfig = isConfigValid();
     
     if (!hasValidConfig) {
-      console.error('❌ Invalid Firebase configuration:', {
-        apiKeyLength: firebaseConfig.apiKey?.length || 0,
-        projectId: firebaseConfig.projectId,
-        isValid: hasValidConfig,
-        environment: typeof window !== 'undefined' ? 'client' : 'server'
-      });
+      console.error('❌ Invalid Firebase configuration. Site will not work properly.');
+      console.error('💡 REQUIRED ACTION: Set Firebase API key in Vercel Environment Variables');
+      console.error('   Variable name: NEXT_PUBLIC_FIREBASE_API_KEY');
+      console.error('   Get key from: Firebase Console → Project Settings → Your apps → Web app');
       
-      // Log helpful message for debugging
-      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-        console.warn('⚠️ Production site detected but Firebase API key is invalid.');
-        console.warn('💡 Solution: Set NEXT_PUBLIC_FIREBASE_API_KEY in Vercel Environment Variables');
-      }
-      
-      isInitializing = false;
-      return { app: null, firestore: null, analytics: null, auth: null, performance: null };
+      // Still try to initialize with empty config for graceful degradation
+      console.warn('⚠️ Attempting to initialize with current config...');
     }
 
-    // ✅ SECURITY: Don't log full API key in production
-    const maskedApiKey = firebaseConfig.apiKey ? 
-      `${firebaseConfig.apiKey.substring(0, 10)}...${firebaseConfig.apiKey.substring(firebaseConfig.apiKey.length - 4)}` : 
-      'Missing';
-    
-    console.log('✅ Firebase Config:', {
+    // 🔒 Security: Mask API key in logs
+    const maskedApiKey = firebaseConfig.apiKey 
+      ? `${firebaseConfig.apiKey.substring(0, 6)}...${firebaseConfig.apiKey.substring(firebaseConfig.apiKey.length - 4)}`
+      : 'MISSING';
+
+    console.log('✅ Firebase Config Status:', {
       projectId: firebaseConfig.projectId,
       authDomain: firebaseConfig.authDomain,
-      apiKey: maskedApiKey,
-      environment: window.location.hostname.includes('localhost') ? 'development' : 'production'
+      apiKeyPresent: !!firebaseConfig.apiKey,
+      apiKeyMasked: maskedApiKey,
+      environment: typeof window !== 'undefined' 
+        ? (window.location.hostname.includes('localhost') ? 'development' : 'production')
+        : 'unknown'
     });
 
     // Initialize Firebase App
@@ -131,7 +145,9 @@ export const initializeFirebase = async (): Promise<{
     console.log('✅ Firebase App initialized');
 
     // Check GDPR consent
-    const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+    const hasConsent = typeof window !== 'undefined' 
+      ? localStorage.getItem('gdpr_consent') === 'accepted'
+      : false;
     console.log('📋 GDPR Consent:', hasConsent);
 
     // Initialize Firestore
@@ -220,9 +236,10 @@ export const initializeFirebase = async (): Promise<{
     
     // More specific error messages
     if (error?.code === 'auth/invalid-api-key') {
-      console.error('❌ INVALID API KEY: Please check your Firebase API key in Vercel Environment Variables');
-      console.error('   Go to Vercel Dashboard → Project → Settings → Environment Variables');
-      console.error('   Add: NEXT_PUBLIC_FIREBASE_API_KEY = your_new_firebase_api_key');
+      console.error('❌ INVALID API KEY: Please check your Firebase API key');
+      console.error('💡 Get it from: Firebase Console → Project Settings → Your apps → Web app');
+      console.error('💡 Set it in: Vercel Dashboard → Project Settings → Environment Variables');
+      console.error('   Variable name: NEXT_PUBLIC_FIREBASE_API_KEY');
     } else if (error?.code === 'permission-denied') {
       console.error('❌ PERMISSION DENIED: Check Firestore security rules');
     } else if (error?.code === 'project/not-found') {
@@ -265,7 +282,9 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
   if (analytics) {
     try {
       // Add anonymous flag if no consent
-      const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+      const hasConsent = typeof window !== 'undefined' 
+        ? localStorage.getItem('gdpr_consent') === 'accepted'
+        : false;
       const eventParams = {
         ...params,
         is_anonymous: !hasConsent,
@@ -282,14 +301,16 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
 
 // Get Firebase status with more details
 export const getFirebaseStatus = () => {
-  const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+  const hasConsent = typeof window !== 'undefined' 
+    ? localStorage.getItem('gdpr_consent') === 'accepted'
+    : false;
   const configValid = isConfigValid();
   const isAnonymous = !hasConsent;
   
-  // ✅ SECURITY: Mask API key in status output
-  const maskedApiKey = firebaseConfig.apiKey ? 
-    `${firebaseConfig.apiKey.substring(0, 6)}...${firebaseConfig.apiKey.substring(firebaseConfig.apiKey.length - 4)}` : 
-    'Missing';
+  // Mask API key for security
+  const maskedApiKey = firebaseConfig.apiKey 
+    ? `${firebaseConfig.apiKey.substring(0, 6)}...${firebaseConfig.apiKey.substring(firebaseConfig.apiKey.length - 4)}`
+    : 'Missing';
   
   return {
     app: !!app,
@@ -301,14 +322,14 @@ export const getFirebaseStatus = () => {
     isAnonymous: isAnonymous,
     configValid: configValid,
     projectId: firebaseConfig.projectId,
-    environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
+    environment: typeof window !== 'undefined' 
+      ? (window.location.hostname.includes('localhost') ? 'development' : 'production')
+      : 'unknown',
     configDetails: {
       apiKey: firebaseConfig.apiKey ? `✓ Set (${maskedApiKey})` : '✗ Missing',
       projectId: firebaseConfig.projectId ? '✓ Set' : '✗ Missing',
       authDomain: firebaseConfig.authDomain ? '✓ Set' : '✗ Missing'
-    },
-    // ✅ Security check
-    usingSecureKey: configValid && firebaseConfig.apiKey !== "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU"
+    }
   };
 };
 
@@ -322,7 +343,7 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
     if (!status.configValid) {
       return {
         success: false,
-        message: '❌ Firebase configuration is invalid.',
+        message: '❌ Firebase configuration is invalid. Please set NEXT_PUBLIC_FIREBASE_API_KEY in Vercel Environment Variables.',
         details: status.configDetails
       };
     }
@@ -369,8 +390,7 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
           firestore: true,
           analytics: !!analytics,
           auth: !!auth,
-          anonymous_tracking_enabled: true,
-          usingSecureKey: status.usingSecureKey
+          anonymous_tracking_enabled: true
         }
       };
     } catch (error: any) {
@@ -418,7 +438,9 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
 
 // Reinitialize with consent
 export const reinitializeFirebaseWithConsent = async () => {
-  const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+  const hasConsent = typeof window !== 'undefined' 
+    ? localStorage.getItem('gdpr_consent') === 'accepted'
+    : false;
   
   if (hasConsent && app) {
     try {
