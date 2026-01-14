@@ -431,6 +431,138 @@ export const syncPageViews = functions.firestore
     }
   });
 
+
+
+/**
+ * SYNC GOVERNMENT EXAMS - Real-time sync for government exams (CREATE/UPDATE/DELETE)
+ */
+export const syncGovernmentExams = functions.firestore
+  .document('governmentExams/{docId}')
+  .onWrite(async (change, context) => {
+    const pool = initializePostgresPool();
+    const docId = context.params.docId;
+    
+    if (!change.after.exists) {
+      // Document was deleted
+      try {
+        await pool.query(
+          'DELETE FROM government_exams WHERE firestore_doc_id = $1',
+          [docId]
+        );
+        console.log(`✅ Government exam deleted from PostgreSQL: ${docId}`);
+      } catch (error: any) {
+        console.error(`❌ Failed to delete government exam ${docId}:`, error.message);
+      }
+      return;
+    }
+    
+    const data = change.after.data();
+    
+    if (!data) {
+      console.error(`❌ No data found for government exam: ${docId}`);
+      return;
+    }
+    
+    console.log(`🔄 Syncing government exam: ${docId}`);
+    
+    try {
+      const timestamp = firestoreTimestampToDate(data.createdAt);
+      const updatedAt = firestoreTimestampToDate(data.updatedAt);
+      const expiresAt = firestoreTimestampToDate(data.expiresAt);
+      
+      // Parse dates from string format
+      const applicationStartDate = parseDateString(data.applicationStartDate);
+      const applicationEndDate = parseDateString(data.applicationEndDate);
+      const examDate = parseDateString(data.examDate);
+      const admitCardDate = data.admitCardDate ? parseDateString(data.admitCardDate) : null;
+      const resultDate = data.resultDate ? parseDateString(data.resultDate) : null;
+      
+      await pool.query(
+        `INSERT INTO government_exams 
+         (firestore_doc_id, exam_id, exam_name, organization, posts, vacancies, 
+          eligibility, application_start_date, application_end_date, exam_date, 
+          exam_level, age_limit, application_fee, exam_mode, official_website,
+          notification_link, apply_link, syllabus, admit_card_date, result_date,
+          featured, is_new, is_active, is_approved, views, shares, applications,
+          saves, created_at, updated_at, expires_at, created_by, last_updated_by,
+          consent_given, data_processing_location)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
+         ON CONFLICT (firestore_doc_id) DO UPDATE SET
+           exam_name = EXCLUDED.exam_name,
+           organization = EXCLUDED.organization,
+           posts = EXCLUDED.posts,
+           vacancies = EXCLUDED.vacancies,
+           eligibility = EXCLUDED.eligibility,
+           application_start_date = EXCLUDED.application_start_date,
+           application_end_date = EXCLUDED.application_end_date,
+           exam_date = EXCLUDED.exam_date,
+           exam_level = EXCLUDED.exam_level,
+           age_limit = EXCLUDED.age_limit,
+           application_fee = EXCLUDED.application_fee,
+           exam_mode = EXCLUDED.exam_mode,
+           official_website = EXCLUDED.official_website,
+           notification_link = EXCLUDED.notification_link,
+           apply_link = EXCLUDED.apply_link,
+           syllabus = EXCLUDED.syllabus,
+           admit_card_date = EXCLUDED.admit_card_date,
+           result_date = EXCLUDED.result_date,
+           featured = EXCLUDED.featured,
+           is_new = EXCLUDED.is_new,
+           is_active = EXCLUDED.is_active,
+           views = EXCLUDED.views,
+           shares = EXCLUDED.shares,
+           applications = EXCLUDED.applications,
+           saves = EXCLUDED.saves,
+           updated_at = EXCLUDED.updated_at,
+           expires_at = EXCLUDED.expires_at,
+           last_updated_by = EXCLUDED.last_updated_by`,
+        [
+          docId,
+          data.id || docId,
+          data.examName || '',
+          data.organization || '',
+          data.posts || '',
+          data.vacancies || '',
+          data.eligibility || '',
+          applicationStartDate,
+          applicationEndDate,
+          examDate,
+          data.examLevel || '',
+          data.ageLimit || '',
+          data.applicationFee || '',
+          data.examMode || 'Online',
+          data.officialWebsite || '',
+          data.notificationLink || '',
+          data.applyLink || '',
+          data.syllabus || '',
+          admitCardDate,
+          resultDate,
+          data.featured || false,
+          data.isNew || false,
+          data.isActive !== false,
+          data.isApproved !== false,
+          data.views || 0,
+          data.shares || 0,
+          data.applications || 0,
+          data.saves || 0,
+          timestamp || new Date(),
+          updatedAt || new Date(),
+          expiresAt,
+          data.createdBy || 'system',
+          data.lastUpdatedBy || 'system',
+          data.consentGiven || false,
+          data.dataProcessingLocation || 'IN'
+        ]
+      );
+      
+      await logSyncOperation(pool, 'governmentExams', 'upsert', 1, 1, 0, 'success');
+      console.log(`✅ Government exam synced: ${docId}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Failed to sync government exam ${docId}:`, error.message);
+      await logSyncOperation(pool, 'governmentExams', 'upsert', 1, 0, 1, 'failed', error.message);
+    }
+  });
 /**
  * SYNC EVENTS - Real-time sync for general events
  */
@@ -1751,7 +1883,8 @@ export const checkFirestoreCollections = runWithCors(async (req: any, res: any) 
       'jobs', // ✅ ADDED
       'jobDrives', // ✅ ADDED
       'resumes', // ✅ ADDED
-      'professional_resumes' // ✅ ADDED
+      'professional_resumes',
+      'governmentExams' // ✅ ADDED
     ];
     
     const results: any = {};
@@ -2172,6 +2305,14 @@ export const getSyncStatus = runWithCors(async (req: any, res: any) => {
         COUNT(*) as row_count,
         MAX(updated_at) as latest_record
       FROM professional_resumes
+      UNION ALL
+SELECT 
+  'government_exams' as table_name,
+  COUNT(*) as row_count,
+  MAX(updated_at) as latest_record
+FROM government_exams
+
+
     `);
     
     res.json({

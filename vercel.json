@@ -20,12 +20,22 @@
     },
     {
       "src": "/job-applications",
-      "dest": "/latest-jobs-for-freshers-india",
+      "dest": "/latest-job-updates-india",
       "status": 301
     },
     {
       "src": "/job-applications/(.*)",
-      "dest": "/latest-jobs-for-freshers-india",
+      "dest": "/latest-job-updates-india",
+      "status": 301
+    },
+    {
+      "src": "/latest-jobs-for-freshers-india",
+      "dest": "/latest-job-updates-india",
+      "status": 301
+    },
+    {
+      "src": "/latest-jobs-for-freshers-india/(.*)",
+      "dest": "/latest-job-updates-india",
       "status": 301
     },
     {

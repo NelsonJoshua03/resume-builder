@@ -29,7 +29,6 @@ import GoogleAnalytics from './components/GoogleAnalytics';
 import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import EditResumePage from './components/EditResumePage';
-import LatestJobUpdatesIndia from "./components/LatestJobUpdatesIndia";
 
 // SEO Pages
 import FreeResumeBuilderPage from './components/seo-pages/FreeResumeBuilderPage';
@@ -107,11 +106,11 @@ function App() {
             <Routes>
               {/* Main Pages */}
               <Route path="/" element={<HomePage />} />
-              <Route path="/latest-job-updates-india" element={<LatestJobUpdatesIndia />} />
+              <Route path="/latest-job-updates-india" element={<JobApplications />} />
               <Route path="/builder" element={<Navigate to="/free-resume-builder" replace />} /> {/* Redirect old builder */}
               <Route path="/job-disciplines" element={<JobDisciplines />} />
-              <Route path="/latest-jobs-for-freshers-india" element={<JobApplications />} />
-              <Route path="/job-applications" element={<Navigate to="/latest-jobs-for-freshers-india" replace />} />
+              <Route path="/latest-jobs-for-freshers-india" element={<Navigate to="/latest-job-updates-india" replace />} />
+              <Route path="/job-applications" element={<Navigate to="/latest-job-updates-india" replace />} />
               <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/blog" element={<Blog />} />

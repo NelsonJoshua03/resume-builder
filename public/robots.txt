@@ -18,9 +18,8 @@ Allow: /resume-builder-for-it-jobs
 Allow: /resume-builder-for-developers
 Allow: /create-resume-online
 Allow: /edit
-Allow: /latest-jobs-for-freshers-india
-Allow: /latest-walk-in-drives-india
 Allow: /latest-job-updates-india
+Allow: /latest-walk-in-drives-india
 Allow: /job-disciplines
 Allow: /government-exams
 Allow: /blog
@@ -80,6 +79,46 @@ Disallow: /*/api/
 Disallow: /api/*
 Disallow: /graphql
 Disallow: /graphql/*
+
+# Old/redirected paths
+Disallow: /builder
+Disallow: /builder/
+Disallow: /job-applications
+Disallow: /job-applications/
+Disallow: /job-drives
+Disallow: /job-drives/
+Disallow: /latest-jobs-for-freshers-india
+Disallow: /latest-jobs-for-freshers-india/
+Disallow: /resume-builder
+Disallow: /resume-builder/
+Disallow: /cv-builder
+Disallow: /cv-builder/
+Disallow: /resume-creator
+Disallow: /resume-creator/
+Disallow: /make-resume
+Disallow: /make-resume/
+Disallow: /create-resume
+Disallow: /create-resume/
+Disallow: /resume-maker
+Disallow: /resume-maker/
+Disallow: /ats-resume
+Disallow: /ats-resume/
+Disallow: /online-resume
+Disallow: /online-resume/
+Disallow: /professional-resume
+Disallow: /professional-resume/
+Disallow: /fresher-resume
+Disallow: /fresher-resume/
+Disallow: /engineer-resume
+Disallow: /engineer-resume/
+Disallow: /it-resume
+Disallow: /it-resume/
+Disallow: /developer-resume
+Disallow: /developer-resume/
+Disallow: /free-cv-maker
+Disallow: /free-cv-maker/
+Disallow: /cv-creator
+Disallow: /cv-creator/
 
 # URL parameters for duplicate content
 Disallow: /*?search=

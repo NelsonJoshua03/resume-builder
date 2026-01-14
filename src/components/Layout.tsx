@@ -1,4 +1,4 @@
-// src/components/Layout.tsx - UPDATED WITH LATEST JOB UPDATES LINK
+// src/components/Layout.tsx - UPDATED: Simplified navigation
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -125,7 +125,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </span>
               </Link>
               
-              {/* Navigation Menu - UPDATED: Added Latest Job Updates link */}
+              {/* Navigation Menu - SIMPLIFIED */}
               <div className="hidden md:flex space-x-4 lg:space-x-6">
                 {/* Government Exams */}
                 <Link 
@@ -151,19 +151,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   Job Disciplines
                 </Link>
                 
-                {/* Fresher Jobs */}
-                <Link 
-                  to="/latest-jobs-for-freshers-india" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/latest-jobs-for-freshers-india') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                >
-                  Fresher Jobs 2026
-                </Link>
-                
-                {/* NEW: Latest Job Updates for Experienced Professionals */}
+                {/* Latest Job Updates (Now shows fresher jobs) */}
                 <Link 
                   to="/latest-job-updates-india" 
                   className={`font-medium transition-colors text-sm lg:text-base ${
@@ -172,7 +160,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
                 >
-                  Experienced Jobs
+                  Latest Jobs 2026
                 </Link>
                 
                 {/* Latest Walk-in Drives */}
@@ -291,7 +279,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </main>
 
-        {/* Footer - UPDATED: Added Latest Job Updates link */}
+        {/* Footer - SIMPLIFIED */}
         <footer className="bg-gray-900 text-white py-8 md:py-12 mt-auto w-full">
           <div className="container mx-auto px-4 w-full max-w-7xl">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-8 mb-6 md:mb-8">
@@ -333,8 +321,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Home</Link></li>
                   <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Government Exams</Link></li>
                   <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Disciplines</Link></li>
-                  <li><Link to="/latest-jobs-for-freshers-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Fresher Jobs 2026</Link></li>
-                  <li><Link to="/latest-job-updates-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Experienced Jobs</Link></li>
+                  <li><Link to="/latest-job-updates-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Latest Jobs 2026</Link></li>
                   <li><Link to="/latest-walk-in-drives-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Walk-in Drives</Link></li>
                 </ul>
               </div>
