@@ -21,7 +21,7 @@ import { getPerformance } from 'firebase/performance';
 
 // ✅ SIMPLE SOLUTION: Direct API key
 // For now, use hardcoded key. We'll fix Vercel later.
-const FIREBASE_API_KEY = "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU";
+const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU";
 
 // Firebase Configuration
 const firebaseConfig = {

@@ -135,6 +135,7 @@ export class FirebaseAnalyticsService {
     // ✅ FIXED: Added isAnonymous field to match UserEvent interface
     const event: UserEvent = {
       ...eventData,
+      eventValue: eventData.eventValue || 0,
       userId: this.userId,
       sessionId: this.sessionId,
       timestamp: new Date(),
