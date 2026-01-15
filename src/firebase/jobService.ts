@@ -1,4 +1,4 @@
-// src/firebase/jobService.ts - COMPLETE UPDATED VERSION WITH AUTHENTICATION RETRY
+// src/firebase/jobService.ts - UPDATED WITH ADMIN AUTHENTICATION CHECK
 import { 
   collection,
   doc,
@@ -14,10 +14,18 @@ import {
   addDoc,
   Timestamp,
   limit,
-  writeBatch
+  writeBatch,
+  DocumentReference
 } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { initializeFirebase, getFirestoreInstance, testFirebaseConnection } from './config';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { 
+  initializeFirebase, 
+  getFirestoreInstance, 
+  testFirebaseConnection,
+  waitForAuth,
+  canPostJobs,
+  getCurrentUser 
+} from './config';
 import { firebaseAnalytics } from './analytics';
 
 export interface JobData {
@@ -87,7 +95,6 @@ export class FirebaseJobService {
   private firestoreInitialized = false;
   private localJobsKey = 'firebase_jobs_cache';
   private syncInProgress = false;
-  private authAttempted = false;
 
   constructor() {
     this.initializeFirestore();
@@ -167,91 +174,67 @@ export class FirebaseJobService {
     }
   }
 
-  // NEW: Authentication helper method
-  private async ensureAuthenticated(): Promise<boolean> {
+  // NEW: Check if user is authenticated and has admin permissions
+  private async checkAdminPermissions(): Promise<boolean> {
     try {
-      const auth = getAuth();
-      
-      // If already authenticated
-      if (auth.currentUser) {
+      const canPost = await canPostJobs();
+      if (canPost) {
+        console.log('✅ User has permission to post jobs');
         return true;
       }
       
-      // Try to sign in anonymously
-      console.log('🔄 Attempting anonymous authentication for Firestore access...');
-      await signInAnonymously(auth);
-      console.log('✅ Authenticated anonymously');
-      this.authAttempted = true;
-      return true;
+      // Check localStorage fallback
+      const isAdminLocal = localStorage.getItem('is_admin') === 'true';
+      const adminToken = localStorage.getItem('careercraft_admin_token');
       
-    } catch (authError: any) {
-      console.warn('⚠️ Authentication failed:', authError.message);
-      this.authAttempted = true;
-      return false;
-    }
-  }
-
-  // NEW: Try Firebase operation with authentication retry
-  private async tryFirebaseOperation<T>(
-    operation: () => Promise<T>,
-    operationName: string
-  ): Promise<T | null> {
-    const firestore = this.getFirestore();
-    if (!firestore) {
-      console.warn(`Firestore not available for ${operationName}`);
-      return null;
-    }
-
-    try {
-      // Try the operation
-      return await operation();
-    } catch (error: any) {
-      // Check if it's an authentication error
-      if (error.code === 'permission-denied' && !this.authAttempted) {
-        console.log(`🔄 Permission denied for ${operationName}, trying authentication...`);
-        
-        // Try to authenticate
-        const authenticated = await this.ensureAuthenticated();
-        if (authenticated) {
-          try {
-            // Retry the operation after authentication
-            return await operation();
-          } catch (retryError: any) {
-            console.error(`❌ ${operationName} failed after authentication:`, retryError.message);
-            return null;
-          }
-        }
+      if (isAdminLocal && adminToken) {
+        console.log('⚠️ Using localStorage admin fallback (Firebase auth might not be set)');
+        return true;
       }
       
-      console.error(`❌ ${operationName} failed:`, error.message);
-      return null;
+      console.warn('❌ User does not have permission to post jobs');
+      return false;
+    } catch (error) {
+      console.error('Failed to check admin permissions:', error);
+      return false;
     }
   }
 
   async createJob(jobData: CreateJobInput): Promise<string> {
     try {
+      // Check admin permissions before proceeding
+      const hasPermission = await this.checkAdminPermissions();
+      if (!hasPermission) {
+        throw new Error('Permission denied: Admin access required to post jobs');
+      }
+
       const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const firestore = this.getFirestore();
       if (firestore) {
         try {
-          // Try to create in Firebase with authentication retry
-          const result = await this.tryFirebaseOperation(
-            () => this.createJobInFirestore(jobId, jobData),
-            'createJobInFirestore'
-          );
+          // Get current user for metadata
+          const user = await waitForAuth();
+          const userEmail = user?.email || 'admin@careercraft.in';
+          const userId = user?.uid || 'system';
           
-          if (result !== null) {
-            console.log(`✅ Job ${jobId} created in Firebase`);
-            // Also store locally as backup
-            await this.createJobInLocalStorage(jobId, jobData);
-            return jobId;
-          } else {
-            console.warn('Failed to create job in Firebase, saving locally only');
-            await this.createJobInLocalStorage(jobId, jobData);
+          // Create job in Firebase
+          await this.createJobInFirestore(jobId, jobData, userEmail, userId);
+          console.log(`✅ Job ${jobId} created in Firebase by ${userEmail}`);
+          
+          // Also store locally as backup
+          await this.createJobInLocalStorage(jobId, jobData);
+          return jobId;
+        } catch (firestoreError: any) {
+          console.warn('Failed to create job in Firebase:', firestoreError);
+          
+          // If it's a permission error, throw it
+          if (firestoreError.code === 'permission-denied') {
+            throw new Error('Permission denied: You do not have permission to post jobs. Please log in as admin.');
           }
-        } catch (firestoreError) {
-          console.warn('Failed to create job in Firebase, saving locally:', firestoreError);
+          
+          // For other errors, save locally
+          console.warn('Saving job locally as backup');
           await this.createJobInLocalStorage(jobId, jobData);
         }
       } else {
@@ -259,13 +242,18 @@ export class FirebaseJobService {
       }
       
       return jobId;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating job:', error);
-      throw error;
+      throw new Error(`Failed to create job: ${error.message}`);
     }
   }
 
-  private async createJobInFirestore(jobId: string, jobData: CreateJobInput): Promise<void> {
+  private async createJobInFirestore(
+    jobId: string, 
+    jobData: CreateJobInput,
+    userEmail: string,
+    userId: string
+  ): Promise<void> {
     const firestore = this.getFirestore();
     if (!firestore) throw new Error('Firestore not initialized');
 
@@ -293,10 +281,24 @@ export class FirebaseJobService {
       applications: 0,
       saves: 0,
       experience: jobData.experience || '0-2 years',
+      createdBy: userEmail,
+      lastUpdatedBy: userEmail,
+      createdById: userId,
       dataProcessingLocation: 'IN'
     };
 
     await setDoc(jobRef, completeJobData);
+    
+    // Log admin action
+    try {
+      await this.logAdminAction('job_created', jobId, userEmail, {
+        title: jobData.title,
+        company: jobData.company,
+        sector: jobData.sector
+      });
+    } catch (logError) {
+      console.warn('Failed to log admin action:', logError);
+    }
     
     const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
     if (hasConsent) {
@@ -313,7 +315,8 @@ export class FirebaseJobService {
             company: jobData.company,
             sector: jobData.sector,
             type: jobData.type,
-            experience: jobData.experience
+            experience: jobData.experience,
+            createdBy: userEmail
           },
           consentGiven: hasConsent,
           dataProcessingLocation: 'IN'
@@ -321,6 +324,31 @@ export class FirebaseJobService {
       } catch (error) {
         console.warn('Failed to track job creation event:', error);
       }
+    }
+  }
+
+  private async logAdminAction(
+    action: string, 
+    resourceId: string, 
+    adminEmail: string,
+    metadata?: any
+  ): Promise<void> {
+    const firestore = this.getFirestore();
+    if (!firestore) return;
+
+    try {
+      const adminLogsRef = collection(firestore, 'admin_logs');
+      await addDoc(adminLogsRef, {
+        action,
+        resourceId,
+        adminEmail,
+        timestamp: serverTimestamp(),
+        metadata: metadata || {},
+        ip: window.location.hostname,
+        userAgent: navigator.userAgent
+      });
+    } catch (error) {
+      console.warn('Failed to log admin action:', error);
     }
   }
 
@@ -347,6 +375,8 @@ export class FirebaseJobService {
       applications: 0,
       saves: 0,
       experience: jobData.experience || '0-2 years',
+      createdBy: 'local_admin',
+      lastUpdatedBy: 'local_admin',
       dataProcessingLocation: 'IN'
     };
 
@@ -680,26 +710,39 @@ export class FirebaseJobService {
   }
 
   async updateJob(jobId: string, updates: Partial<JobData>): Promise<void> {
+    // Check admin permissions before proceeding
+    const hasPermission = await this.checkAdminPermissions();
+    if (!hasPermission) {
+      throw new Error('Permission denied: Admin access required to update jobs');
+    }
+
     const firestore = this.getFirestore();
+    const user = await waitForAuth();
+    const userEmail = user?.email || 'admin@careercraft.in';
+
     if (firestore) {
       try {
-        const result = await this.tryFirebaseOperation(async () => {
-          const jobRef = doc(firestore, this.collectionName, jobId);
-          await updateDoc(jobRef, {
-            ...updates,
-            // Ensure arrays are properly initialized
-            requirements: safeArray(updates.requirements),
-            qualifications: safeArray(updates.qualifications),
-            updatedAt: serverTimestamp()
-          });
-          return true;
-        }, 'updateJob');
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        await updateDoc(jobRef, {
+          ...updates,
+          // Ensure arrays are properly initialized
+          requirements: safeArray(updates.requirements),
+          qualifications: safeArray(updates.qualifications),
+          updatedAt: serverTimestamp(),
+          lastUpdatedBy: userEmail
+        });
         
-        if (result === null) {
-          console.warn('Failed to update job in Firebase, updating local cache only');
-        }
-      } catch (firestoreError) {
+        // Log admin action
+        await this.logAdminAction('job_updated', jobId, userEmail, {
+          updates: Object.keys(updates),
+          title: updates.title || jobId
+        });
+        
+      } catch (firestoreError: any) {
         console.warn('Failed to update job in Firebase:', firestoreError);
+        if (firestoreError.code === 'permission-denied') {
+          throw new Error('Permission denied: You do not have permission to update jobs');
+        }
       }
     }
     
@@ -718,7 +761,8 @@ export class FirebaseJobService {
             // Ensure arrays are properly initialized
             requirements: safeArray(updates.requirements || cachedJobs[jobIndex].requirements),
             qualifications: safeArray(updates.qualifications || cachedJobs[jobIndex].qualifications),
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            lastUpdatedBy: userEmail
           };
           
           localStorage.setItem(this.localJobsKey, JSON.stringify({
@@ -740,7 +784,8 @@ export class FirebaseJobService {
         // Ensure arrays are properly initialized
         requirements: safeArray(updates.requirements || manualJobs[jobIndex].requirements),
         qualifications: safeArray(updates.qualifications || manualJobs[jobIndex].qualifications),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        lastUpdatedBy: userEmail
       };
       localStorage.setItem('manualJobs', JSON.stringify(manualJobs));
     }
@@ -754,7 +799,7 @@ export class FirebaseJobService {
           eventLabel: updates.title || jobId,
           pagePath: '/admin/job-posting',
           pageTitle: 'Admin Job Posting',
-          metadata: { jobId, ...updates },
+          metadata: { jobId, ...updates, updatedBy: userEmail },
           consentGiven: hasConsent,
           dataProcessingLocation: 'IN'
         });
@@ -765,23 +810,33 @@ export class FirebaseJobService {
   }
 
   async deleteJob(jobId: string): Promise<void> {
+    // Check admin permissions before proceeding
+    const hasPermission = await this.checkAdminPermissions();
+    if (!hasPermission) {
+      throw new Error('Permission denied: Admin access required to delete jobs');
+    }
+
     const firestore = this.getFirestore();
+    const user = await waitForAuth();
+    const userEmail = user?.email || 'admin@careercraft.in';
+
     if (firestore) {
       try {
-        const result = await this.tryFirebaseOperation(async () => {
-          const jobRef = doc(firestore, this.collectionName, jobId);
-          await updateDoc(jobRef, {
-            isActive: false,
-            updatedAt: serverTimestamp()
-          });
-          return true;
-        }, 'deleteJob');
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        await updateDoc(jobRef, {
+          isActive: false,
+          updatedAt: serverTimestamp(),
+          lastUpdatedBy: userEmail
+        });
         
-        if (result === null) {
-          console.warn('Failed to delete job from Firebase, updating local cache only');
-        }
-      } catch (firestoreError) {
+        // Log admin action
+        await this.logAdminAction('job_deleted', jobId, userEmail);
+        
+      } catch (firestoreError: any) {
         console.warn('Failed to delete job from Firebase:', firestoreError);
+        if (firestoreError.code === 'permission-denied') {
+          throw new Error('Permission denied: You do not have permission to delete jobs');
+        }
       }
     }
     
@@ -815,7 +870,7 @@ export class FirebaseJobService {
           eventLabel: jobId,
           pagePath: '/admin/job-posting',
           pageTitle: 'Admin Job Posting',
-          metadata: { jobId },
+          metadata: { jobId, deletedBy: userEmail },
           consentGiven: hasConsent,
           dataProcessingLocation: 'IN'
         });
@@ -829,22 +884,15 @@ export class FirebaseJobService {
     const firestore = this.getFirestore();
     if (firestore) {
       try {
-        const result = await this.tryFirebaseOperation(async () => {
-          const jobRef = doc(firestore, this.collectionName, jobId);
-          const snapshot = await getDoc(jobRef);
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            const currentViews = data.views || 0;
-            await updateDoc(jobRef, {
-              views: currentViews + 1,
-              updatedAt: serverTimestamp()
-            });
-          }
-          return true;
-        }, 'incrementViewCount');
-        
-        if (result === null) {
-          console.warn('Failed to increment view count in Firebase');
+        const jobRef = doc(firestore, this.collectionName, jobId);
+        const snapshot = await getDoc(jobRef);
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const currentViews = data.views || 0;
+          await updateDoc(jobRef, {
+            views: currentViews + 1,
+            updatedAt: serverTimestamp()
+          });
         }
       } catch (firestoreError) {
         console.warn('Failed to increment view count in Firebase:', firestoreError);
@@ -875,6 +923,12 @@ export class FirebaseJobService {
   }
 
   async bulkCreateJobs(jobsData: CreateJobInput[]): Promise<{ success: number; failed: number; errors: string[] }> {
+    // Check admin permissions before proceeding
+    const hasPermission = await this.checkAdminPermissions();
+    if (!hasPermission) {
+      throw new Error('Permission denied: Admin access required to bulk create jobs');
+    }
+
     const results = {
       success: 0,
       failed: 0,
@@ -882,6 +936,10 @@ export class FirebaseJobService {
     };
 
     const firestore = this.getFirestore();
+    const user = await waitForAuth();
+    const userEmail = user?.email || 'admin@careercraft.in';
+    const userId = user?.uid || 'system';
+
     if (firestore) {
       try {
         const batch = writeBatch(firestore);
@@ -915,6 +973,9 @@ export class FirebaseJobService {
               applications: 0,
               saves: 0,
               experience: jobData.experience || '0-2 years',
+              createdBy: userEmail,
+              lastUpdatedBy: userEmail,
+              createdById: userId,
               dataProcessingLocation: 'IN'
             });
             
@@ -927,13 +988,23 @@ export class FirebaseJobService {
         
         if (results.success > 0) {
           await batch.commit();
-          console.log(`✅ Successfully created ${results.success} jobs in Firebase`);
+          console.log(`✅ Successfully created ${results.success} jobs in Firebase by ${userEmail}`);
+          
+          // Log bulk action
+          await this.logAdminAction('jobs_bulk_created', 'multiple', userEmail, {
+            count: results.success,
+            failed: results.failed
+          });
         }
       } catch (batchError: any) {
         console.error('Batch creation failed:', batchError);
         results.failed += results.success;
         results.success = 0;
         results.errors.push(`Batch commit failed: ${batchError.message}`);
+        
+        if (batchError.code === 'permission-denied') {
+          throw new Error('Permission denied: You do not have permission to bulk create jobs');
+        }
       }
     }
     
@@ -962,7 +1033,8 @@ export class FirebaseJobService {
           metadata: {
             total_jobs: jobsData.length,
             successful: results.success,
-            failed: results.failed
+            failed: results.failed,
+            createdBy: userEmail
           },
           consentGiven: hasConsent,
           dataProcessingLocation: 'IN'
@@ -1055,6 +1127,8 @@ export class FirebaseJobService {
             applications: localJob.applications || 0,
             saves: localJob.saves || 0,
             experience: localJob.experience || '0-2 years',
+            createdBy: 'sync_user',
+            lastUpdatedBy: 'sync_user',
             dataProcessingLocation: 'IN'
           });
           

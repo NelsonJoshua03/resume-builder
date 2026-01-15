@@ -1,17 +1,18 @@
-// src/components/AdminJobPosting.tsx - COMPLETE UPDATED VERSION WITH QUALIFICATIONS FIELD
+// src/components/AdminJobPosting.tsx - COMPLETE UPDATED VERSION WITH AUTHENTICATION
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
-import { getFirebaseStatus } from '../firebase/config';
-import { getAuth } from 'firebase/auth';
+import { getFirebaseStatus, getAuthInstance, waitForAuth, getAdminStatus } from '../firebase/config';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 import { firebaseJobService } from '../firebase/jobService';
 import { 
   Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle, 
   Database, WifiOff, GraduationCap, Award, DollarSign, Calendar,
-  BookOpen, Users, TrendingUp, Eye, Briefcase, MapPin, Building
+  BookOpen, Users, TrendingUp, Eye, Briefcase, MapPin, Building,
+  LogIn, LogOut, Shield, Lock, UserCheck
 } from 'lucide-react';
 
 interface Job {
@@ -24,7 +25,6 @@ interface Job {
   salary: string;
   description: string;
   requirements: string[];
-  // NEW FIELD: Qualifications
   qualifications: string[];
   postedDate: string;
   applyLink: string;
@@ -35,29 +35,8 @@ interface Job {
   views?: number;
   shares?: number;
   applications?: number;
-  // Experience field
   experience?: string;
 }
-
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  const auth = getAuth();
-  const user = auth.currentUser;
-  
-  if (!user) {
-    alert('Please log in as admin to post jobs');
-    return;
-  }
-  
-  // Get ID token to verify admin claims
-  const idTokenResult = await user.getIdTokenResult();
-  
-  if (!idTokenResult.claims.admin) {
-    alert('Admin access required to post jobs');
-    return;
-  }}
-
 
 const AdminJobPosting: React.FC = () => {
   const [job, setJob] = useState<Omit<Job, 'id' | 'postedDate' | 'addedTimestamp' | 'page'>>({
@@ -69,7 +48,6 @@ const AdminJobPosting: React.FC = () => {
     salary: '',
     description: '',
     requirements: [],
-    // NEW: Qualifications array
     qualifications: [],
     applyLink: '',
     featured: false,
@@ -94,7 +72,6 @@ const AdminJobPosting: React.FC = () => {
     companies: [''],
     locations: [''],
     experiences: ['0-2 years'],
-    // NEW: Qualifications for batch creation
     qualifications: ['B.E/B.Tech', 'Any Graduate'],
     count: 3
   });
@@ -114,11 +91,29 @@ const AdminJobPosting: React.FC = () => {
     failed?: number;
   }>({ syncing: false, message: '' });
 
+  const [authStatus, setAuthStatus] = useState<{
+    isAuthenticated: boolean;
+    isAdmin: boolean;
+    email?: string;
+    isLoading: boolean;
+  }>({
+    isAuthenticated: false,
+    isAdmin: false,
+    isLoading: true
+  });
+
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [loginData, setLoginData] = useState({
+    email: '',
+    password: ''
+  });
+  const [loginError, setLoginError] = useState<string>('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { trackButtonClick, trackCTAClick, trackUserFlow, trackEvent } = useGoogleAnalytics();
   const { trackFirebaseEvent } = useFirebaseAnalytics();
 
-  // Quick job templates optimized for Indian market - UPDATED WITH QUALIFICATIONS
+  // Quick job templates optimized for Indian market
   const quickTemplates = {
     software_developer: {
       title: "Software Developer",
@@ -135,7 +130,6 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of database systems",
         "Bachelor's degree in Computer Science or related field"
       ],
-      // NEW: Qualifications array
       qualifications: [
         "B.E/B.Tech in Computer Science",
         "MCA",
@@ -158,7 +152,6 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of data visualization tools",
         "Strong analytical and problem-solving skills"
       ],
-      // NEW: Qualifications array
       qualifications: [
         "B.Sc/M.Sc in Statistics/Mathematics",
         "B.Tech in Data Science",
@@ -182,7 +175,6 @@ const AdminJobPosting: React.FC = () => {
         "Knowledge of manufacturing processes",
         "Good communication skills"
       ],
-      // NEW: Qualifications array
       qualifications: [
         "B.E/B.Tech in Mechanical Engineering",
         "Diploma in Mechanical Engineering",
@@ -205,7 +197,6 @@ const AdminJobPosting: React.FC = () => {
         "Good problem-solving skills",
         "Willingness to learn new technologies"
       ],
-      // NEW: Qualifications array
       qualifications: [
         "B.E/B.Tech in Computer Science (2023/2024 Batch)",
         "BCA/MCA",
@@ -228,7 +219,6 @@ const AdminJobPosting: React.FC = () => {
         "Excellent communication skills",
         "Creative thinking and problem-solving abilities"
       ],
-      // NEW: Qualifications array
       qualifications: [
         "MBA in Marketing",
         "BBA in Marketing",
@@ -310,31 +300,152 @@ const AdminJobPosting: React.FC = () => {
 
   // Load existing manual jobs and check Firebase status
   useEffect(() => {
-    const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
-    
-    // Auto-cleanup old jobs (older than 90 days)
-    const cleanupResult = cleanupOldJobs(savedJobs, true);
-    setManualJobs(cleanupResult.cleanedJobs);
-    setCleanupStats({
-      before: cleanupResult.before,
-      after: cleanupResult.after,
-      removed: cleanupResult.removed
-    });
-    
-    // Check Firebase status
-    const status = getFirebaseStatus();
-    setFirebaseStatus(status);
-    console.log('Firebase Status:', status);
-    
-    // Load last cleanup time
-    const savedCleanup = localStorage.getItem('last_job_cleanup');
-    if (savedCleanup) {
-      setLastCleanup(savedCleanup);
-    }
-    
-    trackEvent('admin_page_view', { page: 'job_posting_admin' });
-    trackFirebaseEvent('admin_page_view', 'Admin', 'job_posting_admin', { page: 'job_posting_admin' });
+    const loadData = async () => {
+      // Load saved jobs
+      const savedJobs = JSON.parse(localStorage.getItem('manualJobs') || '[]');
+      
+      // Auto-cleanup old jobs (older than 90 days)
+      const cleanupResult = cleanupOldJobs(savedJobs, true);
+      setManualJobs(cleanupResult.cleanedJobs);
+      setCleanupStats({
+        before: cleanupResult.before,
+        after: cleanupResult.after,
+        removed: cleanupResult.removed
+      });
+      
+      // Check Firebase status
+      const status = getFirebaseStatus();
+      setFirebaseStatus(status);
+      console.log('Firebase Status:', status);
+      
+      // Load last cleanup time
+      const savedCleanup = localStorage.getItem('last_job_cleanup');
+      if (savedCleanup) {
+        setLastCleanup(savedCleanup);
+      }
+      
+      // Check authentication status
+      await checkAuthStatus();
+      
+      trackEvent('admin_page_view', { page: 'job_posting_admin' });
+      trackFirebaseEvent('admin_page_view', 'Admin', 'job_posting_admin', { page: 'job_posting_admin' });
+    };
+
+    loadData();
   }, []);
+
+  // Check authentication status
+  const checkAuthStatus = async () => {
+    setAuthStatus(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const adminStatus = await getAdminStatus();
+      const auth = getAuthInstance();
+      const user = auth?.currentUser;
+      
+      setAuthStatus({
+        isAuthenticated: !!user,
+        isAdmin: adminStatus.isAdmin,
+        email: user?.email || adminStatus.email,
+        isLoading: false
+      });
+      
+      console.log('Auth Status:', {
+        authenticated: !!user,
+        isAdmin: adminStatus.isAdmin,
+        email: user?.email,
+        localStorage: adminStatus.localStorage
+      });
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setAuthStatus({
+        isAuthenticated: false,
+        isAdmin: false,
+        isLoading: false
+      });
+    }
+  };
+
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    
+    try {
+      const auth = getAuth();
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        loginData.email, 
+        loginData.password
+      );
+      
+      // Check for admin claims
+      const tokenResult = await userCredential.user.getIdTokenResult();
+      
+      if (tokenResult.claims.admin !== true) {
+        // Sign out if not admin
+        await auth.signOut();
+        setLoginError('This account does not have admin privileges.');
+        return;
+      }
+      
+      // Update admin status in localStorage for fallback
+      localStorage.setItem('is_admin', 'true');
+      localStorage.setItem('careercraft_admin_token', 'authenticated');
+      localStorage.setItem('admin_login_time', Date.now().toString());
+      localStorage.setItem('admin_email', loginData.email);
+      
+      // Update state
+      await checkAuthStatus();
+      setShowLoginModal(false);
+      setLoginData({ email: '', password: '' });
+      
+      trackEvent('admin_login_success', { email: loginData.email });
+      trackFirebaseEvent('admin_login', 'Admin', 'login_success', { email: loginData.email });
+      
+    } catch (error: any) {
+      console.error('Login error:', error);
+      
+      let errorMessage = 'Login failed. Please check your credentials.';
+      if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Invalid email or password.';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'User not found. Please contact administrator.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later.';
+      }
+      
+      setLoginError(errorMessage);
+      trackEvent('admin_login_failed', { email: loginData.email, error: error.code });
+    }
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      const auth = getAuthInstance();
+      if (auth) {
+        await auth.signOut();
+      }
+      
+      // Clear localStorage
+      localStorage.removeItem('is_admin');
+      localStorage.removeItem('careercraft_admin_token');
+      localStorage.removeItem('admin_login_time');
+      localStorage.removeItem('admin_email');
+      
+      await checkAuthStatus();
+      
+      trackEvent('admin_logout', {});
+      trackFirebaseEvent('admin_logout', 'Admin', 'logout', {});
+      
+      alert('Logged out successfully.');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   // Cleanup old jobs function
   const cleanupOldJobs = (jobsArray: Job[] = manualJobs, auto: boolean = false) => {
@@ -495,9 +606,17 @@ const AdminJobPosting: React.FC = () => {
     trackFirebaseEvent(`apply_template_${templateKey}`, 'Admin', 'quick_templates');
   };
 
-  // Single job submission
+  // Single job submission - UPDATED WITH AUTHENTICATION
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check authentication before proceeding
+    if (!authStatus.isAdmin) {
+      alert('Admin access required to post jobs. Please log in as admin first.');
+      setShowLoginModal(true);
+      trackEvent('job_post_attempt_unauthorized', { page: 'admin_job_posting' });
+      return;
+    }
     
     try {
       const newJobData = {
@@ -506,7 +625,6 @@ const AdminJobPosting: React.FC = () => {
         requirements: requirementsInput.split('\n')
           .filter(req => req.trim() !== '')
           .map(req => req.trim()),
-        // Parse qualifications
         qualifications: qualificationsInput.split('\n')
           .filter(qual => qual.trim() !== '')
           .map(qual => qual.trim()),
@@ -541,7 +659,8 @@ const AdminJobPosting: React.FC = () => {
         company: job.company,
         sector: job.sector,
         experience: job.experience,
-        qualifications_count: newJobData.qualifications.length
+        qualifications_count: newJobData.qualifications.length,
+        admin_email: authStatus.email
       });
       
       trackFirebaseEvent('job_posted', 'Job Management', job.title, {
@@ -549,7 +668,8 @@ const AdminJobPosting: React.FC = () => {
         company: job.company,
         sector: job.sector,
         experience: job.experience,
-        qualifications_count: newJobData.qualifications.length
+        qualifications_count: newJobData.qualifications.length,
+        admin_email: authStatus.email
       });
       
       setShowSuccess(true);
@@ -575,15 +695,28 @@ const AdminJobPosting: React.FC = () => {
 
       setTimeout(() => setShowSuccess(false), 3000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating job:', error);
-      alert('Failed to create job: ' + error);
+      
+      if (error.message.includes('Permission denied') || error.message.includes('Admin access required')) {
+        alert('Permission Error: ' + error.message + '\n\nPlease:\n1. Log in as admin at /admin\n2. Check if your account has admin permissions\n3. Contact system administrator');
+        setShowLoginModal(true);
+      } else {
+        alert('Failed to create job: ' + error.message);
+      }
     }
   };
 
-  // Bulk job upload from JSON
+  // Bulk job upload from JSON - UPDATED WITH AUTHENTICATION
   const handleBulkUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check authentication before proceeding
+    if (!authStatus.isAdmin) {
+      alert('Admin access required to bulk upload jobs. Please log in as admin first.');
+      setShowLoginModal(true);
+      return;
+    }
     
     try {
       const jobsData = JSON.parse(bulkJsonInput);
@@ -620,35 +753,43 @@ const AdminJobPosting: React.FC = () => {
         trackEvent('bulk_jobs_uploaded', {
           total_jobs: jobsData.length,
           successful_uploads: results.success,
-          failed_uploads: results.failed
+          failed_uploads: results.failed,
+          admin_email: authStatus.email
         });
         
         trackFirebaseEvent('bulk_jobs_uploaded', 'Job Management', 'bulk_upload', {
           total_jobs: jobsData.length,
           successful_uploads: results.success,
-          failed_uploads: results.failed
+          failed_uploads: results.failed,
+          admin_email: authStatus.email
         });
         
         alert(`Successfully uploaded ${results.success} jobs${results.failed > 0 ? ` (${results.failed} failed)` : ''}`);
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in bulk upload:', error);
-      trackButtonClick('bulk_upload_error', 'bulk_upload', 'admin_job_posting');
-      trackFirebaseEvent('bulk_upload_error', 'Admin', 'bulk_upload_error', { error: String(error) });
       
-      setBulkUploadResults({
-        success: 0,
-        failed: 0,
-        errors: ['Invalid JSON format. Please check your JSON syntax.']
-      });
-      
-      setSyncStatus({ 
-        syncing: false, 
-        message: '❌ Upload failed',
-        synced: 0,
-        failed: 0
-      });
+      if (error.message.includes('Permission denied') || error.message.includes('Admin access required')) {
+        alert('Permission Error: ' + error.message + '\n\nPlease log in as admin first.');
+        setShowLoginModal(true);
+      } else {
+        trackButtonClick('bulk_upload_error', 'bulk_upload', 'admin_job_posting');
+        trackFirebaseEvent('bulk_upload_error', 'Admin', 'bulk_upload_error', { error: String(error) });
+        
+        setBulkUploadResults({
+          success: 0,
+          failed: 0,
+          errors: ['Invalid JSON format. Please check your JSON syntax.']
+        });
+        
+        setSyncStatus({ 
+          syncing: false, 
+          message: '❌ Upload failed',
+          synced: 0,
+          failed: 0
+        });
+      }
     }
   };
 
@@ -709,7 +850,7 @@ const AdminJobPosting: React.FC = () => {
     trackFirebaseEvent('generate_batch_jobs', 'Admin', 'batch_creator');
   };
 
-  // Download template JSON - UPDATED WITH QUALIFICATIONS FIELD
+  // Download template JSON
   const downloadTemplate = () => {
     const template = [
       {
@@ -759,54 +900,6 @@ const AdminJobPosting: React.FC = () => {
         "applyLink": "https://company.com/careers/mechanical-engineer",
         "featured": false,
         "experience": "1-3 years"
-      },
-      {
-        "title": "Fresher Software Engineer",
-        "company": "Startup India",
-        "location": "Remote",
-        "type": "Full-time",
-        "sector": "IT/Software",
-        "salary": "₹3,00,000 - ₹5,00,000 PA",
-        "description": "Great opportunity for fresh graduates to start their career in software development. We provide comprehensive training and mentorship.",
-        "requirements": [
-          "Bachelor's degree in Computer Science",
-          "Basic programming knowledge",
-          "Good problem-solving skills",
-          "Willingness to learn",
-          "Good communication skills"
-        ],
-        "qualifications": [
-          "B.E/B.Tech in Computer Science (2023/2024 Batch)",
-          "BCA/MCA",
-          "B.Sc in Computer Science"
-        ],
-        "applyLink": "mailto:hr@startup.com",
-        "featured": false,
-        "experience": "Fresher (0-1 years)"
-      },
-      {
-        "title": "Marketing Executive",
-        "company": "Digital Marketing Agency",
-        "location": "Mumbai, Maharashtra",
-        "type": "Full-time",
-        "sector": "Marketing",
-        "salary": "₹4,00,000 - ₹7,00,000 PA",
-        "description": "Looking for a dynamic Marketing Executive to handle digital marketing campaigns, social media management, and client communications.",
-        "requirements": [
-          "1-2 years of experience in digital marketing",
-          "Knowledge of SEO, SEM, and social media marketing",
-          "Excellent communication skills",
-          "Creative thinking and problem-solving abilities",
-          "Experience with analytics tools"
-        ],
-        "qualifications": [
-          "MBA in Marketing",
-          "BBA in Marketing",
-          "Any Graduate with digital marketing certification"
-        ],
-        "applyLink": "mailto:hr@marketingagency.com",
-        "featured": true,
-        "experience": "1-3 years"
       }
     ];
 
@@ -840,23 +933,44 @@ const AdminJobPosting: React.FC = () => {
     trackFirebaseEvent('export_jobs', 'Admin', 'job_management');
   };
 
-  const deleteJob = (jobId: string) => {
+  // Delete job - UPDATED WITH AUTHENTICATION
+  const deleteJob = async (jobId: string) => {
+    if (!authStatus.isAdmin) {
+      alert('Admin access required to delete jobs. Please log in as admin first.');
+      setShowLoginModal(true);
+      return;
+    }
+
     if (window.confirm('Are you sure you want to delete this job?')) {
-      const updatedJobs = manualJobs.filter(job => job.id !== jobId);
-      setManualJobs(updatedJobs);
-      localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
-      
-      // Also delete from Firebase if connected
-      if (firebaseStatus?.firestore) {
-        firebaseJobService.deleteJob(jobId);
+      try {
+        await firebaseJobService.deleteJob(jobId);
+        
+        const updatedJobs = manualJobs.filter(job => job.id !== jobId);
+        setManualJobs(updatedJobs);
+        localStorage.setItem('manualJobs', JSON.stringify(updatedJobs));
+        
+        trackButtonClick('delete_job', 'job_management', 'admin_job_posting');
+        trackFirebaseEvent('delete_job', 'Admin', 'job_management');
+        
+        alert('Job deleted successfully.');
+      } catch (error: any) {
+        if (error.message.includes('Permission denied')) {
+          alert('Permission denied: You do not have permission to delete jobs.');
+        } else {
+          alert('Failed to delete job: ' + error.message);
+        }
       }
-      
-      trackButtonClick('delete_job', 'job_management', 'admin_job_posting');
-      trackFirebaseEvent('delete_job', 'Admin', 'job_management');
     }
   };
 
+  // Clear all jobs - UPDATED WITH AUTHENTICATION
   const clearAllJobs = () => {
+    if (!authStatus.isAdmin) {
+      alert('Admin access required to clear all jobs. Please log in as admin first.');
+      setShowLoginModal(true);
+      return;
+    }
+
     if (window.confirm('Are you sure you want to delete all manually posted jobs? This action cannot be undone.')) {
       setManualJobs([]);
       localStorage.setItem('manualJobs', '[]');
@@ -903,6 +1017,77 @@ const AdminJobPosting: React.FC = () => {
         </script>
       </Helmet>
 
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-800">Admin Login Required</h3>
+                <button 
+                  onClick={() => setShowLoginModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <form onSubmit={handleLogin}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Admin Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={loginData.email}
+                      onChange={e => setLoginData({...loginData, email: e.target.value})}
+                      placeholder="admin@careercraft.in"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={loginData.password}
+                      onChange={e => setLoginData({...loginData, password: e.target.value})}
+                      placeholder="••••••••"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  {loginError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                      {loginError}
+                    </div>
+                  )}
+                  
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all"
+                    >
+                      <LogIn className="inline mr-2" size={18} />
+                      Login as Admin
+                    </button>
+                  </div>
+                </div>
+              </form>
+              
+              <div className="mt-4 text-center text-sm text-gray-600">
+                <p>Need admin access? Contact system administrator.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -919,7 +1104,9 @@ const AdminJobPosting: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Admin Job Posting - Latest Jobs</h1>
                 <p className="text-gray-600">Add new job opportunities to CareerCraft.in. Jobs auto-clean after 90 days.</p>
               </div>
-              <div className="flex items-center gap-3">
+              
+              {/* Authentication Status */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2">
                     <Database size={16} className="text-blue-600" />
@@ -928,12 +1115,51 @@ const AdminJobPosting: React.FC = () => {
                     </span>
                   </div>
                 </div>
+                
                 <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-2">
                     <Calendar size={16} className="text-green-600" />
                     <span className="text-sm">Auto-clean: 90 days</span>
                   </div>
                 </div>
+                
+                <div className={`rounded-lg px-3 py-2 ${authStatus.isAdmin ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+                  <div className="flex items-center gap-2">
+                    {authStatus.isAdmin ? (
+                      <>
+                        <Shield size={16} className="text-green-600" />
+                        <span className="text-sm font-medium text-green-700">
+                          Admin: {authStatus.email?.split('@')[0]}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={16} className="text-yellow-600" />
+                        <span className="text-sm font-medium text-yellow-700">
+                          Not Logged In
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                
+                {authStatus.isAdmin ? (
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm font-medium"
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    <LogIn size={16} />
+                    Admin Login
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -943,6 +1169,25 @@ const AdminJobPosting: React.FC = () => {
             <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6 flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
               Job posted successfully! It will now appear on the Job Applications page.
+            </div>
+          )}
+
+          {/* Authentication Warning */}
+          {!authStatus.isAdmin && !authStatus.isLoading && (
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-6">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={18} />
+                <div>
+                  <p className="font-medium">Admin login required to post jobs</p>
+                  <p className="text-sm mt-1">Please login with admin credentials to create, update, or delete jobs.</p>
+                </div>
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="ml-auto bg-yellow-600 text-white px-3 py-1 rounded text-sm font-medium hover:bg-yellow-700 transition-colors"
+                >
+                  Login Now
+                </button>
+              </div>
             </div>
           )}
 
@@ -1239,7 +1484,7 @@ Good communication skills..."
                       </p>
                     </div>
 
-                    {/* Qualifications - NEW SECTION */}
+                    {/* Qualifications */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                         <GraduationCap size={16} />
@@ -1312,10 +1557,15 @@ Any Graduate..."
                     <div className="pt-4">
                       <button
                         type="submit"
-                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                        disabled={!authStatus.isAdmin}
+                        className={`w-full py-3 px-4 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 ${
+                          authStatus.isAdmin
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
+                            : 'bg-gray-400 text-white cursor-not-allowed'
+                        }`}
                       >
                         <Briefcase size={18} />
-                        Post Latest Job on CareerCraft
+                        {authStatus.isAdmin ? 'Post Latest Job on CareerCraft' : 'Login Required to Post Jobs'}
                       </button>
                       <p className="text-xs text-gray-500 text-center mt-2">
                         Job will appear as "Latest" with qualifications filtering | Auto-clean after 90 days
@@ -1456,7 +1706,7 @@ Any Graduate..."
     "salary": "₹8,00,000 - ₹15,00,000 PA",
     "description": "Latest job for Indian market...",
     "requirements": ["Requirement 1", "Requirement 2"],
-    "qualifications": ["B.E/B.Tech", "Any Graduate"], // NEW: Qualifications field
+    "qualifications": ["B.E/B.Tech", "Any Graduate"],
     "applyLink": "mailto:careers@company.com",
     "featured": false,
     "experience": "2-5 years"
@@ -1503,11 +1753,15 @@ Any Graduate..."
                     </button>
                     <button
                       onClick={handleBulkUpload}
-                      disabled={!bulkJsonInput.trim()}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-2 px-4 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                      disabled={!bulkJsonInput.trim() || !authStatus.isAdmin}
+                      className={`py-2 px-4 rounded-lg font-semibold flex items-center justify-center ${
+                        authStatus.isAdmin && bulkJsonInput.trim()
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700'
+                          : 'bg-gray-400 text-white cursor-not-allowed'
+                      }`}
                     >
                       <Upload size={16} className="mr-2" />
-                      Upload Latest Jobs
+                      {authStatus.isAdmin ? 'Upload Latest Jobs' : 'Login Required'}
                     </button>
                     <button
                       onClick={() => setBulkJsonInput('')}
@@ -1650,8 +1904,13 @@ Any Graduate..."
                     </button>
                     <button
                       onClick={clearAllJobs}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium"
-                      title="Delete all jobs"
+                      disabled={!authStatus.isAdmin}
+                      className={`text-sm font-medium ${
+                        authStatus.isAdmin
+                          ? 'text-red-600 hover:text-red-800'
+                          : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                      title={authStatus.isAdmin ? "Delete all jobs" : "Login required"}
                     >
                       Clear All
                     </button>
@@ -1667,7 +1926,7 @@ Any Graduate..."
                   <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {manualJobs.map(manualJob => {
                       const isNew = manualJob.isNew || (manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) < 24 * 60 * 60 * 1000);
-                      const isOld = manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) > 60 * 24 * 60 * 60 * 1000; // 60+ days
+                      const isOld = manualJob.addedTimestamp && (Date.now() - manualJob.addedTimestamp) > 60 * 24 * 60 * 60 * 1000;
                       
                       return (
                         <div key={manualJob.id} className={`border rounded-lg p-3 ${isOld ? 'border-red-200 bg-red-50' : 'border-gray-200'}`}>
@@ -1692,14 +1951,12 @@ Any Graduate..."
                                     ⭐ Featured
                                   </span>
                                 )}
-                                {/* Experience badge */}
                                 {manualJob.experience && (
                                   <span className="inline-block bg-amber-100 text-amber-800 text-xs px-1 py-0.5 rounded">
                                     <Award size={8} className="inline mr-1" />
                                     {manualJob.experience}
                                   </span>
                                 )}
-                                {/* Qualifications badge */}
                                 {manualJob.qualifications && manualJob.qualifications.length > 0 && (
                                   <span className="inline-block bg-blue-100 text-blue-800 text-xs px-1 py-0.5 rounded">
                                     <GraduationCap size={8} className="inline mr-1" />
@@ -1726,8 +1983,9 @@ Any Graduate..."
                             </div>
                             <button
                               onClick={() => deleteJob(manualJob.id)}
-                              className="text-red-600 hover:text-red-800 ml-2"
-                              title="Delete job"
+                              disabled={!authStatus.isAdmin}
+                              className={`ml-2 ${authStatus.isAdmin ? 'text-red-600 hover:text-red-800' : 'text-gray-400 cursor-not-allowed'}`}
+                              title={authStatus.isAdmin ? "Delete job" : "Login required"}
                             >
                               ×
                             </button>

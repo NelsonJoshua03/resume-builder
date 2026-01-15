@@ -1,4 +1,4 @@
-// src/firebase/config.ts - PRODUCTION READY WITH AUTHENTICATION
+// src/firebase/config.ts - PRODUCTION READY WITH ENHANCED AUTHENTICATION
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -19,7 +19,9 @@ import {
 import { 
   getAuth, 
   Auth,
-  signInAnonymously
+  signInAnonymously,
+  onAuthStateChanged,
+  User
 } from 'firebase/auth';
 import { getPerformance } from 'firebase/performance';
 
@@ -41,6 +43,8 @@ let analytics: Analytics | null = null;
 let auth: Auth | null = null;
 let performance: any = null;
 let isInitializing = false;
+let currentUser: User | null = null;
+let authStateResolvers: ((user: User | null) => void)[] = [];
 
 export const initializeFirebase = async (): Promise<{
   app: FirebaseApp | null;
@@ -48,10 +52,11 @@ export const initializeFirebase = async (): Promise<{
   analytics: Analytics | null;
   auth: Auth | null;
   performance: any;
+  currentUser: User | null;
 }> => {
   // Don't reinitialize
-  if (app && firestore) {
-    return { app, firestore, analytics, auth, performance };
+  if (app && firestore && auth) {
+    return { app, firestore, analytics, auth, performance, currentUser };
   }
 
   if (isInitializing) {
@@ -59,7 +64,7 @@ export const initializeFirebase = async (): Promise<{
       const checkInterval = setInterval(() => {
         if (!isInitializing) {
           clearInterval(checkInterval);
-          resolve({ app, firestore, analytics, auth, performance });
+          resolve({ app, firestore, analytics, auth, performance, currentUser });
         }
       }, 100);
     });
@@ -74,31 +79,33 @@ export const initializeFirebase = async (): Promise<{
     if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
       console.error('❌ Invalid Firebase configuration');
       isInitializing = false;
-      return { app: null, firestore: null, analytics: null, auth: null, performance: null };
+      return { app: null, firestore: null, analytics: null, auth: null, performance: null, currentUser: null };
     }
 
     // Initialize Firebase App
     app = initializeApp(firebaseConfig);
     console.log('✅ Firebase App initialized');
 
-    // Initialize Authentication FIRST (critical for Firestore access)
-    try {
-      auth = getAuth(app);
+    // Initialize Authentication FIRST
+    auth = getAuth(app);
+    console.log('✅ Auth initialized');
+
+    // Set up auth state listener
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      console.log('🔄 Auth state changed:', user ? `User: ${user.email || user.uid.substring(0, 8)}...` : 'No user');
       
-      // Silent authentication - don't wait for it
-      signInAnonymously(auth)
-        .then(() => {
-          console.log('✅ Authenticated anonymously for Firestore access');
-        })
-        .catch((signInError: any) => {
-          console.warn('⚠️ Anonymous sign-in failed:', signInError.message);
-          // Continue without auth, some operations might fail
-        });
+      // Resolve all pending promises
+      authStateResolvers.forEach(resolver => resolver(user));
+      authStateResolvers = [];
       
-      console.log('✅ Auth initialized (async sign-in in progress)');
-    } catch (authError: any) {
-      console.error('❌ Auth initialization error:', authError?.message);
-    }
+      if (user) {
+        // Update analytics user ID if we have consent
+        if (analytics && localStorage.getItem('gdpr_consent') === 'accepted') {
+          setUserId(analytics, user.uid);
+        }
+      }
+    });
 
     // Initialize Firestore
     try {
@@ -140,8 +147,8 @@ export const initializeFirebase = async (): Promise<{
             });
             
             // Set user ID if authenticated
-            if (auth?.currentUser) {
-              setUserId(analytics, auth.currentUser.uid);
+            if (currentUser) {
+              setUserId(analytics, currentUser.uid);
             }
           }
           console.log('✅ Analytics initialized');
@@ -161,11 +168,12 @@ export const initializeFirebase = async (): Promise<{
     analytics = null;
     auth = null;
     performance = null;
+    currentUser = null;
   } finally {
     isInitializing = false;
   }
 
-  return { app, firestore, analytics, auth, performance };
+  return { app, firestore, analytics, auth, performance, currentUser };
 };
 
 // Get service instances
@@ -182,6 +190,7 @@ export const getAuthInstance = (): Auth | null => {
 };
 
 export const getPerformanceInstance = () => performance;
+export const getCurrentUser = (): User | null => currentUser;
 
 // Helper to log events
 export const logAnalyticsEvent = (eventName: string, params?: any): void => {
@@ -189,7 +198,7 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
     try {
       const eventParams = {
         ...params,
-        is_anonymous: !auth?.currentUser,
+        is_anonymous: !currentUser,
         eventValue: params?.eventValue || 0
       };
       
@@ -200,12 +209,32 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
   }
 };
 
+// Wait for authentication to complete
+export const waitForAuth = (): Promise<User | null> => {
+  return new Promise((resolve) => {
+    if (currentUser) {
+      resolve(currentUser);
+    } else {
+      authStateResolvers.push(resolve);
+      
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        const index = authStateResolvers.indexOf(resolve);
+        if (index > -1) {
+          authStateResolvers.splice(index, 1);
+        }
+        resolve(null);
+      }, 5000);
+    }
+  });
+};
+
 // Test Firebase connection with authentication
 export const testFirebaseConnection = async (): Promise<{ success: boolean; message: string; details?: any }> => {
   try {
     console.log('🔍 Testing Firebase production connection...');
     
-    const { app, firestore, auth } = await initializeFirebase();
+    const { app, firestore, auth, currentUser } = await initializeFirebase();
     
     if (!app) {
       return {
@@ -221,35 +250,86 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
       };
     }
     
-    // Test a simple read/write operation (don't require auth for test)
-    try {
-      const testCollection = 'connection_test';
-      const testDocRef = doc(firestore, testCollection, 'test_doc');
-      
-      await setDoc(testDocRef, {
-        test: true,
-        timestamp: new Date().toISOString(),
-        project: firebaseConfig.projectId,
-        userId: auth?.currentUser?.uid || 'anonymous'
-      });
-      
-      console.log('✅ Test document written successfully');
-      
-      await deleteDoc(testDocRef);
-      console.log('✅ Test document deleted successfully');
-      
+    if (!auth) {
       return {
-        success: true,
-        message: '✅ Firebase production connection successful!',
-        details: {
-          projectId: firebaseConfig.projectId,
-          userId: auth?.currentUser?.uid || 'not-authenticated',
-          firestore: true,
-          analytics: !!analytics,
-          auth: !!auth,
-          authenticated: !!auth?.currentUser
-        }
+        success: false,
+        message: '❌ Failed to initialize Authentication.'
       };
+    }
+    
+    // Test a simple read operation (public access)
+    try {
+      const testCollection = 'jobs';
+      const testQuery = doc(firestore, testCollection, 'test_doc');
+      
+      // Try to write with authentication check
+      if (currentUser) {
+        console.log('✅ User is authenticated:', currentUser.email || currentUser.uid);
+        
+        try {
+          await setDoc(testQuery, {
+            test: true,
+            timestamp: new Date().toISOString(),
+            project: firebaseConfig.projectId,
+            userId: currentUser.uid
+          }, { merge: true });
+          
+          console.log('✅ Test document written successfully');
+          
+          await deleteDoc(testQuery);
+          console.log('✅ Test document deleted successfully');
+          
+          return {
+            success: true,
+            message: '✅ Firebase production connection successful! (Authenticated)',
+            details: {
+              projectId: firebaseConfig.projectId,
+              userId: currentUser.uid,
+              email: currentUser.email,
+              firestore: true,
+              analytics: !!analytics,
+              auth: true,
+              authenticated: true,
+              hasAdminClaims: currentUser.getIdTokenResult().then(t => t.claims.admin === true)
+            }
+          };
+        } catch (writeError: any) {
+          console.warn('Write test failed (might be permission issue):', writeError.message);
+          
+          // Continue with read test
+        }
+      }
+      
+      // Test read access (public)
+      try {
+        const publicQuery = doc(firestore, 'jobs', 'public_test');
+        await setDoc(publicQuery, {
+          test: 'public_read',
+          timestamp: new Date().toISOString()
+        }, { merge: true });
+        
+        console.log('✅ Public read/write test successful');
+        
+        return {
+          success: true,
+          message: '✅ Firebase production connection successful!',
+          details: {
+            projectId: firebaseConfig.projectId,
+            userId: currentUser?.uid || 'anonymous',
+            firestore: true,
+            analytics: !!analytics,
+            auth: !!auth,
+            authenticated: !!currentUser
+          }
+        };
+      } catch (publicError: any) {
+        return {
+          success: false,
+          message: `❌ Public access test failed: ${publicError.message}`,
+          details: { error: publicError.message, code: publicError.code }
+        };
+      }
+      
     } catch (error: any) {
       console.error('❌ Firestore operation failed:', error);
       
@@ -280,16 +360,136 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
   }
 };
 
-// Auto-initialize with authentication
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    console.log('🔄 Auto-initializing Firebase for production...');
-    initializeFirebase();
-  }, 1000);
-}
+/**
+ * Check if user is admin (synchronous - checks localStorage)
+ */
+export const isAdminUserSync = (): boolean => {
+  // Check localStorage for admin flag
+  const isAdminLocal = localStorage.getItem('is_admin') === 'true';
+  const adminToken = localStorage.getItem('careercraft_admin_token');
+  
+  if (!adminToken || !isAdminLocal) {
+    return false;
+  }
+  
+  const timestamp = localStorage.getItem('admin_login_time');
+  if (timestamp) {
+    const loginTime = parseInt(timestamp);
+    const maxAge = 8 * 60 * 60 * 1000; // 8 hours
+    
+    // Check if session is expired
+    if (Date.now() - loginTime > maxAge) {
+      console.log('Admin session expired');
+      localStorage.removeItem('is_admin');
+      localStorage.removeItem('careercraft_admin_token');
+      localStorage.removeItem('admin_login_time');
+      localStorage.removeItem('admin_email');
+      return false;
+    }
+    return true;
+  }
+  
+  return false;
+};
 
+/**
+ * Check if user is admin (asynchronous - checks Firebase claims)
+ */
+export const isAdminUserAsync = async (): Promise<boolean> => {
+  try {
+    const user = await waitForAuth();
+    if (!user) return false;
+    
+    const tokenResult = await user.getIdTokenResult();
+    return tokenResult.claims.admin === true;
+  } catch (error) {
+    console.warn('Failed to check admin status:', error);
+    return false;
+  }
+};
 
-// ✅ ADD THIS FUNCTION BEFORE export default
+/**
+ * Get user's admin status with details
+ */
+export const getAdminStatus = async (): Promise<{
+  isAdmin: boolean;
+  email?: string;
+  uid?: string;
+  hasClaims: boolean;
+  localStorage: boolean;
+}> => {
+  const user = await waitForAuth();
+  const localAdmin = isAdminUserSync();
+  
+  if (!user) {
+    return {
+      isAdmin: localAdmin,
+      hasClaims: false,
+      localStorage: localAdmin
+    };
+  }
+  
+  try {
+    const tokenResult = await user.getIdTokenResult();
+    const hasAdminClaims = tokenResult.claims.admin === true;
+    
+    return {
+      isAdmin: hasAdminClaims || localAdmin,
+      email: user.email || undefined,
+      uid: user.uid,
+      hasClaims: hasAdminClaims,
+      localStorage: localAdmin
+    };
+  } catch (error) {
+    console.warn('Failed to get admin claims:', error);
+    return {
+      isAdmin: localAdmin,
+      uid: user.uid,
+      hasClaims: false,
+      localStorage: localAdmin
+    };
+  }
+};
+
+/**
+ * Check if user can post jobs
+ */
+export const canPostJobs = async (): Promise<boolean> => {
+  try {
+    const user = await waitForAuth();
+    if (!user) return false;
+    
+    const tokenResult = await user.getIdTokenResult();
+    return tokenResult.claims.canPostJobs === true || tokenResult.claims.admin === true;
+  } catch (error) {
+    console.warn('Failed to check job posting permissions:', error);
+    return false;
+  }
+};
+
+/**
+ * Get auth headers for API calls
+ */
+export const getAuthHeaders = async (): Promise<HeadersInit> => {
+  const user = await waitForAuth();
+  
+  if (!user) {
+    return {};
+  }
+  
+  try {
+    const token = await user.getIdToken();
+    return {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+  } catch (error) {
+    console.warn('Failed to get auth token:', error);
+    return {};
+  }
+};
+
+// Get Firebase status
 export const getFirebaseStatus = () => {
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
   const configValid = !!firebaseConfig.apiKey && !!firebaseConfig.projectId;
@@ -301,6 +501,7 @@ export const getFirebaseStatus = () => {
     analytics: !!analytics,
     auth: !!auth,
     performance: !!performance,
+    currentUser: !!currentUser,
     gdprConsent: hasConsent,
     isAnonymous: isAnonymous,
     configValid: configValid,
@@ -314,14 +515,29 @@ export const getFirebaseStatus = () => {
   };
 };
 
-// Also add it to the default export
+// Auto-initialize with authentication
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    console.log('🔄 Auto-initializing Firebase for production...');
+    initializeFirebase();
+  }, 1000);
+}
+
+// Export all utilities
 export default {
   initializeFirebase,
   getFirestoreInstance,
   getAnalyticsInstance,
   getAuthInstance,
   getPerformanceInstance,
+  getCurrentUser,
   logAnalyticsEvent,
+  waitForAuth,
   testFirebaseConnection,
+  isAdminUserSync,
+  isAdminUserAsync,
+  getAdminStatus,
+  canPostJobs,
+  getAuthHeaders,
   getFirebaseStatus
 };
