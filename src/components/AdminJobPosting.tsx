@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { useFirebaseAnalytics } from '../hooks/useFirebaseAnalytics';
 import { getFirebaseStatus } from '../firebase/config';
+import { getAuth } from 'firebase/auth';
 
 import { firebaseJobService } from '../firebase/jobService';
 import { 
@@ -37,6 +38,26 @@ interface Job {
   // Experience field
   experience?: string;
 }
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  const auth = getAuth();
+  const user = auth.currentUser;
+  
+  if (!user) {
+    alert('Please log in as admin to post jobs');
+    return;
+  }
+  
+  // Get ID token to verify admin claims
+  const idTokenResult = await user.getIdTokenResult();
+  
+  if (!idTokenResult.claims.admin) {
+    alert('Admin access required to post jobs');
+    return;
+  }}
+
 
 const AdminJobPosting: React.FC = () => {
   const [job, setJob] = useState<Omit<Job, 'id' | 'postedDate' | 'addedTimestamp' | 'page'>>({
