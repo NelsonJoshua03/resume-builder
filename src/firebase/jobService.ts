@@ -1,4 +1,4 @@
-// src/firebase/jobService.ts - COMPLETE UPDATED VERSION WITH EXPERIENCE FIELD
+// src/firebase/jobService.ts - COMPLETE UPDATED VERSION WITH AUTHENTICATION RETRY
 import { 
   collection,
   doc,
@@ -16,6 +16,7 @@ import {
   limit,
   writeBatch
 } from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { initializeFirebase, getFirestoreInstance, testFirebaseConnection } from './config';
 import { firebaseAnalytics } from './analytics';
 
@@ -86,6 +87,7 @@ export class FirebaseJobService {
   private firestoreInitialized = false;
   private localJobsKey = 'firebase_jobs_cache';
   private syncInProgress = false;
+  private authAttempted = false;
 
   constructor() {
     this.initializeFirestore();
@@ -165,6 +167,67 @@ export class FirebaseJobService {
     }
   }
 
+  // NEW: Authentication helper method
+  private async ensureAuthenticated(): Promise<boolean> {
+    try {
+      const auth = getAuth();
+      
+      // If already authenticated
+      if (auth.currentUser) {
+        return true;
+      }
+      
+      // Try to sign in anonymously
+      console.log('🔄 Attempting anonymous authentication for Firestore access...');
+      await signInAnonymously(auth);
+      console.log('✅ Authenticated anonymously');
+      this.authAttempted = true;
+      return true;
+      
+    } catch (authError: any) {
+      console.warn('⚠️ Authentication failed:', authError.message);
+      this.authAttempted = true;
+      return false;
+    }
+  }
+
+  // NEW: Try Firebase operation with authentication retry
+  private async tryFirebaseOperation<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T | null> {
+    const firestore = this.getFirestore();
+    if (!firestore) {
+      console.warn(`Firestore not available for ${operationName}`);
+      return null;
+    }
+
+    try {
+      // Try the operation
+      return await operation();
+    } catch (error: any) {
+      // Check if it's an authentication error
+      if (error.code === 'permission-denied' && !this.authAttempted) {
+        console.log(`🔄 Permission denied for ${operationName}, trying authentication...`);
+        
+        // Try to authenticate
+        const authenticated = await this.ensureAuthenticated();
+        if (authenticated) {
+          try {
+            // Retry the operation after authentication
+            return await operation();
+          } catch (retryError: any) {
+            console.error(`❌ ${operationName} failed after authentication:`, retryError.message);
+            return null;
+          }
+        }
+      }
+      
+      console.error(`❌ ${operationName} failed:`, error.message);
+      return null;
+    }
+  }
+
   async createJob(jobData: CreateJobInput): Promise<string> {
     try {
       const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -172,8 +235,21 @@ export class FirebaseJobService {
       const firestore = this.getFirestore();
       if (firestore) {
         try {
-          await this.createJobInFirestore(jobId, jobData);
-          console.log(`✅ Job ${jobId} created in Firebase`);
+          // Try to create in Firebase with authentication retry
+          const result = await this.tryFirebaseOperation(
+            () => this.createJobInFirestore(jobId, jobData),
+            'createJobInFirestore'
+          );
+          
+          if (result !== null) {
+            console.log(`✅ Job ${jobId} created in Firebase`);
+            // Also store locally as backup
+            await this.createJobInLocalStorage(jobId, jobData);
+            return jobId;
+          } else {
+            console.warn('Failed to create job in Firebase, saving locally only');
+            await this.createJobInLocalStorage(jobId, jobData);
+          }
         } catch (firestoreError) {
           console.warn('Failed to create job in Firebase, saving locally:', firestoreError);
           await this.createJobInLocalStorage(jobId, jobData);
@@ -607,19 +683,27 @@ export class FirebaseJobService {
     const firestore = this.getFirestore();
     if (firestore) {
       try {
-        const jobRef = doc(firestore, this.collectionName, jobId);
-        await updateDoc(jobRef, {
-          ...updates,
-          // Ensure arrays are properly initialized
-          requirements: safeArray(updates.requirements),
-          qualifications: safeArray(updates.qualifications),
-          updatedAt: serverTimestamp()
-        });
+        const result = await this.tryFirebaseOperation(async () => {
+          const jobRef = doc(firestore, this.collectionName, jobId);
+          await updateDoc(jobRef, {
+            ...updates,
+            // Ensure arrays are properly initialized
+            requirements: safeArray(updates.requirements),
+            qualifications: safeArray(updates.qualifications),
+            updatedAt: serverTimestamp()
+          });
+          return true;
+        }, 'updateJob');
+        
+        if (result === null) {
+          console.warn('Failed to update job in Firebase, updating local cache only');
+        }
       } catch (firestoreError) {
         console.warn('Failed to update job in Firebase:', firestoreError);
       }
     }
     
+    // Always update local cache
     const cacheData = localStorage.getItem(this.localJobsKey);
     if (cacheData) {
       try {
@@ -684,16 +768,24 @@ export class FirebaseJobService {
     const firestore = this.getFirestore();
     if (firestore) {
       try {
-        const jobRef = doc(firestore, this.collectionName, jobId);
-        await updateDoc(jobRef, {
-          isActive: false,
-          updatedAt: serverTimestamp()
-        });
+        const result = await this.tryFirebaseOperation(async () => {
+          const jobRef = doc(firestore, this.collectionName, jobId);
+          await updateDoc(jobRef, {
+            isActive: false,
+            updatedAt: serverTimestamp()
+          });
+          return true;
+        }, 'deleteJob');
+        
+        if (result === null) {
+          console.warn('Failed to delete job from Firebase, updating local cache only');
+        }
       } catch (firestoreError) {
         console.warn('Failed to delete job from Firebase:', firestoreError);
       }
     }
     
+    // Always update local cache
     const cacheData = localStorage.getItem(this.localJobsKey);
     if (cacheData) {
       try {
@@ -737,21 +829,29 @@ export class FirebaseJobService {
     const firestore = this.getFirestore();
     if (firestore) {
       try {
-        const jobRef = doc(firestore, this.collectionName, jobId);
-        const snapshot = await getDoc(jobRef);
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          const currentViews = data.views || 0;
-          await updateDoc(jobRef, {
-            views: currentViews + 1,
-            updatedAt: serverTimestamp()
-          });
+        const result = await this.tryFirebaseOperation(async () => {
+          const jobRef = doc(firestore, this.collectionName, jobId);
+          const snapshot = await getDoc(jobRef);
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            const currentViews = data.views || 0;
+            await updateDoc(jobRef, {
+              views: currentViews + 1,
+              updatedAt: serverTimestamp()
+            });
+          }
+          return true;
+        }, 'incrementViewCount');
+        
+        if (result === null) {
+          console.warn('Failed to increment view count in Firebase');
         }
       } catch (firestoreError) {
         console.warn('Failed to increment view count in Firebase:', firestoreError);
       }
     }
     
+    // Always update local cache
     const cacheData = localStorage.getItem(this.localJobsKey);
     if (cacheData) {
       try {
