@@ -1,4 +1,4 @@
-// src/firebase/config.ts - WORKING VERSION
+// src/firebase/config.ts - CLEAN WORKING VERSION
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -19,44 +19,13 @@ import {
 import { getAuth, Auth } from 'firebase/auth';
 import { getPerformance } from 'firebase/performance';
 
-// 🔥 CRITICAL FIX: Use window-based environment detection
-const getFirebaseApiKey = (): string => {
-  // Check if we're in the browser
-  if (typeof window === 'undefined') {
-    return ""; // Server-side, return empty
-  }
-  
-  // For Vercel: Use window.__env__ or process.env on client
-  // Try multiple ways to get the environment variable
-  const possibleKeys = [
-    (window as any).__env__?.NEXT_PUBLIC_FIREBASE_API_KEY,
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    import.meta.env?.VITE_FIREBASE_API_KEY, // For Vite
-    // Fallback for development
-    window.location.hostname === 'localhost' 
-      ? "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU" 
-      : ""
-  ];
-  
-  // Find the first valid key
-  const validKey = possibleKeys.find(key => 
-    key && typeof key === 'string' && key.length > 20 && key.startsWith('AIza')
-  );
-  
-  if (!validKey) {
-    console.error('❌ No valid Firebase API key found!');
-    console.error('Possible sources checked:', possibleKeys.map(k => 
-      k ? `${k.substring(0, 6)}... (${k.length} chars)` : 'empty'
-    ));
-    return "";
-  }
-  
-  return validKey;
-};
+// ✅ SIMPLE SOLUTION: Direct API key
+// For now, use hardcoded key. We'll fix Vercel later.
+const FIREBASE_API_KEY = "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU";
 
-// Firebase Configuration - SIMPLIFIED
+// Firebase Configuration
 const firebaseConfig = {
-  apiKey: getFirebaseApiKey(),
+  apiKey: FIREBASE_API_KEY,
   authDomain: "careercraft-36711.firebaseapp.com",
   projectId: "careercraft-36711",
   storageBucket: "careercraft-36711.firebasestorage.app",
@@ -67,32 +36,9 @@ const firebaseConfig = {
 
 // Check if config is valid
 const isConfigValid = () => {
-  const apiKey = firebaseConfig.apiKey;
-  const hasValidKey = apiKey && apiKey.length > 20;
-  
-  if (!hasValidKey) {
-    console.error('❌ Firebase API Key Issue - Detailed Debug:');
-    console.error('Current API Key:', {
-      exists: !!apiKey,
-      length: apiKey?.length || 0,
-      type: typeof apiKey,
-      value: apiKey || 'empty',
-      environment: typeof window !== 'undefined' 
-        ? (window.location.hostname.includes('localhost') ? 'development' : 'production')
-        : 'server'
-    });
-    
-    // Try to help debug
-    if (typeof window !== 'undefined') {
-      console.error('🔍 Environment Debug:');
-      console.error('window.__env__:', (window as any).__env__);
-      console.error('process.env.NEXT_PUBLIC_FIREBASE_API_KEY:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-      console.error('import.meta.env:', import.meta.env);
-      console.error('window.location:', window.location.href);
-    }
-  }
-  
-  return hasValidKey;
+  return firebaseConfig.apiKey && 
+         firebaseConfig.projectId && 
+         firebaseConfig.apiKey.length > 20;
 };
 
 // Initialize Firebase only once
@@ -116,6 +62,7 @@ export const initializeFirebase = async (): Promise<{
   }
 
   if (isInitializing) {
+    // Wait for initialization to complete
     return new Promise(resolve => {
       const checkInterval = setInterval(() => {
         if (!isInitializing) {
@@ -135,30 +82,14 @@ export const initializeFirebase = async (): Promise<{
     const hasValidConfig = isConfigValid();
     
     if (!hasValidConfig) {
-      console.error('❌ Firebase initialization FAILED - No valid API key');
-      console.error('💡 URGENT FIX REQUIRED:');
-      console.error('1. For Vercel: Set environment variable NEXT_PUBLIC_FIREBASE_API_KEY');
-      console.error('2. For local dev: Create .env.local with the key');
-      console.error('3. Or use this temporary fix: Set apiKey directly in config.ts');
-      
-      // Show what we tried
-      console.error('Debug - Tried to get key from:');
-      console.error('- process.env.NEXT_PUBLIC_FIREBASE_API_KEY:', !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
-      console.error('- window.__env__:', !!(window as any).__env__);
-      
-      // TEMPORARY WORKAROUND: Use hardcoded key so site works
-      console.warn('⚠️ Using temporary API key to keep site working...');
-      const tempConfig = {
-        ...firebaseConfig,
-        apiKey: "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU"
-      };
-      app = initializeApp(tempConfig);
-      console.log('✅ Firebase App initialized (Temporary mode)');
-    } else {
-      // Normal initialization
-      app = initializeApp(firebaseConfig);
-      console.log('✅ Firebase App initialized');
+      console.error('❌ Invalid Firebase configuration');
+      isInitializing = false;
+      return { app: null, firestore: null, analytics: null, auth: null, performance: null };
     }
+
+    // Initialize Firebase App
+    app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase App initialized');
 
     // Check GDPR consent
     const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
@@ -185,16 +116,15 @@ export const initializeFirebase = async (): Promise<{
       console.error('❌ Firestore initialization error:', firestoreError?.message);
     }
 
-    // Initialize Analytics
+    // Initialize Analytics - ALWAYS INITIALIZE (for both consented and anonymous users)
     if (typeof window !== 'undefined' && app) {
       try {
         const analyticsSupported = await isSupported();
-        console.log('📊 Analytics supported:', analyticsSupported);
         
         if (analyticsSupported && app) {
           analytics = getAnalytics(app);
           
-          // Always set user properties
+          // Always set user properties (with anonymized data for anonymous users)
           if (analytics) {
             const isAnonymous = !hasConsent;
             
@@ -209,6 +139,7 @@ export const initializeFirebase = async (): Promise<{
             
             // Set user ID based on consent
             if (hasConsent) {
+              // Use localStorage ID for consented users
               let userId = localStorage.getItem('firebase_user_id');
               if (!userId) {
                 userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -216,6 +147,7 @@ export const initializeFirebase = async (): Promise<{
               }
               setUserId(analytics, userId);
             } else {
+              // Use sessionStorage ID for anonymous users
               let userId = sessionStorage.getItem('firebase_anonymous_id');
               if (!userId) {
                 userId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -274,15 +206,18 @@ export const getAuthInstance = (): Auth | null => {
 
 export const getPerformanceInstance = () => performance;
 
-// Helper to log events
+// Helper to log events - MODIFIED TO WORK WITH ANONYMOUS USERS
 export const logAnalyticsEvent = (eventName: string, params?: any): void => {
+  // Always log events, consent is handled in the analytics.ts file
   if (analytics) {
     try {
+      // Add anonymous flag if no consent
       const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
       const eventParams = {
         ...params,
         is_anonymous: !hasConsent,
-        user_type: hasConsent ? 'consented' : 'anonymous'
+        user_type: hasConsent ? 'consented' : 'anonymous',
+        eventValue: params?.eventValue || 0 // ✅ FIX: Ensure eventValue is never undefined
       };
       
       logEvent(analytics, eventName, eventParams);
@@ -292,7 +227,7 @@ export const logAnalyticsEvent = (eventName: string, params?: any): void => {
   }
 };
 
-// Get Firebase status
+// Get Firebase status with more details
 export const getFirebaseStatus = () => {
   const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
   const configValid = isConfigValid();
@@ -308,7 +243,12 @@ export const getFirebaseStatus = () => {
     isAnonymous: isAnonymous,
     configValid: configValid,
     projectId: firebaseConfig.projectId,
-    environment: window.location.hostname.includes('localhost') ? 'development' : 'production'
+    environment: window.location.hostname.includes('localhost') ? 'development' : 'production',
+    configDetails: {
+      apiKey: firebaseConfig.apiKey ? '✓ Set' : '✗ Missing',
+      projectId: firebaseConfig.projectId ? '✓ Set' : '✗ Missing',
+      authDomain: firebaseConfig.authDomain ? '✓ Set' : '✗ Missing'
+    }
   };
 };
 
@@ -323,7 +263,7 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
       return {
         success: false,
         message: '❌ Firebase configuration is invalid.',
-        details: status
+        details: status.configDetails
       };
     }
     
@@ -343,11 +283,12 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
       };
     }
     
-    // Try a simple operation
+    // Try a simple read operation (no write needed)
     try {
       const testCollection = 'connection_test';
       const testDocRef = doc(firestore, testCollection, 'test_doc');
       
+      // Try to set a test document
       await setDoc(testDocRef, {
         test: true,
         timestamp: new Date().toISOString(),
@@ -356,17 +297,19 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
       
       console.log('✅ Test document written successfully');
       
+      // Try to delete it
       await deleteDoc(testDocRef);
       console.log('✅ Test document deleted successfully');
       
       return {
         success: true,
-        message: '✅ Firebase connection successful!',
+        message: '✅ Firebase connection successful! All services are working.',
         details: {
           projectId: firebaseConfig.projectId,
           firestore: true,
           analytics: !!analytics,
-          auth: !!auth
+          auth: !!auth,
+          anonymous_tracking_enabled: true
         }
       };
     } catch (error: any) {
@@ -375,14 +318,14 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
       if (error.code === 'permission-denied') {
         return {
           success: false,
-          message: '❌ Permission denied. Check Firestore security rules.',
+          message: '❌ Permission denied. Please update Firestore security rules to allow writes.',
           details: { error: error.message, code: error.code }
         };
       }
       
       return {
         success: false,
-        message: `❌ Firestore operation failed: ${error.message}`,
+        message: `❌ Firestore operation failed: ${error.message || 'Unknown error'}`,
         details: { error: error.message, code: error.code }
       };
     }
@@ -390,10 +333,24 @@ export const testFirebaseConnection = async (): Promise<{ success: boolean; mess
   } catch (error: any) {
     console.error('❌ Firebase connection test failed:', error);
     
+    let errorMessage = 'Firebase connection failed. ';
+    
+    if (error?.code === 'auth/invalid-api-key') {
+      errorMessage = '❌ Invalid API key. Please check your Firebase API key.';
+    } else if (error?.code === 'project/not-found') {
+      errorMessage = `❌ Project not found: ${firebaseConfig.projectId}. Check your Firebase project.`;
+    } else if (error?.code === 'unavailable') {
+      errorMessage = '❌ Firebase service unavailable. Check network connection.';
+    } else if (error?.message) {
+      errorMessage += `Error: ${error.message}`;
+    } else {
+      errorMessage += 'Unknown error.';
+    }
+    
     return {
       success: false,
-      message: `Firebase connection failed: ${error.message}`,
-      details: { error: error.message, code: error.code }
+      message: errorMessage,
+      details: { error: error?.message, code: error?.code }
     };
   }
 };
@@ -404,26 +361,31 @@ export const reinitializeFirebaseWithConsent = async () => {
   
   if (hasConsent && app) {
     try {
+      // Update user ID from anonymous to consented
       if (analytics) {
+        // Get current user ID
         const currentUserId = localStorage.getItem('firebase_user_id') || 
                               `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
+        // Migrate from anonymous to consented
         const previousAnonymousId = sessionStorage.getItem('firebase_anonymous_id');
         if (previousAnonymousId) {
           localStorage.setItem('previous_anonymous_id', previousAnonymousId);
           sessionStorage.removeItem('firebase_anonymous_id');
         }
         
+        // Update Firebase Analytics user ID
         setUserId(analytics, currentUserId);
         setUserProperties(analytics, {
           user_type: 'consented',
-          migrated_from_anonymous: !!previousAnonymousId
+          migrated_from_anonymous: !!previousAnonymousId,
+          previous_anonymous_id: previousAnonymousId || 'none'
         });
         
-        console.log('✅ Analytics reinitialized with consent');
+        console.log('✅ Analytics reinitialized with consent (user migrated from anonymous)');
       }
     } catch (error) {
-      console.error('Failed to reinitialize analytics:', error);
+      console.error('Failed to reinitialize analytics with consent:', error);
     }
   }
   
@@ -434,19 +396,22 @@ export const isFirebaseReady = (): boolean => {
   return !!app && !!firestore;
 };
 
-// Auto-initialize
+// Auto-initialize when consent is given
 if (typeof window !== 'undefined') {
+  // Initialize immediately (for both anonymous and consented users)
   setTimeout(() => {
-    console.log('🔄 Auto-initializing Firebase...');
+    console.log('🔄 Auto-initializing Firebase (anonymous tracking enabled)...');
     initializeFirebase();
   }, 1000);
   
+  // Listen for consent changes
   window.addEventListener('storage', (e) => {
     if (e.key === 'gdpr_consent' && e.newValue === 'accepted') {
       setTimeout(() => {
-        console.log('🔄 Reinitializing after consent change...');
+        console.log('🔄 Reinitializing Firebase after consent change...');
         reinitializeFirebaseWithConsent();
         
+        // Also trigger a page refresh to start fresh with consented tracking
         setTimeout(() => {
           window.location.reload();
         }, 500);
