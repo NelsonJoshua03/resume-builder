@@ -2438,142 +2438,107 @@ export const ping = runWithCors(async (req: any, res: any) => {
 /**
  * ADMIN LOGIN FUNCTION
  */
+// In your functions/index.ts, update the adminLogin function:
+
 export const adminLogin = runWithCors(async (req: any, res: any) => {
   try {
-    // Log config status at runtime
-    console.log('🔧 Runtime Config Status:', {
-      hasPassword: !!ADMIN_PASSWORD,
-      passwordLength: ADMIN_PASSWORD.length,
-      emails: ADMIN_EMAILS,
-      emailsCount: ADMIN_EMAILS.length
-    });
+    console.log('🔐 Admin login request received');
     
-    if (ADMIN_EMAILS.length === 0) {
-      console.error('⚠️ WARNING: No admin emails configured in Firebase Config');
-      res.status(500).json({ 
+    // Set CORS headers explicitly
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Handle OPTIONS preflight
+    if (req.method === 'OPTIONS') {
+      return res.status(200).send();
+    }
+    
+    // Check config
+    if (!ADMIN_PASSWORD || ADMIN_EMAILS.length === 0) {
+      console.error('❌ Admin credentials not configured');
+      return res.status(500).json({ 
         success: false, 
-        error: 'Server configuration error: No admin emails configured' 
+        error: 'Server configuration error' 
       });
-      return;
     }
     
     const { password, email } = req.body;
-
-    console.log('🔐 Admin login attempt for:', email);
     
-    // Input validation
     if (!password || !email) {
-      res.status(400).json({ 
+      return res.status(400).json({ 
         success: false, 
         error: 'Email and password required' 
       });
-      return;
     }
     
-    // Check if email is allowed
     const normalizedEmail = email.toLowerCase().trim();
+    
+    // Check if email is allowed
     if (!ADMIN_EMAILS.includes(normalizedEmail)) {
-      console.log(`❌ Email ${normalizedEmail} not in allowed list`);
-      console.log(`   Allowed emails: ${ADMIN_EMAILS.join(', ')}`);
-      res.status(403).json({ 
+      console.log(`❌ Unauthorized email: ${normalizedEmail}`);
+      return res.status(403).json({ 
         success: false, 
-        error: `Email not authorized for admin access. Allowed: ${ADMIN_EMAILS.join(', ')}` 
+        error: 'Unauthorized email address' 
       });
-      return;
     }
     
     // Check password
     if (password !== ADMIN_PASSWORD) {
       console.log('❌ Invalid password attempt');
-      res.status(403).json({ 
+      return res.status(403).json({ 
         success: false, 
-        error: 'Invalid admin password' 
+        error: 'Invalid password' 
       });
-      return;
     }
     
-    // Get or create admin user
+    // Get or create user
     let adminUser;
     try {
       adminUser = await admin.auth().getUserByEmail(normalizedEmail);
-      console.log('✅ Found existing admin user:', adminUser.uid);
+      console.log('✅ Found existing user:', adminUser.uid);
     } catch (error: any) {
-      // Create admin user if doesn't exist
       if (error.code === 'auth/user-not-found') {
-        console.log('🆕 Creating new admin user for:', normalizedEmail);
-        // Use the provided password for the new user
+        console.log('🆕 Creating new admin user');
         adminUser = await admin.auth().createUser({
           email: normalizedEmail,
           emailVerified: true,
-          password: password, // Use the provided password
+          password: ADMIN_PASSWORD, // Use the configured password
           displayName: 'Admin User',
           disabled: false,
         });
-        console.log('✅ Created new admin user:', adminUser.uid);
+        console.log('✅ Created new user:', adminUser.uid);
       } else {
         throw error;
       }
     }
     
-    // Set custom claims (admin role)
+    // Set admin claims
     await admin.auth().setCustomUserClaims(adminUser.uid, {
       admin: true,
       level: 'super_admin',
-      email: normalizedEmail,
-      canManageResumes: true,
-      canPostJobs: true,
-      canManageUsers: false
+      email: normalizedEmail
     });
     
     console.log('✅ Admin claims set for:', normalizedEmail);
     
-    // Log the login
-    await admin.firestore().collection('admin_logs').add({
-      email: normalizedEmail,
-      action: 'login',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      ip: req.ip || req.headers['x-forwarded-for'] as string,
-      userAgent: req.headers['user-agent'] as string,
-      success: true
-    });
-    
-    // Return success with user info (NO TOKEN NEEDED)
+    // Return success (NO custom token needed)
     res.json({
       success: true,
       user: {
         uid: adminUser.uid,
         email: adminUser.email,
-        admin: true,
-        claims: { admin: true }
+        admin: true
       },
-      message: 'Admin login successful. You can now sign in with Firebase Authentication.',
-      instructions: 'Use Firebase Authentication on frontend with same email/password',
-      frontendAuthMethod: 'signInWithEmailAndPassword',
-      note: 'The user has been created/updated in Firebase Auth with admin claims'
+      message: 'Admin login successful',
+      note: 'User created/updated in Firebase Auth with admin claims'
     });
     
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (error: any) {
     console.error('❌ Admin login error:', error);
-    
-    // Log failed login attempt
-    try {
-      await admin.firestore().collection('admin_logs').add({
-        email: req.body?.email || 'unknown',
-        action: 'login',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        ip: req.ip || req.headers['x-forwarded-for'] as string,
-        userAgent: req.headers['user-agent'] as string,
-        success: false,
-        error: errorMessage
-      });
-    } catch (logError) {
-      console.error('Failed to log login error:', logError);
-    }
-    
     res.status(500).json({ 
       success: false, 
-      error: errorMessage
+      error: error.message || 'Internal server error'
     });
   }
 });

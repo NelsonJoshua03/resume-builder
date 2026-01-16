@@ -34,116 +34,149 @@ class AdminAuthService {
   /**
    * Login admin using backend authentication
    */
-  async login(email: string, password: string): Promise<{
-    success: boolean;
-    user?: any;
-    error?: string;
-  }> {
+  // In adminAuthService.ts, update the login method:
+
+async login(email: string, password: string): Promise<{
+  success: boolean;
+  user?: any;
+  error?: string;
+}> {
+  try {
+    console.log('🔐 Attempting admin login...');
+    
+    // First try to login with Firebase directly
     try {
-      console.log('🔐 Attempting admin login via backend...');
+      const auth = getAuth();
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
       
-      // First, check if email is allowed (frontend validation)
-      const allowedEmails = process.env.REACT_APP_ALLOWED_EMAILS 
-        ? process.env.REACT_APP_ALLOWED_EMAILS.split(',') 
-        : ['nelsonjoshua03@outlook.com', 'contact@careercraft.in'];
-      const normalizedEmail = email.toLowerCase().trim();
+      // Check if user has admin claims
+      const tokenResult = await user.getIdTokenResult();
       
-      if (!allowedEmails.includes(normalizedEmail)) {
-        console.log(`❌ Email ${normalizedEmail} not in allowed list`);
+      if (tokenResult.claims.admin !== true) {
+        // Not an admin, sign out
+        await signOut(auth);
         return { 
           success: false, 
-          error: 'Email not authorized for admin access.' 
+          error: 'This account does not have admin privileges' 
         };
       }
       
-      // Call Cloud Function for admin login
-      const response = await fetch(
-        'https://us-central1-careercraft-36711.cloudfunctions.net/adminLogin',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          mode: 'cors',
-          body: JSON.stringify({ 
-            email: normalizedEmail, 
-            password: password 
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        // Try to get error message from response
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use status text
-          errorMessage = response.statusText || errorMessage;
-        }
-        
-        return { 
-          success: false, 
-          error: errorMessage 
-        };
-      }
-
-      const data = await response.json();
-      console.log('Admin login response:', data);
+      // Store session info
+      localStorage.setItem('admin_email', email);
+      localStorage.setItem('admin_last_login', Date.now().toString());
+      localStorage.setItem('careercraft_admin_token', 'authenticated');
+      localStorage.setItem('is_admin', 'true');
       
-      if (data.success && data.user) {
-        // Try to sign in with email/password (NO custom token now)
-        try {
-          const auth = getAuth();
-          await signInWithEmailAndPassword(auth, normalizedEmail, password);
-          console.log('✅ Signed in with email/password');
-        } catch (emailError: any) {
-          console.error('Email/password sign-in failed:', emailError);
-          
-          // If user doesn't exist or password is wrong, try to create user
-          if (emailError.code === 'auth/user-not-found' || emailError.code === 'auth/wrong-password') {
-            console.log('⚠️ User may not exist in Firebase Auth or password mismatch');
-            // The backend should have created the user, so try one more time
-            try {
-              const auth = getAuth();
-              await signInWithEmailAndPassword(auth, normalizedEmail, password);
-            } catch (retryError: any) {
-              console.log('❌ Second sign-in attempt failed:', retryError.message);
-              // Still proceed since backend validated
-            }
-          }
+      console.log('✅ Admin login successful');
+      return { 
+        success: true, 
+        user: {
+          uid: user.uid,
+          email: user.email,
+          claims: tokenResult.claims
         }
-        
-        // Store admin session info
-        localStorage.setItem('admin_email', normalizedEmail);
-        localStorage.setItem('admin_last_login', Date.now().toString());
-        localStorage.setItem('careercraft_admin_token', 'authenticated');
-        localStorage.setItem('is_admin', 'true');
-        
-        console.log('✅ Admin login successful via backend');
-        return { success: true, user: data.user };
-      } else {
-        console.log('❌ Admin login failed via backend:', data.error);
-        return { success: false, error: data.error || 'Login failed' };
-      }
+      };
       
-    } catch (error: any) {
-      console.error('🚨 Admin login error:', error);
-
-      if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
-        return { 
-          success: false, 
-          error: 'Network error: Cannot connect to backend. Please check:\n1. Firebase Functions deployment\n2. CORS configuration\n3. Internet connection' 
-        };
+    } catch (firebaseError: any) {
+      console.log('Firebase login failed:', firebaseError.code);
+      
+      // If user doesn't exist, try creating via backend
+      if (firebaseError.code === 'auth/user-not-found') {
+        // Call backend to create admin user
+        return await this.createAdminUserViaBackend(email, password);
       }
       
       return { 
         success: false, 
-        error: error.message || 'Network error - please try again' 
+        error: this.getFirebaseErrorMessage(firebaseError) 
       };
     }
+    
+  } catch (error: any) {
+    console.error('🚨 Admin login error:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Login failed' 
+    };
   }
+}
+
+private async createAdminUserViaBackend(email: string, password: string) {
+  try {
+    const response = await fetch(
+      'https://us-central1-careercraft-36711.cloudfunctions.net/adminLogin',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: email.toLowerCase().trim(), 
+          password: password 
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Backend error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.success) {
+      // Now try to login with the created user
+      const auth = getAuth();
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Store session info
+      localStorage.setItem('admin_email', email);
+      localStorage.setItem('admin_last_login', Date.now().toString());
+      localStorage.setItem('careercraft_admin_token', 'authenticated');
+      localStorage.setItem('is_admin', 'true');
+      
+      return { 
+        success: true, 
+        user: {
+          uid: user.uid,
+          email: user.email,
+          claims: { admin: true }
+        }
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: data.error || 'Backend login failed' 
+    };
+    
+  } catch (error: any) {
+    console.error('Backend user creation failed:', error);
+    return { 
+      success: false, 
+      error: 'Failed to create admin user. Please contact administrator.' 
+    };
+  }
+}
+
+private getFirebaseErrorMessage(error: any): string {
+  switch (error.code) {
+    case 'auth/invalid-credential':
+      return 'Invalid email or password';
+    case 'auth/user-not-found':
+      return 'User not found. Please contact administrator.';
+    case 'auth/wrong-password':
+      return 'Incorrect password';
+    case 'auth/too-many-requests':
+      return 'Too many failed attempts. Please try again later.';
+    case 'auth/operation-not-allowed':
+      return 'Email/password authentication is not enabled. Please contact administrator.';
+    default:
+      return error.message || 'Login failed';
+  }
+}
   
   /**
    * Logout admin
