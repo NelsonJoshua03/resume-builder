@@ -1,5 +1,5 @@
-// src/components/GovernmentExams.tsx - UPDATED WITH FIXED FIREBASE LOADING
-import React, { useState, useEffect } from 'react';
+// src/components/GovernmentExams.tsx - UPDATED WITH FIXED LOADING
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
@@ -27,32 +27,42 @@ const GovernmentExams: React.FC = () => {
   const { trackDailyPageView, trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
 
-  // Load exams with improved error handling
-  const loadExams = async () => {
+  // Memoized loadExams function with better cleanup
+  const loadExams = useCallback(async () => {
+    console.log('🔄 [GovernmentExams] loadExams called');
     setLoading(true);
     setError(null);
     setDebugInfo('Starting to load exams...');
+    
+    let isMounted = true; // Track if component is still mounted
     
     try {
       console.log('🔄 [GovernmentExams] Starting loadExams...');
       
       // Test Firebase connection first
+      let connectionTest;
       try {
-        const connection = await firebaseGovExamService.testFirebaseConnection();
-        console.log('✅ [GovernmentExams] Firebase connection test:', connection);
-        setFirebaseConnected(connection.connected);
-        setDebugInfo(`Firebase: ${connection.connected ? 'Connected' : 'Disconnected'} - ${connection.message}`);
+        connectionTest = await firebaseGovExamService.testFirebaseConnection();
+        console.log('✅ [GovernmentExams] Firebase connection test:', connectionTest);
+        if (isMounted) {
+          setFirebaseConnected(connectionTest.connected);
+          setDebugInfo(`Firebase: ${connectionTest.connected ? 'Connected' : 'Disconnected'} - ${connectionTest.message}`);
+        }
         
-        if (!connection.connected) {
+        if (!connectionTest.connected) {
           console.warn('⚠️ Firebase connection failed, using cache');
-          loadFromCache();
+          if (isMounted) {
+            loadFromCache();
+          }
           return;
         }
       } catch (connError) {
         console.error('❌ [GovernmentExams] Connection test failed:', connError);
-        setFirebaseConnected(false);
-        setDebugInfo('Firebase connection test failed');
-        loadFromCache();
+        if (isMounted) {
+          setFirebaseConnected(false);
+          setDebugInfo('Firebase connection test failed');
+          loadFromCache();
+        }
         return;
       }
       
@@ -62,6 +72,8 @@ const GovernmentExams: React.FC = () => {
         const { exams: loadedExams, total } = await firebaseGovExamService.getGovExams({}, 1, 1000);
         
         console.log(`✅ [GovernmentExams] Received ${loadedExams.length} exams from Firebase, total: ${total}`);
+        
+        if (!isMounted) return;
         
         if (loadedExams.length === 0) {
           console.log('⚠️ [GovernmentExams] No exams returned from Firebase, checking cache...');
@@ -123,18 +135,29 @@ const GovernmentExams: React.FC = () => {
         console.error('Error code:', firestoreError.code);
         console.error('Error message:', firestoreError.message);
         
-        setDebugInfo(`Firestore error: ${firestoreError.code || 'Unknown'} - ${firestoreError.message || 'No message'}`);
-        loadFromCache();
+        if (isMounted) {
+          setDebugInfo(`Firestore error: ${firestoreError.code || 'Unknown'} - ${firestoreError.message || 'No message'}`);
+          loadFromCache();
+        }
       }
       
     } catch (err: any) {
       console.error('❌ [GovernmentExams] General error in loadExams:', err);
-      setDebugInfo(`General error: ${err.message || 'Unknown error'}`);
-      loadFromCache();
+      if (isMounted) {
+        setDebugInfo(`General error: ${err.message || 'Unknown error'}`);
+        loadFromCache();
+      }
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
-  };
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Load from cache function
   const loadFromCache = () => {
@@ -182,8 +205,15 @@ const GovernmentExams: React.FC = () => {
   // Track daily page view on mount
   useEffect(() => {
     trackDailyPageView('Latest Government Exams', '/government-exams');
+    
+    // Load exams only once on mount
     loadExams();
-  }, [trackDailyPageView]);
+    
+    // Cleanup function
+    return () => {
+      console.log('[GovernmentExams] Component unmounting');
+    };
+  }, [trackDailyPageView, loadExams]); // Added loadExams to dependency array
 
   // Exam levels/categories
   const examLevels = [
@@ -458,6 +488,7 @@ const GovernmentExams: React.FC = () => {
     setError(null);
     setFirebaseConnected(false);
     setDebugInfo('Using sample data for testing');
+    setLoading(false);
     
     // Save to cache
     localStorage.setItem('government_exams_cache', JSON.stringify({
@@ -736,6 +767,16 @@ const GovernmentExams: React.FC = () => {
               <p className="text-sm text-gray-500 mt-2">
                 {firebaseConnected ? 'Connecting to Firebase...' : 'Loading from cache...'}
               </p>
+              <button 
+                onClick={() => {
+                  console.log('Cancelling load...');
+                  setLoading(false);
+                  loadFromCache();
+                }}
+                className="mt-4 text-sm text-red-600 hover:text-red-800"
+              >
+                Cancel & Load from Cache
+              </button>
             </div>
           ) : error && !error.includes('cached') ? (
             <div className="text-center py-12">
