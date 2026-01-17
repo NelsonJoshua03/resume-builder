@@ -1,4 +1,4 @@
-// src/components/GovernmentExams.tsx - UPDATED WITH BETTER ERROR HANDLING
+// src/components/GovernmentExams.tsx - UPDATED WITH BETTER FIREBASE INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -62,10 +62,11 @@ const GovernmentExams: React.FC = () => {
     };
   }, []);
 
-  // Load exams with error handling
+  // Load exams with error handling - UPDATED
   const loadExams = async () => {
     setLoading(true);
     setError(null);
+    
     try {
       console.log('🔄 Loading government exams...');
       
@@ -74,17 +75,32 @@ const GovernmentExams: React.FC = () => {
       setFirebaseConnected(connection.connected);
       
       if (!connection.connected) {
-        throw new Error(`Firebase connection failed: ${connection.message}`);
+        console.warn('⚠️ Firebase connection failed, attempting to load from cache');
+        // Try to load from cache
+        await loadExamsFromCache();
+        return;
       }
       
+      console.log('✅ Firebase connected, loading exams...');
+      
+      // Get exams from Firebase
       const { exams: loadedExams } = await firebaseGovExamService.getGovExams({}, 1, 1000);
       
+      console.log(`📊 Loaded ${loadedExams.length} exams from Firebase`);
+      
       if (loadedExams.length === 0) {
-        setError('No government exams found in the database. Please add exams from the admin panel.');
+        console.log('⚠️ No exams found in Firebase, trying cache...');
+        await loadExamsFromCache();
       } else {
         setExams(loadedExams);
         setLastUpdated(new Date().toLocaleString('en-IN'));
         setError(null);
+        
+        // Save to cache for offline use
+        localStorage.setItem('government_exams_cache', JSON.stringify({
+          exams: loadedExams,
+          timestamp: Date.now()
+        }));
         
         // Load stats
         try {
@@ -92,14 +108,61 @@ const GovernmentExams: React.FC = () => {
           setStats(examStats);
         } catch (statsError) {
           console.warn('Failed to load stats:', statsError);
+          // Set default stats with explicit types
+          setStats({
+            totalExams: loadedExams.length,
+            totalViews: loadedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.views || 0), 0),
+            totalApplications: loadedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.applications || 0), 0),
+            totalShares: loadedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.shares || 0), 0)
+          });
         }
       }
       
       setLoading(false);
     } catch (err: any) {
-      console.error('❌ Error loading exams:', err);
-      setError(`Failed to load exams: ${err.message || 'Unknown error'}`);
+      console.error('❌ Error loading exams from Firebase:', err);
+      
+      // Try to load from cache as fallback
+      await loadExamsFromCache();
+    }
+  };
+
+  // Load exams from cache
+  const loadExamsFromCache = async () => {
+    try {
+      const cacheData = localStorage.getItem('government_exams_cache');
+      if (cacheData) {
+        const parsed = JSON.parse(cacheData);
+        const cachedExams = Array.isArray(parsed.exams) ? parsed.exams : [];
+        
+        if (cachedExams.length > 0) {
+          setExams(cachedExams);
+          setLastUpdated(new Date(parsed.timestamp).toLocaleString('en-IN'));
+          setError('Using cached data. Firebase connection issue.');
+          setFirebaseConnected(false);
+          
+          // Calculate basic stats from cache with explicit types
+          setStats({
+            totalExams: cachedExams.length,
+            totalViews: cachedExams.reduce((sum: number, exam: any) => sum + (exam.views || 0), 0),
+            totalApplications: cachedExams.reduce((sum: number, exam: any) => sum + (exam.applications || 0), 0),
+            totalShares: cachedExams.reduce((sum: number, exam: any) => sum + (exam.shares || 0), 0)
+          });
+          
+          console.log(`✅ Loaded ${cachedExams.length} exams from cache`);
+        } else {
+          setError('No exams found. Please add exams from the admin panel or check your internet connection.');
+          setExams([]);
+        }
+      } else {
+        setError('No government exams found. Please add exams from the admin panel.');
+        setExams([]);
+      }
+    } catch (cacheError) {
+      console.error('❌ Error loading from cache:', cacheError);
+      setError('Failed to load exams. Please check your connection and try again.');
       setExams([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -108,6 +171,15 @@ const GovernmentExams: React.FC = () => {
   useEffect(() => {
     trackDailyPageView('Latest Government Exams', '/government-exams');
     loadExams();
+    
+    // Set up periodic refresh (every 5 minutes)
+    const refreshInterval = setInterval(() => {
+      if (firebaseConnected && !loading) {
+        loadExams();
+      }
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(refreshInterval);
   }, [trackDailyPageView]);
 
   // Exam levels/categories
@@ -147,32 +219,48 @@ const GovernmentExams: React.FC = () => {
 
   // Check if application is open
   const isApplicationOpen = (exam: GovExamData) => {
-    const now = new Date();
-    const startDate = new Date(exam.applicationStartDate);
-    const endDate = new Date(exam.applicationEndDate);
-    return now >= startDate && now <= endDate;
+    try {
+      const now = new Date();
+      const startDate = new Date(exam.applicationStartDate);
+      const endDate = new Date(exam.applicationEndDate);
+      return now >= startDate && now <= endDate;
+    } catch {
+      return false;
+    }
   };
 
   // Check if application is upcoming
   const isApplicationUpcoming = (exam: GovExamData) => {
-    const now = new Date();
-    const startDate = new Date(exam.applicationStartDate);
-    return now < startDate;
+    try {
+      const now = new Date();
+      const startDate = new Date(exam.applicationStartDate);
+      return now < startDate;
+    } catch {
+      return false;
+    }
   };
 
   // Check if application is closed
   const isApplicationClosed = (exam: GovExamData) => {
-    const now = new Date();
-    const endDate = new Date(exam.applicationEndDate);
-    return now > endDate;
+    try {
+      const now = new Date();
+      const endDate = new Date(exam.applicationEndDate);
+      return now > endDate;
+    } catch {
+      return false;
+    }
   };
 
   // Days remaining to apply
   const getDaysRemaining = (endDate: string) => {
-    const now = new Date();
-    const end = new Date(endDate);
-    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+    try {
+      const now = new Date();
+      const end = new Date(endDate);
+      const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 0;
+    } catch {
+      return 0;
+    }
   };
 
   // Filter exams
@@ -181,8 +269,8 @@ const GovernmentExams: React.FC = () => {
     const matchesOrg = selectedOrg === 'all' || exam.organization === selectedOrg;
     const matchesSearch = searchTerm === '' || 
       exam.examName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exam.posts.toLowerCase().includes(searchTerm.toLowerCase());
+      (exam.organization && exam.organization.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (exam.posts && exam.posts.toLowerCase().includes(searchTerm.toLowerCase()));
     
     let matchesStatus = true;
     if (applicationStatusFilter === 'open') {
@@ -240,20 +328,47 @@ const GovernmentExams: React.FC = () => {
     
     // Increment application count in Firebase
     if (exam.id) {
-      await firebaseGovExamService.incrementApplicationCount(exam.id);
+      try {
+        await firebaseGovExamService.incrementApplicationCount(exam.id);
+        
+        // Update local state
+        setExams(prevExams => 
+          prevExams.map(e => 
+            e.id === exam.id 
+              ? { ...e, applications: (e.applications || 0) + 1 }
+              : e
+          )
+        );
+      } catch (error) {
+        console.warn('Failed to increment application count:', error);
+      }
     }
   };
 
   // Handle exam view click
   const handleExamViewClick = async (exam: GovExamData) => {
     if (exam.id) {
-      await firebaseGovExamService.incrementViewCount(exam.id);
+      try {
+        await firebaseGovExamService.incrementViewCount(exam.id);
+        
+        // Update local state
+        setExams(prevExams => 
+          prevExams.map(e => 
+            e.id === exam.id 
+              ? { ...e, views: (e.views || 0) + 1 }
+              : e
+          )
+        );
+      } catch (error) {
+        console.warn('Failed to increment view count:', error);
+      }
     }
   };
 
   // Refresh exams
   const handleRefresh = async () => {
     setError(null);
+    setLoading(true);
     await loadExams();
     trackButtonClick('refresh_exams', 'page_header', 'government_exams');
   };
@@ -326,7 +441,7 @@ const GovernmentExams: React.FC = () => {
             <span className="block text-sm text-green-200 mt-2">
               Auto-cleaned every 90 days • Updated: {lastUpdated || 'Loading...'}
               {!firebaseConnected && (
-                <span className="text-yellow-300 ml-2">• Firebase disconnected</span>
+                <span className="text-yellow-300 ml-2">• Using cached data</span>
               )}
             </span>
           </p>
@@ -334,16 +449,16 @@ const GovernmentExams: React.FC = () => {
           {/* Error Message Display */}
           {error && (
             <div className="max-w-4xl mx-auto mb-6">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+              <div className={`${error.includes('cached') ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : 'bg-red-50 border-red-200 text-red-800'} border rounded-lg p-4`}>
                 <div className="flex items-center">
                   <AlertCircle className="mr-2" size={24} />
                   <div>
-                    <h3 className="font-bold">Error Loading Exams</h3>
+                    <h3 className="font-bold">{error.includes('cached') ? 'Using Cached Data' : 'Error Loading Exams'}</h3>
                     <p className="text-sm">{error}</p>
                     <div className="mt-2 flex gap-2">
                       <button
                         onClick={handleRefresh}
-                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors text-sm flex items-center"
+                        className={`${error.includes('cached') ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'} text-white px-4 py-2 rounded transition-colors text-sm flex items-center`}
                       >
                         <RefreshCw size={16} className="mr-2" />
                         Try Again
@@ -506,9 +621,11 @@ const GovernmentExams: React.FC = () => {
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
               <p className="text-gray-600">Loading latest government exams...</p>
-              <p className="text-sm text-gray-500 mt-2">Connecting to Firebase...</p>
+              <p className="text-sm text-gray-500 mt-2">
+                {firebaseConnected ? 'Connecting to Firebase...' : 'Loading from cache...'}
+              </p>
             </div>
-          ) : error ? (
+          ) : error && !error.includes('cached') ? (
             <div className="text-center py-12">
               <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
               <h3 className="text-xl font-bold text-gray-800 mb-2">Unable to Load Exams</h3>
@@ -668,15 +785,15 @@ const GovernmentExams: React.FC = () => {
                 </div>
 
                 {/* Firebase Status */}
-                <div className={`mt-6 p-4 rounded-lg flex items-center ${firebaseConnected ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <div className={`mt-6 p-4 rounded-lg flex items-center ${firebaseConnected ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
                   <div className="flex items-center">
-                    <div className={`w-3 h-3 rounded-full mr-2 ${firebaseConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <div className={`w-3 h-3 rounded-full mr-2 ${firebaseConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                     <div>
                       <p className="text-sm font-medium">
-                        {firebaseConnected ? 'Live Data' : 'Local Storage'}
+                        {firebaseConnected ? 'Live Data' : 'Cached Data'}
                       </p>
                       <p className="text-xs">
-                        {firebaseConnected ? 'Connected to Firebase' : 'Using cached data'}
+                        {firebaseConnected ? 'Connected to Firebase' : 'Using offline cache'}
                       </p>
                     </div>
                   </div>
@@ -851,17 +968,25 @@ const ExamCard: React.FC<{
   const { trackButtonClick } = useGoogleAnalytics();
   
   const isApplicationOpen = () => {
-    const now = new Date();
-    const startDate = new Date(exam.applicationStartDate);
-    const endDate = new Date(exam.applicationEndDate);
-    return now >= startDate && now <= endDate;
+    try {
+      const now = new Date();
+      const startDate = new Date(exam.applicationStartDate);
+      const endDate = new Date(exam.applicationEndDate);
+      return now >= startDate && now <= endDate;
+    } catch {
+      return false;
+    }
   };
 
   const getDaysRemaining = () => {
-    const now = new Date();
-    const end = new Date(exam.applicationEndDate);
-    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+    try {
+      const now = new Date();
+      const end = new Date(exam.applicationEndDate);
+      const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 0;
+    } catch {
+      return 0;
+    }
   };
 
   const daysLeft = getDaysRemaining();
