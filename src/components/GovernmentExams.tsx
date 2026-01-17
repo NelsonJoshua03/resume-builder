@@ -1,4 +1,4 @@
-// src/components/GovernmentExams.tsx - UPDATED WITH BETTER FIREBASE INTEGRATION
+// src/components/GovernmentExams.tsx - UPDATED WITH DEBUGGING
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -6,7 +6,7 @@ import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { firebaseGovExamService } from '../firebase/govExamService';
 import type { GovExamData } from '../firebase/govExamService';
-import { Clock, AlertCircle, Filter, Calendar, ExternalLink, BookOpen, Users, TrendingUp, RefreshCw } from 'lucide-react';
+import { Clock, AlertCircle, Filter, Calendar, ExternalLink, BookOpen, Users, TrendingUp, RefreshCw, Database } from 'lucide-react';
 
 const GovernmentExams: React.FC = () => {
   const [exams, setExams] = useState<GovExamData[]>([]);
@@ -20,150 +20,158 @@ const GovernmentExams: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
-  const [firebaseConnected, setFirebaseConnected] = useState<boolean>(true);
+  const [firebaseConnected, setFirebaseConnected] = useState<boolean>(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const examsPerPage = 12;
 
   const { trackDailyPageView, trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
 
-  // Clear problematic cache on mount
-  useEffect(() => {
-    const clearProblematicCache = () => {
-      const itemsToClear = [
-        'firebase_session_id',
-        'firebase_user_id',
-        'firebase_anonymous_id'
-      ];
-      
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && itemsToClear.some(item => key.startsWith(item))) {
-          localStorage.removeItem(key);
-        }
-      }
-    };
-    
-    clearProblematicCache();
-    
-    // Handle SVG path errors (ignore them)
-    const handleError = (event: ErrorEvent) => {
-      if (event.error && event.error.message && 
-          (event.error.message.includes('path') || event.error.message.includes('attribute d'))) {
-        event.preventDefault();
-        console.warn('Ignoring SVG path error');
-        return false;
-      }
-    };
-    
-    window.addEventListener('error', handleError);
-    
-    return () => {
-      window.removeEventListener('error', handleError);
-    };
-  }, []);
-
-  // Load exams with error handling - UPDATED
+  // Load exams with error handling - SIMPLIFIED VERSION
   const loadExams = async () => {
     setLoading(true);
     setError(null);
+    setDebugInfo('Starting to load exams...');
     
     try {
-      console.log('🔄 Loading government exams...');
+      console.log('🔄 [GovernmentExams] Starting loadExams...');
       
-      // Test Firebase connection first
-      const connection = await firebaseGovExamService.testFirebaseConnection();
-      setFirebaseConnected(connection.connected);
-      
-      if (!connection.connected) {
-        console.warn('⚠️ Firebase connection failed, attempting to load from cache');
-        // Try to load from cache
-        await loadExamsFromCache();
+      // Test Firebase connection
+      try {
+        const connection = await firebaseGovExamService.testFirebaseConnection();
+        console.log('✅ [GovernmentExams] Firebase connection test:', connection);
+        setFirebaseConnected(connection.connected);
+        setDebugInfo(`Firebase: ${connection.connected ? 'Connected' : 'Disconnected'} - ${connection.message}`);
+        
+        if (!connection.connected) {
+          console.warn('⚠️ Firebase connection failed, using cache');
+          loadFromCache();
+          return;
+        }
+      } catch (connError) {
+        console.error('❌ [GovernmentExams] Connection test failed:', connError);
+        setFirebaseConnected(false);
+        setDebugInfo('Firebase connection test failed');
+        loadFromCache();
         return;
       }
       
-      console.log('✅ Firebase connected, loading exams...');
-      
-      // Get exams from Firebase
-      const { exams: loadedExams } = await firebaseGovExamService.getGovExams({}, 1, 1000);
-      
-      console.log(`📊 Loaded ${loadedExams.length} exams from Firebase`);
-      
-      if (loadedExams.length === 0) {
-        console.log('⚠️ No exams found in Firebase, trying cache...');
-        await loadExamsFromCache();
-      } else {
-        setExams(loadedExams);
+      // Try to get exams from Firebase
+      try {
+        console.log('🔄 [GovernmentExams] Calling getGovExams from Firebase...');
+        const { exams: loadedExams, total } = await firebaseGovExamService.getGovExams({}, 1, 1000);
+        
+        console.log(`✅ [GovernmentExams] Received ${loadedExams.length} exams from Firebase, total: ${total}`);
+        
+        if (loadedExams.length === 0) {
+          console.log('⚠️ [GovernmentExams] No exams returned from Firebase, checking cache...');
+          loadFromCache();
+          return;
+        }
+        
+        // Process the exams
+        const processedExams = loadedExams.map(exam => ({
+          ...exam,
+          // Ensure all required fields exist
+          examName: exam.examName || 'Untitled Exam',
+          organization: exam.organization || 'Unknown Organization',
+          posts: exam.posts || 'Various Posts',
+          vacancies: exam.vacancies || 'Not specified',
+          eligibility: exam.eligibility || 'Check official notification',
+          applicationStartDate: exam.applicationStartDate || new Date().toISOString().split('T')[0],
+          applicationEndDate: exam.applicationEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          examDate: exam.examDate || 'To be announced',
+          examLevel: exam.examLevel || 'Other',
+          ageLimit: exam.ageLimit || 'As per rules',
+          applicationFee: exam.applicationFee || 'Check official notification',
+          examMode: exam.examMode || 'Online',
+          officialWebsite: exam.officialWebsite || '#',
+          notificationLink: exam.notificationLink || '#',
+          applyLink: exam.applyLink || '#',
+          views: exam.views || 0,
+          applications: exam.applications || 0,
+          shares: exam.shares || 0
+        }));
+        
+        setExams(processedExams);
         setLastUpdated(new Date().toLocaleString('en-IN'));
         setError(null);
         
-        // Save to cache for offline use
+        // Save to cache
         localStorage.setItem('government_exams_cache', JSON.stringify({
-          exams: loadedExams,
+          exams: processedExams,
           timestamp: Date.now()
         }));
         
-        // Load stats
-        try {
-          const examStats = await firebaseGovExamService.getStats();
-          setStats(examStats);
-        } catch (statsError) {
-          console.warn('Failed to load stats:', statsError);
-          // Set default stats with explicit types
-          setStats({
-            totalExams: loadedExams.length,
-            totalViews: loadedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.views || 0), 0),
-            totalApplications: loadedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.applications || 0), 0),
-            totalShares: loadedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.shares || 0), 0)
-          });
-        }
+        // Set basic stats
+        setStats({
+          totalExams: processedExams.length,
+          totalViews: processedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.views || 0), 0),
+          totalApplications: processedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.applications || 0), 0),
+          totalShares: processedExams.reduce((sum: number, exam: GovExamData) => sum + (exam.shares || 0), 0)
+        });
+        
+        console.log(`✅ [GovernmentExams] Successfully loaded ${processedExams.length} exams`);
+        setDebugInfo(`Successfully loaded ${processedExams.length} exams from Firebase`);
+        
+      } catch (firestoreError: any) {
+        console.error('❌ [GovernmentExams] Firestore error:', firestoreError);
+        console.error('Error code:', firestoreError.code);
+        console.error('Error message:', firestoreError.message);
+        
+        setDebugInfo(`Firestore error: ${firestoreError.code || 'Unknown'} - ${firestoreError.message || 'No message'}`);
+        loadFromCache();
       }
       
-      setLoading(false);
     } catch (err: any) {
-      console.error('❌ Error loading exams from Firebase:', err);
-      
-      // Try to load from cache as fallback
-      await loadExamsFromCache();
+      console.error('❌ [GovernmentExams] General error in loadExams:', err);
+      setDebugInfo(`General error: ${err.message || 'Unknown error'}`);
+      loadFromCache();
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Load exams from cache
-  const loadExamsFromCache = async () => {
+  // Load from cache function
+  const loadFromCache = () => {
+    console.log('🔄 [GovernmentExams] Loading from cache...');
+    setDebugInfo('Loading from cache...');
+    
     try {
       const cacheData = localStorage.getItem('government_exams_cache');
+      
       if (cacheData) {
         const parsed = JSON.parse(cacheData);
         const cachedExams = Array.isArray(parsed.exams) ? parsed.exams : [];
         
         if (cachedExams.length > 0) {
+          console.log(`✅ [GovernmentExams] Found ${cachedExams.length} exams in cache`);
           setExams(cachedExams);
           setLastUpdated(new Date(parsed.timestamp).toLocaleString('en-IN'));
           setError('Using cached data. Firebase connection issue.');
-          setFirebaseConnected(false);
+          setDebugInfo(`Loaded ${cachedExams.length} exams from cache (timestamp: ${new Date(parsed.timestamp).toLocaleString()})`);
           
-          // Calculate basic stats from cache with explicit types
+          // Set stats from cache
           setStats({
             totalExams: cachedExams.length,
             totalViews: cachedExams.reduce((sum: number, exam: any) => sum + (exam.views || 0), 0),
             totalApplications: cachedExams.reduce((sum: number, exam: any) => sum + (exam.applications || 0), 0),
             totalShares: cachedExams.reduce((sum: number, exam: any) => sum + (exam.shares || 0), 0)
           });
-          
-          console.log(`✅ Loaded ${cachedExams.length} exams from cache`);
         } else {
-          setError('No exams found. Please add exams from the admin panel or check your internet connection.');
-          setExams([]);
+          console.log('⚠️ [GovernmentExams] Cache is empty');
+          setError('No exams found. Please check your connection and try again.');
+          setDebugInfo('Cache is empty');
         }
       } else {
-        setError('No government exams found. Please add exams from the admin panel.');
-        setExams([]);
+        console.log('⚠️ [GovernmentExams] No cache found');
+        setError('No government exams available. Please check back later.');
+        setDebugInfo('No cache found');
       }
     } catch (cacheError) {
-      console.error('❌ Error loading from cache:', cacheError);
-      setError('Failed to load exams. Please check your connection and try again.');
-      setExams([]);
-    } finally {
-      setLoading(false);
+      console.error('❌ [GovernmentExams] Cache error:', cacheError);
+      setError('Failed to load exams from cache.');
+      setDebugInfo(`Cache error: ${cacheError}`);
     }
   };
 
@@ -171,15 +179,6 @@ const GovernmentExams: React.FC = () => {
   useEffect(() => {
     trackDailyPageView('Latest Government Exams', '/government-exams');
     loadExams();
-    
-    // Set up periodic refresh (every 5 minutes)
-    const refreshInterval = setInterval(() => {
-      if (firebaseConnected && !loading) {
-        loadExams();
-      }
-    }, 5 * 60 * 1000);
-    
-    return () => clearInterval(refreshInterval);
   }, [trackDailyPageView]);
 
   // Exam levels/categories
@@ -327,7 +326,7 @@ const GovernmentExams: React.FC = () => {
     trackButtonClick('apply_gov_exam', 'exam_card', 'government_exams');
     
     // Increment application count in Firebase
-    if (exam.id) {
+    if (exam.id && firebaseConnected) {
       try {
         await firebaseGovExamService.incrementApplicationCount(exam.id);
         
@@ -347,7 +346,7 @@ const GovernmentExams: React.FC = () => {
 
   // Handle exam view click
   const handleExamViewClick = async (exam: GovExamData) => {
-    if (exam.id) {
+    if (exam.id && firebaseConnected) {
       try {
         await firebaseGovExamService.incrementViewCount(exam.id);
         
@@ -368,9 +367,79 @@ const GovernmentExams: React.FC = () => {
   // Refresh exams
   const handleRefresh = async () => {
     setError(null);
-    setLoading(true);
+    setDebugInfo('Refreshing...');
     await loadExams();
     trackButtonClick('refresh_exams', 'page_header', 'government_exams');
+  };
+
+  // Add some sample data for testing if needed
+  const addSampleExams = () => {
+    const sampleExams: GovExamData[] = [
+      {
+        id: 'exam_1',
+        examName: 'UPSC Civil Services Preliminary Exam 2025',
+        organization: 'UPSC',
+        posts: 'Civil Services (IAS, IPS, IFS, etc.)',
+        vacancies: 'Approximately 1000',
+        eligibility: "Bachelor's degree from recognized university",
+        applicationStartDate: '2025-02-01',
+        applicationEndDate: '2025-03-01',
+        examDate: '2025-05-28',
+        examLevel: 'UPSC',
+        ageLimit: '21-32 years',
+        applicationFee: '₹100 for General, No fee for SC/ST/PH',
+        examMode: 'Offline (OMR Based)',
+        officialWebsite: 'https://upsc.gov.in',
+        notificationLink: 'https://upsc.gov.in/sites/default/files/notification-csp-2025.pdf',
+        applyLink: 'https://upsconline.nic.in',
+        featured: true,
+        isNew: true,
+        views: 1500,
+        applications: 450,
+        shares: 120
+      },
+      {
+        id: 'exam_2',
+        examName: 'SSC CGL 2025',
+        organization: 'SSC',
+        posts: 'Group B and Group C Gazetted/Non-Gazetted posts',
+        vacancies: 'Approximately 20,000',
+        eligibility: "Bachelor's degree in any discipline",
+        applicationStartDate: '2025-04-01',
+        applicationEndDate: '2025-05-01',
+        examDate: '2025-07-15',
+        examLevel: 'SSC',
+        ageLimit: '18-32 years',
+        applicationFee: '₹100 for General/EWS, No fee for SC/ST/PH/Women',
+        examMode: 'Online (CBT)',
+        officialWebsite: 'https://ssc.nic.in',
+        notificationLink: 'https://ssc.nic.in/SSC-CGL-2025-Notification.pdf',
+        applyLink: 'https://ssconline.nic.in',
+        featured: true,
+        views: 2200,
+        applications: 1800,
+        shares: 350
+      }
+    ];
+    
+    setExams(sampleExams);
+    setLastUpdated(new Date().toLocaleString('en-IN'));
+    setError(null);
+    setFirebaseConnected(false);
+    setDebugInfo('Using sample data for testing');
+    
+    // Save to cache
+    localStorage.setItem('government_exams_cache', JSON.stringify({
+      exams: sampleExams,
+      timestamp: Date.now()
+    }));
+    
+    setStats({
+      totalExams: sampleExams.length,
+      totalViews: sampleExams.reduce((sum: number, exam: GovExamData) => sum + (exam.views || 0), 0),
+      totalApplications: sampleExams.reduce((sum: number, exam: GovExamData) => sum + (exam.applications || 0), 0),
+      totalShares: sampleExams.reduce((sum: number, exam: GovExamData) => sum + (exam.shares || 0), 0)
+    });
   };
 
   return (
@@ -444,6 +513,11 @@ const GovernmentExams: React.FC = () => {
                 <span className="text-yellow-300 ml-2">• Using cached data</span>
               )}
             </span>
+            {debugInfo && (
+              <span className="block text-xs text-green-100 mt-1">
+                Debug: {debugInfo}
+              </span>
+            )}
           </p>
           
           {/* Error Message Display */}
@@ -455,7 +529,7 @@ const GovernmentExams: React.FC = () => {
                   <div>
                     <h3 className="font-bold">{error.includes('cached') ? 'Using Cached Data' : 'Error Loading Exams'}</h3>
                     <p className="text-sm">{error}</p>
-                    <div className="mt-2 flex gap-2">
+                    <div className="mt-2 flex flex-wrap gap-2">
                       <button
                         onClick={handleRefresh}
                         className={`${error.includes('cached') ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'} text-white px-4 py-2 rounded transition-colors text-sm flex items-center`}
@@ -463,9 +537,16 @@ const GovernmentExams: React.FC = () => {
                         <RefreshCw size={16} className="mr-2" />
                         Try Again
                       </button>
+                      <button
+                        onClick={addSampleExams}
+                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm flex items-center"
+                      >
+                        <Database size={16} className="mr-2" />
+                        Load Sample Data
+                      </button>
                       <Link
                         to="/admin/government-exams"
-                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors text-sm"
+                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors text-sm flex items-center"
                       >
                         Go to Admin Panel
                       </Link>
@@ -486,7 +567,7 @@ const GovernmentExams: React.FC = () => {
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  disabled={loading || !!error}
+                  disabled={loading}
                 />
               </div>
               <div>
@@ -497,7 +578,7 @@ const GovernmentExams: React.FC = () => {
                     setSelectedLevel(e.target.value);
                     setCurrentPage(1);
                   }}
-                  disabled={loading || !!error}
+                  disabled={loading}
                 >
                   {examLevels.map(level => (
                     <option key={level} value={level}>
@@ -509,7 +590,7 @@ const GovernmentExams: React.FC = () => {
               <div>
                 <button 
                   type="submit"
-                  disabled={loading || !!error}
+                  disabled={loading}
                   className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Loading...' : 'Search Latest Exams'}
@@ -523,7 +604,7 @@ const GovernmentExams: React.FC = () => {
                 type="button"
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className="flex items-center gap-2 text-green-700 hover:text-green-800 text-sm disabled:opacity-50"
-                disabled={loading || !!error}
+                disabled={loading}
               >
                 <Filter size={16} />
                 {showAdvancedFilters ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
@@ -540,7 +621,7 @@ const GovernmentExams: React.FC = () => {
                         setSelectedOrg(e.target.value);
                         setCurrentPage(1);
                       }}
-                      disabled={loading || !!error}
+                      disabled={loading}
                     >
                       {organizations.map(org => (
                         <option key={org} value={org}>
@@ -558,7 +639,7 @@ const GovernmentExams: React.FC = () => {
                         setApplicationStatusFilter(e.target.value);
                         setCurrentPage(1);
                       }}
-                      disabled={loading || !!error}
+                      disabled={loading}
                     >
                       <option value="all">All Status</option>
                       <option value="open">Currently Open</option>
@@ -605,7 +686,7 @@ const GovernmentExams: React.FC = () => {
             </button>
             <button 
               onClick={clearFilters}
-              disabled={loading || !!error}
+              disabled={loading}
               className="bg-white text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-50 transition-colors disabled:opacity-50"
             >
               Clear Filters
@@ -630,7 +711,7 @@ const GovernmentExams: React.FC = () => {
               <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
               <h3 className="text-xl font-bold text-gray-800 mb-2">Unable to Load Exams</h3>
               <p className="text-gray-600 mb-4">{error}</p>
-              <div className="flex justify-center gap-4">
+              <div className="flex flex-wrap justify-center gap-4">
                 <button
                   onClick={handleRefresh}
                   className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
@@ -638,28 +719,44 @@ const GovernmentExams: React.FC = () => {
                   <RefreshCw size={16} className="mr-2" />
                   Retry Loading
                 </button>
+                <button
+                  onClick={addSampleExams}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <Database size={16} className="mr-2" />
+                  Load Sample Data
+                </button>
                 <Link
                   to="/admin/government-exams"
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center"
                 >
                   Go to Admin Panel
                 </Link>
               </div>
               <p className="text-sm text-gray-500 mt-4">
-                If this persists, check your Firebase configuration and ensure the Firestore rules allow public read access to 'governmentExams' collection.
+                Debug Info: {debugInfo}
               </p>
             </div>
           ) : exams.length === 0 ? (
             <div className="text-center py-12">
               <AlertCircle className="mx-auto mb-4 text-yellow-500" size={48} />
               <h3 className="text-xl font-bold text-gray-800 mb-2">No Government Exams Found</h3>
-              <p className="text-gray-600 mb-4">The database is empty. Please add exams from the admin panel.</p>
-              <Link
-                to="/admin/government-exams"
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors inline-block"
-              >
-                Add Government Exams
-              </Link>
+              <p className="text-gray-600 mb-4">The database is empty. Please add exams from the admin panel or load sample data.</p>
+              <div className="flex flex-wrap justify-center gap-4">
+                <button
+                  onClick={addSampleExams}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <Database size={16} className="mr-2" />
+                  Load Sample Data
+                </button>
+                <Link
+                  to="/admin/government-exams"
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors inline-block"
+                >
+                  Add Government Exams
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-8">
@@ -878,6 +975,7 @@ const GovernmentExams: React.FC = () => {
                   <div className="text-sm text-gray-600 flex items-center gap-2">
                     <Clock size={14} />
                     Page {currentPage} of {totalPages} • Updated: {lastUpdated.split(',')[0]}
+                    {!firebaseConnected && <span className="text-yellow-600">• Cached</span>}
                   </div>
                 </div>
                 
