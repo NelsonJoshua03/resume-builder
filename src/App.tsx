@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED WITH ALL SEPARATE PAGES
+// src/App.tsx - UPDATED TO FIX GOVERNMENT EXAMS LOOP
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -26,6 +26,8 @@ import Contact from "./components/Contact";
 import JobDrives from './components/JobDrives';
 import AdminJobDrives from './components/AdminJobDrives';
 import GoogleAnalytics from './components/GoogleAnalytics';
+
+// FIXED: Import the correct GovernmentExams component
 import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import EditResumePage from './components/EditResumePage';
@@ -96,10 +98,7 @@ function App() {
 
   return (
     <HelmetProvider>
-      <Router future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true
-      }}>
+      <Router>
         <ResumeProvider>
           <GoogleAnalytics />
           <Layout>
@@ -107,7 +106,7 @@ function App() {
               {/* Main Pages */}
               <Route path="/" element={<HomePage />} />
               <Route path="/latest-job-updates-india" element={<JobApplications />} />
-              <Route path="/builder" element={<Navigate to="/free-resume-builder" replace />} /> {/* Redirect old builder */}
+              <Route path="/builder" element={<Navigate to="/free-resume-builder" replace />} />
               <Route path="/job-disciplines" element={<JobDisciplines />} />
               <Route path="/latest-jobs-for-freshers-india" element={<Navigate to="/latest-job-updates-india" replace />} />
               <Route path="/job-applications" element={<Navigate to="/latest-job-updates-india" replace />} />
@@ -118,8 +117,11 @@ function App() {
               <Route path="/edit" element={<EditResumePage />} />
               <Route path="/latest-walk-in-drives-india" element={<JobDrives />} />
               <Route path="/job-drives" element={<Navigate to="/latest-walk-in-drives-india" replace />} />
+              
+              {/* ✅ FIXED: Government Exams route */}
+              <Route path="/government-exams" element={<GovernmentExams />} />
 
-              {/* SEO-Optimized Resume Builder Pages (Separate Components) */}
+              {/* SEO-Optimized Resume Builder Pages */}
               <Route path="/free-resume-builder" element={<FreeResumeBuilderPage />} />
               <Route path="/ats-resume-builder" element={<ATSResumeBuilderPage />} />
               <Route path="/online-resume-maker" element={<OnlineResumeMakerPage />} />
@@ -154,7 +156,7 @@ function App() {
                 } 
               />
 
-              {/* Analytics & Admin Dashboards (Admin only) */}
+              {/* Analytics & Admin Dashboards */}
               <Route 
                 path="/admin/analytics" 
                 element={
@@ -227,14 +229,12 @@ function App() {
                 } 
               />
 
-              {/* Job Discipline Pages - Engineering */}
+              {/* Job Discipline Pages */}
               <Route path="/job-disciplines/engineering" element={<JobDisciplines />} />
               <Route path="/job-disciplines/mechanical-engineering" element={<MechanicalEngineering />} />
               <Route path="/job-disciplines/static-engineer" element={<StaticEngineer />} />
               <Route path="/job-disciplines/civil-engineering" element={<CivilEngineering />} />
               <Route path="/job-disciplines/electrical-engineering" element={<ElectricalEngineering />} />
-
-              {/* Job Discipline Pages - Technology */}
               <Route path="/job-disciplines/software-development" element={<SoftwareDevelopment />} />
               <Route path="/job-disciplines/data-science" element={<DataScience />} />
               <Route path="/job-disciplines/cybersecurity" element={<Cybersecurity />} />
@@ -244,9 +244,8 @@ function App() {
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/cookies" element={<CookiePolicy />} />
               <Route path="/contact" element={<Contact />} />
-              <Route path="/government-exams" element={<GovernmentExams />} />
 
-              {/* Quick Admin Access - Redirects */}
+              {/* Quick Admin Access */}
               <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
               <Route path="/admin-mode" element={<Navigate to="/edit?adminMode=true" replace />} />
               <Route path="/create-client-resume" element={<Navigate to="/edit?adminMode=true" replace />} />
