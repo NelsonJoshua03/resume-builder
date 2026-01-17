@@ -1,0 +1,51 @@
+{"users": [
+{
+  "localId": "BTi2XG0ia0TwwxFQwFajWBt75AI3",
+  "lastSignedInAt": "1764868503815",
+  "createdAt": "1764868503815"
+},
+{
+  "localId": "HZecigkQcDOsGWpyN3WYGkpbfl62",
+  "email": "joshwords2020@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "RbzbyMHoEZ/i7Ns8FBJpkn7pf07NTts/g/e+11f63N2+Zzp95LmjFq53pcQcp3qSoZH4WzZ+mSxHrLBI+N2MPg==",
+  "salt": "wO2qlMZbbqOSSg==",
+  "lastSignedInAt": "1768573860209",
+  "createdAt": "1768573847211",
+  "disabled": false,
+  "providerUserInfo": []
+},
+{
+  "localId": "OQbyUwKEQWQvRynEpiCNTSzR6KA3",
+  "lastSignedInAt": "1764870555889",
+  "createdAt": "1764870555889"
+},
+{
+  "localId": "iTOQnEtDGnh57Tpm1QcVQSdI6Qc2",
+  "email": "contact@careercraft.in",
+  "emailVerified": true,
+  "passwordHash": "2MDW3aZc6n6W6UrS+BJ2PJCLbMg6b1fYidMWqmzwgcH/xTo9/nP9BSdSfHmzGlmefh+SJeWMRKAaPR/TTZLS5Q==",
+  "salt": "U6KgYE/2lnvFxw==",
+  "displayName": "Admin User",
+  "createdAt": "1766940195908",
+  "disabled": false,
+  "customAttributes": "{\"admin\":true,\"level\":\"super_admin\",\"email\":\"contact@careercraft.in\",\"canManageResumes\":true,\"canPostJobs\":true,\"canManageUsers\":false}",
+  "providerUserInfo": []
+},
+{
+  "localId": "vkNBhERkSbTYHwO86tKWb5D96K72",
+  "email": "nelsonjoshua03@outlook.com",
+  "emailVerified": true,
+  "passwordHash": "EQomjiDpTwjdDIFPZkB0FwiG9WZ+3L+Q4QlYjHwuM2QesweNgN1J66U+K4UNjVUziKbHzPRWnBgS/UOAlVjIMA==",
+  "salt": "RTmxiGDRFUwmVQ==",
+  "displayName": "Admin User",
+  "createdAt": "1766907117062",
+  "disabled": false,
+  "customAttributes": "{\"admin\":true,\"level\":\"super_admin\",\"email\":\"nelsonjoshua03@outlook.com\",\"canManageResumes\":true,\"canPostJobs\":true,\"canManageUsers\":false}",
+  "providerUserInfo": []
+},
+{
+  "localId": "zi3dXwElzPdBXh5RBYRrvHDUr223",
+  "lastSignedInAt": "1765137532307",
+  "createdAt": "1765137532307"
+}]}

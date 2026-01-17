@@ -1,4 +1,4 @@
-// src/components/GovernmentExams.tsx - UPDATED WITH FIREBASE INTEGRATION
+// src/components/GovernmentExams.tsx - UPDATED WITH BETTER ERROR HANDLING
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -6,7 +6,7 @@ import { useEnhancedAnalytics } from '../hooks/useEnhancedAnalytics';
 import { useGoogleAnalytics } from '../hooks/useGoogleAnalytics';
 import { firebaseGovExamService } from '../firebase/govExamService';
 import type { GovExamData } from '../firebase/govExamService';
-import { Clock, AlertCircle, Filter, Calendar, ExternalLink, BookOpen, Users, TrendingUp } from 'lucide-react';
+import { Clock, AlertCircle, Filter, Calendar, ExternalLink, BookOpen, Users, TrendingUp, RefreshCw } from 'lucide-react';
 
 const GovernmentExams: React.FC = () => {
   const [exams, setExams] = useState<GovExamData[]>([]);
@@ -18,6 +18,7 @@ const GovernmentExams: React.FC = () => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   const [applicationStatusFilter, setApplicationStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [firebaseConnected, setFirebaseConnected] = useState<boolean>(true);
   const examsPerPage = 12;
@@ -25,28 +26,81 @@ const GovernmentExams: React.FC = () => {
   const { trackDailyPageView, trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
 
-  // Load exams with auto-cleanup
+  // Clear problematic cache on mount
+  useEffect(() => {
+    const clearProblematicCache = () => {
+      const itemsToClear = [
+        'firebase_session_id',
+        'firebase_user_id',
+        'firebase_anonymous_id'
+      ];
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && itemsToClear.some(item => key.startsWith(item))) {
+          localStorage.removeItem(key);
+        }
+      }
+    };
+    
+    clearProblematicCache();
+    
+    // Handle SVG path errors (ignore them)
+    const handleError = (event: ErrorEvent) => {
+      if (event.error && event.error.message && 
+          (event.error.message.includes('path') || event.error.message.includes('attribute d'))) {
+        event.preventDefault();
+        console.warn('Ignoring SVG path error');
+        return false;
+      }
+    };
+    
+    window.addEventListener('error', handleError);
+    
+    return () => {
+      window.removeEventListener('error', handleError);
+    };
+  }, []);
+
+  // Load exams with error handling
   const loadExams = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { exams: loadedExams } = await firebaseGovExamService.getGovExams({}, 1, 1000);
-      setExams(loadedExams);
-      setLastUpdated(new Date().toLocaleString('en-IN'));
+      console.log('🔄 Loading government exams...');
       
-      // Load stats
-      const examStats = await firebaseGovExamService.getStats();
-      setStats(examStats);
-      
-      // Test Firebase connection
+      // Test Firebase connection first
       const connection = await firebaseGovExamService.testFirebaseConnection();
       setFirebaseConnected(connection.connected);
       
+      if (!connection.connected) {
+        throw new Error(`Firebase connection failed: ${connection.message}`);
+      }
+      
+      const { exams: loadedExams } = await firebaseGovExamService.getGovExams({}, 1, 1000);
+      
+      if (loadedExams.length === 0) {
+        setError('No government exams found in the database. Please add exams from the admin panel.');
+      } else {
+        setExams(loadedExams);
+        setLastUpdated(new Date().toLocaleString('en-IN'));
+        setError(null);
+        
+        // Load stats
+        try {
+          const examStats = await firebaseGovExamService.getStats();
+          setStats(examStats);
+        } catch (statsError) {
+          console.warn('Failed to load stats:', statsError);
+        }
+      }
+      
       setLoading(false);
-    } catch (error) {
-      console.error('Error loading exams:', error);
+    } catch (err: any) {
+      console.error('❌ Error loading exams:', err);
+      setError(`Failed to load exams: ${err.message || 'Unknown error'}`);
       setExams([]);
       setLoading(false);
-      setFirebaseConnected(false);
     }
   };
 
@@ -199,6 +253,7 @@ const GovernmentExams: React.FC = () => {
 
   // Refresh exams
   const handleRefresh = async () => {
+    setError(null);
     await loadExams();
     trackButtonClick('refresh_exams', 'page_header', 'government_exams');
   };
@@ -269,13 +324,43 @@ const GovernmentExams: React.FC = () => {
           <p className="text-xl max-w-3xl mx-auto mb-8">
             Complete Guide to Sarkari Naukri Exams - UPSC, SSC, Banking, Railway, Defense & More
             <span className="block text-sm text-green-200 mt-2">
-              Auto-cleaned every 90 days • Updated: {lastUpdated}
+              Auto-cleaned every 90 days • Updated: {lastUpdated || 'Loading...'}
               {!firebaseConnected && (
-                <span className="text-yellow-300 ml-2">• Using local storage</span>
+                <span className="text-yellow-300 ml-2">• Firebase disconnected</span>
               )}
             </span>
           </p>
           
+          {/* Error Message Display */}
+          {error && (
+            <div className="max-w-4xl mx-auto mb-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+                <div className="flex items-center">
+                  <AlertCircle className="mr-2" size={24} />
+                  <div>
+                    <h3 className="font-bold">Error Loading Exams</h3>
+                    <p className="text-sm">{error}</p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={handleRefresh}
+                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors text-sm flex items-center"
+                      >
+                        <RefreshCw size={16} className="mr-2" />
+                        Try Again
+                      </button>
+                      <Link
+                        to="/admin/government-exams"
+                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors text-sm"
+                      >
+                        Go to Admin Panel
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Search Form */}
           <form onSubmit={handleSearch} className="max-w-5xl mx-auto bg-white rounded-xl p-4 shadow-2xl">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -286,6 +371,7 @@ const GovernmentExams: React.FC = () => {
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={loading || !!error}
                 />
               </div>
               <div>
@@ -296,6 +382,7 @@ const GovernmentExams: React.FC = () => {
                     setSelectedLevel(e.target.value);
                     setCurrentPage(1);
                   }}
+                  disabled={loading || !!error}
                 >
                   {examLevels.map(level => (
                     <option key={level} value={level}>
@@ -307,9 +394,10 @@ const GovernmentExams: React.FC = () => {
               <div>
                 <button 
                   type="submit"
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
+                  disabled={loading || !!error}
+                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Search Latest Exams
+                  {loading ? 'Loading...' : 'Search Latest Exams'}
                 </button>
               </div>
             </div>
@@ -319,7 +407,8 @@ const GovernmentExams: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="flex items-center gap-2 text-green-700 hover:text-green-800 text-sm"
+                className="flex items-center gap-2 text-green-700 hover:text-green-800 text-sm disabled:opacity-50"
+                disabled={loading || !!error}
               >
                 <Filter size={16} />
                 {showAdvancedFilters ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
@@ -336,6 +425,7 @@ const GovernmentExams: React.FC = () => {
                         setSelectedOrg(e.target.value);
                         setCurrentPage(1);
                       }}
+                      disabled={loading || !!error}
                     >
                       {organizations.map(org => (
                         <option key={org} value={org}>
@@ -353,6 +443,7 @@ const GovernmentExams: React.FC = () => {
                         setApplicationStatusFilter(e.target.value);
                         setCurrentPage(1);
                       }}
+                      disabled={loading || !!error}
                     >
                       <option value="all">All Status</option>
                       <option value="open">Currently Open</option>
@@ -391,14 +482,16 @@ const GovernmentExams: React.FC = () => {
             </div>
             <button 
               onClick={handleRefresh}
-              className="bg-white text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-50 transition-colors flex items-center"
+              disabled={loading}
+              className="bg-white text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-50 transition-colors flex items-center disabled:opacity-50"
             >
-              <Clock size={16} className="mr-2" />
-              Refresh
+              <RefreshCw size={16} className="mr-2" />
+              {loading ? 'Loading...' : 'Refresh'}
             </button>
             <button 
               onClick={clearFilters}
-              className="bg-white text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-50 transition-colors"
+              disabled={loading || !!error}
+              className="bg-white text-green-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-50 transition-colors disabled:opacity-50"
             >
               Clear Filters
             </button>
@@ -413,6 +506,43 @@ const GovernmentExams: React.FC = () => {
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mb-4"></div>
               <p className="text-gray-600">Loading latest government exams...</p>
+              <p className="text-sm text-gray-500 mt-2">Connecting to Firebase...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Unable to Load Exams</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleRefresh}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                >
+                  <RefreshCw size={16} className="mr-2" />
+                  Retry Loading
+                </button>
+                <Link
+                  to="/admin/government-exams"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Go to Admin Panel
+                </Link>
+              </div>
+              <p className="text-sm text-gray-500 mt-4">
+                If this persists, check your Firebase configuration and ensure the Firestore rules allow public read access to 'governmentExams' collection.
+              </p>
+            </div>
+          ) : exams.length === 0 ? (
+            <div className="text-center py-12">
+              <AlertCircle className="mx-auto mb-4 text-yellow-500" size={48} />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">No Government Exams Found</h3>
+              <p className="text-gray-600 mb-4">The database is empty. Please add exams from the admin panel.</p>
+              <Link
+                to="/admin/government-exams"
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors inline-block"
+              >
+                Add Government Exams
+              </Link>
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-8">
@@ -538,11 +668,7 @@ const GovernmentExams: React.FC = () => {
                 </div>
 
                 {/* Firebase Status */}
-                <div className={`mt-6 p-4 rounded-lg flex items-center ${
-                  firebaseConnected 
-                    ? 'bg-green-50 border border-green-200' 
-                    : 'bg-red-50 border border-red-200'
-                }`}>
+                <div className={`mt-6 p-4 rounded-lg flex items-center ${firebaseConnected ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                   <div className="flex items-center">
                     <div className={`w-3 h-3 rounded-full mr-2 ${firebaseConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                     <div>
@@ -550,9 +676,7 @@ const GovernmentExams: React.FC = () => {
                         {firebaseConnected ? 'Live Data' : 'Local Storage'}
                       </p>
                       <p className="text-xs">
-                        {firebaseConnected 
-                          ? 'Connected to Firebase' 
-                          : 'Using cached data'}
+                        {firebaseConnected ? 'Connected to Firebase' : 'Using cached data'}
                       </p>
                     </div>
                   </div>
@@ -608,7 +732,7 @@ const GovernmentExams: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {newExams.map(exam => (
-                        <ExamCard key={exam.id} exam={exam} newExam onViewClick={() => handleExamViewClick(exam)} />
+                        <ExamCard key={exam.id} exam={exam} newExam onViewClick={() => handleExamViewClick(exam)} onApplyClick={() => handleExamApplyClick(exam)} />
                       ))}
                     </div>
                   </div>
@@ -622,7 +746,7 @@ const GovernmentExams: React.FC = () => {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {featuredExams.map(exam => (
-                        <ExamCard key={exam.id} exam={exam} featured onViewClick={() => handleExamViewClick(exam)} />
+                        <ExamCard key={exam.id} exam={exam} featured onViewClick={() => handleExamViewClick(exam)} onApplyClick={() => handleExamApplyClick(exam)} />
                       ))}
                     </div>
                   </div>
@@ -642,7 +766,7 @@ const GovernmentExams: React.FC = () => {
                 
                 {currentExams.length === 0 ? (
                   <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                    <h3 className="text-xl font-bold text-gray-800 mb-2">No latest exams found</h3>
+                    <h3 className="text-xl font-bold text-gray-800 mb-2">No exams match your filters</h3>
                     <p className="text-gray-600 mb-4">Try adjusting your filters or search terms</p>
                     <button 
                       onClick={clearFilters}
@@ -655,7 +779,7 @@ const GovernmentExams: React.FC = () => {
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {currentExams.map(exam => (
-                        <ExamCard key={exam.id} exam={exam} onViewClick={() => handleExamViewClick(exam)} />
+                        <ExamCard key={exam.id} exam={exam} onViewClick={() => handleExamViewClick(exam)} onApplyClick={() => handleExamApplyClick(exam)} />
                       ))}
                     </div>
 
@@ -687,11 +811,7 @@ const GovernmentExams: React.FC = () => {
                               <button
                                 key={pageNum}
                                 onClick={() => goToPage(pageNum)}
-                                className={`px-3 py-2 rounded-lg border ${
-                                  currentPage === pageNum
-                                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white border-green-600'
-                                    : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                                }`}
+                                className={`px-3 py-2 rounded-lg border ${currentPage === pageNum ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white border-green-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
                               >
                                 {pageNum}
                               </button>
@@ -725,7 +845,8 @@ const ExamCard: React.FC<{
   featured?: boolean; 
   newExam?: boolean;
   onViewClick?: () => void;
-}> = ({ exam, featured = false, newExam = false, onViewClick }) => {
+  onApplyClick?: () => void;
+}> = ({ exam, featured = false, newExam = false, onViewClick, onApplyClick }) => {
   const { trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
   
@@ -748,8 +869,7 @@ const ExamCard: React.FC<{
   const isRecent = exam.addedTimestamp && (Date.now() - exam.addedTimestamp) < 24 * 60 * 60 * 1000;
 
   const handleApplyClick = () => {
-    trackGovExamApplication(exam.id || '', exam.examName, exam.organization);
-    trackButtonClick('apply_gov_exam', 'exam_card', 'government_exams');
+    if (onApplyClick) onApplyClick();
   };
 
   const handleNotificationClick = () => {
@@ -768,9 +888,7 @@ const ExamCard: React.FC<{
   }, []);
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${
-      featured ? 'ring-2 ring-yellow-400' : newExam ? 'ring-2 ring-red-400' : ''
-    }`}>
+    <div className={`bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${featured ? 'ring-2 ring-yellow-400' : newExam ? 'ring-2 ring-red-400' : ''}`}>
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
           <div className="flex items-start gap-2 mb-1">

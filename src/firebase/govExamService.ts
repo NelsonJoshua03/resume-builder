@@ -1,4 +1,4 @@
-// src/firebase/govExamService.ts - FIREBASE ONLY VERSION
+// src/firebase/govExamService.ts - UPDATED WITH BETTER ERROR HANDLING
 import { 
   collection,
   doc,
@@ -28,10 +28,10 @@ export interface GovExamData {
   applicationStartDate: string;
   applicationEndDate: string;
   examDate: string;
-  examLevel: string; // UPSC, SSC, Banking, Railway, etc.
+  examLevel: string;
   ageLimit: string;
   applicationFee: string;
-  examMode: string; // Online, Offline, CBT, Hybrid
+  examMode: string;
   officialWebsite: string;
   notificationLink: string;
   applyLink: string;
@@ -89,19 +89,26 @@ export class FirebaseGovExamService {
 
   constructor() {
     this.initializeFirestore();
-    setTimeout(() => {
-      this.checkAndCleanupOldExams();
-    }, 5000);
   }
 
-  private async initializeFirestore(): Promise<void> {
+  private async initializeFirestore(): Promise<boolean> {
+    if (this.firestoreInitialized) return true;
+    
     try {
       console.log('🔄 Initializing Firestore for Government Exams...');
       await initializeFirebase();
+      const firestore = getFirestoreInstance();
+      
+      if (!firestore) {
+        console.error('❌ Firestore instance is null');
+        throw new Error('Firestore instance is null');
+      }
+      
       this.firestoreInitialized = true;
       console.log('✅ Firestore initialized for Government Exams');
+      return true;
     } catch (error) {
-      console.error('Failed to initialize Firestore:', error);
+      console.error('❌ Failed to initialize Firestore:', error);
       this.firestoreInitialized = false;
       throw new Error('Firebase initialization failed. Please check your Firebase configuration.');
     }
@@ -125,8 +132,7 @@ export class FirebaseGovExamService {
       const examsQuery = query(
         collection(firestore, this.collectionName),
         where('isActive', '==', true),
-        orderBy('createdAt', 'desc'),
-        limit(100)
+        where('createdAt', '>=', Timestamp.fromDate(cutoffDate))
       );
 
       const snapshot = await getDocs(examsQuery);
@@ -152,14 +158,10 @@ export class FirebaseGovExamService {
 
       if (updatePromises.length > 0) {
         await Promise.all(updatePromises);
-        console.log(`Auto-cleaned ${updatePromises.length} old government exams`);
+        console.log(`✅ Auto-cleaned ${updatePromises.length} old government exams`);
       }
     } catch (error: any) {
-      if (error.code === 'failed-precondition' || error.message.includes('index')) {
-        console.log('⚠️ Index needed for auto-cleanup query. You can create it in Firebase Console.');
-      } else {
-        console.error('Error in auto-cleanup:', error);
-      }
+      console.warn('⚠️ Auto-cleanup error:', error.message);
     }
   }
 
@@ -173,7 +175,7 @@ export class FirebaseGovExamService {
       
       return examId;
     } catch (error) {
-      console.error('Error creating government exam:', error);
+      console.error('❌ Error creating government exam:', error);
       throw error;
     }
   }
@@ -201,7 +203,8 @@ export class FirebaseGovExamService {
       shares: 0,
       applications: 0,
       saves: 0,
-      dataProcessingLocation: 'IN'
+      dataProcessingLocation: 'IN',
+      consentGiven: true
     };
 
     await setDoc(examRef, completeExamData);
@@ -228,7 +231,7 @@ export class FirebaseGovExamService {
           dataProcessingLocation: 'IN'
         });
       } catch (error) {
-        console.warn('Failed to track exam creation event:', error);
+        console.warn('⚠️ Failed to track exam creation event:', error);
       }
     }
   }
@@ -256,20 +259,25 @@ export class FirebaseGovExamService {
       
       return null;
     } catch (error) {
-      console.error('Failed to get exam from Firebase:', error);
+      console.error('❌ Failed to get exam from Firebase:', error);
       throw error;
     }
   }
 
   async getGovExams(filters?: GovExamFilters, page: number = 1, limitPerPage: number = 12): Promise<{ exams: GovExamData[], total: number }> {
+    // Ensure Firestore is initialized
+    if (!this.firestoreInitialized) {
+      await this.initializeFirestore();
+    }
+    
     const firestore = this.getFirestore();
     
     try {
-      console.log('🔄 Fetching government exams from Firebase...');
+      console.log('🔄 Fetching government exams from Firestore...');
       
-      let conditions: any[] = [
-        where('isActive', '==', true),
-        where('isApproved', '==', true)
+      // Start with basic query for active exams
+      const conditions: any[] = [
+        where('isActive', '==', true)
       ];
       
       if (filters?.examLevel && filters.examLevel !== 'all') {
@@ -288,131 +296,149 @@ export class FirebaseGovExamService {
         conditions.push(where('isNew', '==', true));
       }
       
+      // First try with ordering
+      let q = query(
+        collection(firestore, this.collectionName),
+        ...conditions
+      );
+      
       try {
-        const examsQuery = query(
-          collection(firestore, this.collectionName),
-          ...conditions,
-          orderBy('createdAt', 'desc')
-        );
-        
-        const snapshot = await getDocs(examsQuery);
-        const allExams = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate(),
-            expiresAt: data.expiresAt?.toDate()
-          } as GovExamData;
-        });
-
-        let filteredExams = allExams;
-        
-        if (filters?.applicationStatus && filters.applicationStatus !== 'all') {
-          filteredExams = allExams.filter(exam => {
-            const now = new Date();
-            const startDate = new Date(exam.applicationStartDate);
-            const endDate = new Date(exam.applicationEndDate);
-            
-            if (filters.applicationStatus === 'open') {
-              return now >= startDate && now <= endDate;
-            } else if (filters.applicationStatus === 'upcoming') {
-              return now < startDate;
-            } else if (filters.applicationStatus === 'closed') {
-              return now > endDate;
-            }
-            return true;
-          });
-        }
-        
-        if (filters?.searchTerm) {
-          const searchLower = filters.searchTerm.toLowerCase();
-          filteredExams = allExams.filter(exam =>
-            exam.examName.toLowerCase().includes(searchLower) ||
-            exam.organization.toLowerCase().includes(searchLower) ||
-            exam.posts.toLowerCase().includes(searchLower)
-          );
-        }
-
-        filteredExams.sort((a, b) => {
-          const timeA = a.addedTimestamp || (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-          const timeB = b.addedTimestamp || (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-          return timeB - timeA;
-        });
-
-        const startIndex = (page - 1) * limitPerPage;
-        const paginatedExams = filteredExams.slice(startIndex, startIndex + limitPerPage);
-
-        return {
-          exams: paginatedExams,
-          total: filteredExams.length
-        };
-      } catch (orderByError: any) {
-        console.log('OrderBy failed, trying without ordering:', orderByError);
-        
-        const examsQuery = query(
-          collection(firestore, this.collectionName),
-          ...conditions
-        );
-        
-        const snapshot = await getDocs(examsQuery);
-        const allExams = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate(),
-            expiresAt: data.expiresAt?.toDate()
-          } as GovExamData;
-        });
-
-        allExams.sort((a, b) => {
-          const timeA = a.addedTimestamp || (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-          const timeB = b.addedTimestamp || (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-          return timeB - timeA;
-        });
-
-        let filteredExams = allExams;
-        
-        if (filters?.applicationStatus && filters.applicationStatus !== 'all') {
-          filteredExams = allExams.filter(exam => {
-            const now = new Date();
-            const startDate = new Date(exam.applicationStartDate);
-            const endDate = new Date(exam.applicationEndDate);
-            
-            if (filters.applicationStatus === 'open') {
-              return now >= startDate && now <= endDate;
-            } else if (filters.applicationStatus === 'upcoming') {
-              return now < startDate;
-            } else if (filters.applicationStatus === 'closed') {
-              return now > endDate;
-            }
-            return true;
-          });
-        }
-        
-        if (filters?.searchTerm) {
-          const searchLower = filters.searchTerm.toLowerCase();
-          filteredExams = allExams.filter(exam =>
-            exam.examName.toLowerCase().includes(searchLower) ||
-            exam.organization.toLowerCase().includes(searchLower) ||
-            exam.posts.toLowerCase().includes(searchLower)
-          );
-        }
-
-        const startIndex = (page - 1) * limitPerPage;
-        const paginatedExams = filteredExams.slice(startIndex, startIndex + limitPerPage);
-
-        return {
-          exams: paginatedExams,
-          total: filteredExams.length
-        };
+        // Try to add ordering
+        q = query(q, orderBy('createdAt', 'desc'));
+        console.log('✅ Using ordered query');
+      } catch (orderError: any) {
+        console.warn('⚠️ OrderBy failed, using unordered query:', orderError.message);
+        // Continue without ordering
       }
-    } catch (error) {
-      console.error('Failed to get exams from Firebase:', error);
-      throw error;
+      
+      const snapshot = await getDocs(q);
+      console.log(`📊 Found ${snapshot.size} exams in Firestore`);
+      
+      if (snapshot.empty) {
+        console.log('ℹ️ No exams found in Firestore');
+        return { exams: [], total: 0 };
+      }
+      
+      // Process all exams from snapshot
+      const allExams: GovExamData[] = [];
+      
+      snapshot.docs.forEach(docSnapshot => {
+        try {
+          const data = docSnapshot.data();
+          
+          // Parse dates safely
+          const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : 
+                          data.createdAt instanceof Date ? data.createdAt : 
+                          new Date();
+                          
+          const updatedAt = data.updatedAt?.toDate ? data.updatedAt.toDate() : 
+                          data.updatedAt instanceof Date ? data.updatedAt : 
+                          createdAt;
+                          
+          const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : 
+                          data.expiresAt instanceof Date ? data.expiresAt : 
+                          new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+          
+          const examData: GovExamData = {
+            id: docSnapshot.id,
+            examName: data.examName || '',
+            organization: data.organization || '',
+            posts: data.posts || '',
+            vacancies: data.vacancies || '',
+            eligibility: data.eligibility || '',
+            applicationStartDate: data.applicationStartDate || '',
+            applicationEndDate: data.applicationEndDate || '',
+            examDate: data.examDate || '',
+            examLevel: data.examLevel || 'Other',
+            ageLimit: data.ageLimit || '',
+            applicationFee: data.applicationFee || '',
+            examMode: data.examMode || 'Online',
+            officialWebsite: data.officialWebsite || '',
+            notificationLink: data.notificationLink || '',
+            applyLink: data.applyLink || '',
+            syllabus: data.syllabus || '',
+            admitCardDate: data.admitCardDate || '',
+            resultDate: data.resultDate || '',
+            featured: data.featured || false,
+            isNew: data.isNew !== undefined ? data.isNew : true,
+            isActive: data.isActive !== false,
+            isApproved: data.isApproved !== false,
+            views: data.views || 0,
+            shares: data.shares || 0,
+            applications: data.applications || 0,
+            saves: data.saves || 0,
+            createdAt,
+            updatedAt,
+            expiresAt,
+            addedTimestamp: data.addedTimestamp || createdAt.getTime(),
+            createdBy: data.createdBy || 'system',
+            lastUpdatedBy: data.lastUpdatedBy || 'system',
+            consentGiven: data.consentGiven || false,
+            dataProcessingLocation: data.dataProcessingLocation || 'IN'
+          };
+          
+          allExams.push(examData);
+        } catch (parseError) {
+          console.error('❌ Failed to parse exam data:', parseError, docSnapshot.id);
+        }
+      });
+      
+      // Apply additional filters in memory
+      let filteredExams = allExams;
+      
+      // Filter by application status
+      if (filters?.applicationStatus && filters.applicationStatus !== 'all') {
+        const now = new Date();
+        filteredExams = filteredExams.filter(exam => {
+          const startDate = new Date(exam.applicationStartDate);
+          const endDate = new Date(exam.applicationEndDate);
+          
+          if (filters.applicationStatus === 'open') {
+            return now >= startDate && now <= endDate;
+          } else if (filters.applicationStatus === 'upcoming') {
+            return now < startDate;
+          } else if (filters.applicationStatus === 'closed') {
+            return now > endDate;
+          }
+          return true;
+        });
+      }
+      
+      // Filter by search term
+      if (filters?.searchTerm) {
+        const searchLower = filters.searchTerm.toLowerCase();
+        filteredExams = filteredExams.filter(exam =>
+          exam.examName.toLowerCase().includes(searchLower) ||
+          exam.organization.toLowerCase().includes(searchLower) ||
+          exam.posts.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Sort by addedTimestamp (newest first)
+      filteredExams.sort((a, b) => {
+        const timeA = a.addedTimestamp || a.createdAt?.getTime() || 0;
+        const timeB = b.addedTimestamp || b.createdAt?.getTime() || 0;
+        return timeB - timeA;
+      });
+      
+      // Pagination
+      const startIndex = (page - 1) * limitPerPage;
+      const paginatedExams = filteredExams.slice(startIndex, startIndex + limitPerPage);
+      
+      console.log(`✅ Loaded ${paginatedExams.length} exams (page ${page}, total: ${filteredExams.length})`);
+      
+      return {
+        exams: paginatedExams,
+        total: filteredExams.length
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Failed to get exams from Firestore:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Return empty array to prevent UI crash
+      return { exams: [], total: 0 };
     }
   }
 
@@ -439,7 +465,7 @@ export class FirebaseGovExamService {
           dataProcessingLocation: 'IN'
         });
       } catch (error) {
-        console.warn('Failed to track exam update event:', error);
+        console.warn('⚠️ Failed to track exam update event:', error);
       }
     }
   }
@@ -467,7 +493,7 @@ export class FirebaseGovExamService {
           dataProcessingLocation: 'IN'
         });
       } catch (error) {
-        console.warn('Failed to track exam deletion event:', error);
+        console.warn('⚠️ Failed to track exam deletion event:', error);
       }
     }
   }
@@ -524,7 +550,8 @@ export class FirebaseGovExamService {
             shares: 0,
             applications: 0,
             saves: 0,
-            dataProcessingLocation: 'IN'
+            dataProcessingLocation: 'IN',
+            consentGiven: true
           });
           
           results.success++;
@@ -558,13 +585,13 @@ export class FirebaseGovExamService {
             dataProcessingLocation: 'IN'
           });
         } catch (error) {
-          console.warn('Failed to track bulk create event:', error);
+          console.warn('⚠️ Failed to track bulk create event:', error);
         }
       }
 
       return results;
     } catch (batchError: any) {
-      console.error('Batch creation failed:', batchError);
+      console.error('❌ Batch creation failed:', batchError);
       results.failed += results.success;
       results.success = 0;
       results.errors.push(`Batch commit failed: ${batchError.message}`);
@@ -573,12 +600,18 @@ export class FirebaseGovExamService {
   }
 
   async testFirebaseConnection(): Promise<{ connected: boolean; message: string }> {
-    const result = await testFirebaseConnection();
-    
-    return {
-      connected: result.success,
-      message: result.message
-    };
+    try {
+      const result = await testFirebaseConnection();
+      return {
+        connected: result.success,
+        message: result.message
+      };
+    } catch (error: any) {
+      return {
+        connected: false,
+        message: `Connection test failed: ${error.message}`
+      };
+    }
   }
 
   async getFeaturedGovExams(limitCount: number = 5): Promise<GovExamData[]> {
@@ -586,8 +619,8 @@ export class FirebaseGovExamService {
       const { exams } = await this.getGovExams({ featured: true }, 1, limitCount);
       return exams;
     } catch (error) {
-      console.error('Error getting featured exams:', error);
-      throw error;
+      console.error('❌ Error getting featured exams:', error);
+      return [];
     }
   }
 
@@ -596,8 +629,8 @@ export class FirebaseGovExamService {
       const { exams } = await this.getGovExams({ examLevel: level }, 1, limitCount);
       return exams;
     } catch (error) {
-      console.error('Error getting exams by level:', error);
-      throw error;
+      console.error('❌ Error getting exams by level:', error);
+      return [];
     }
   }
 
@@ -606,8 +639,8 @@ export class FirebaseGovExamService {
       const { exams } = await this.getGovExams({ isNew: true }, 1, limitCount);
       return exams;
     } catch (error) {
-      console.error('Error getting new exams:', error);
-      throw error;
+      console.error('❌ Error getting new exams:', error);
+      return [];
     }
   }
 
@@ -616,8 +649,8 @@ export class FirebaseGovExamService {
       const { exams } = await this.getGovExams({}, 1, limitCount);
       return exams;
     } catch (error) {
-      console.error('Error getting recent exams:', error);
-      throw error;
+      console.error('❌ Error getting recent exams:', error);
+      return [];
     }
   }
 
@@ -671,7 +704,7 @@ export class FirebaseGovExamService {
 
       return stats;
     } catch (error) {
-      console.error('Error getting exam stats:', error);
+      console.error('❌ Error getting exam stats:', error);
       
       return {
         totalExams: 0,

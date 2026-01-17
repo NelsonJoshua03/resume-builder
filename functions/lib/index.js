@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.adminLogout = exports.getProfessionalResume = exports.createProfessionalResume = exports.setupAdminUsers = exports.adminCheck = exports.adminLogin = exports.ping = exports.debugConfig = exports.validateSync = exports.getSyncStatus = exports.healthCheck = exports.batchSyncWithProgress = exports.batchSyncCollection = exports.checkFirestoreCollections = exports.testFirestoreTriggers = exports.testPostgresConnection = exports.syncProfessionalResumes = exports.syncResumes = exports.syncJobDrives = exports.syncJobs = exports.syncAdminLogs = exports.syncFunnelEvents = exports.syncBlogEvents = exports.syncJobEvents = exports.syncResumeEvents = exports.syncEvents = exports.syncGovernmentExams = exports.syncPageViews = void 0;
+exports.adminLogout = exports.setAdminClaimsNow = exports.getProfessionalResume = exports.createProfessionalResume = exports.setupAdminUsers = exports.adminCheck = exports.adminLogin = exports.ping = exports.debugConfig = exports.validateSync = exports.getSyncStatus = exports.healthCheck = exports.batchSyncWithProgress = exports.batchSyncCollection = exports.checkFirestoreCollections = exports.testFirestoreTriggers = exports.testPostgresConnection = exports.syncProfessionalResumes = exports.syncResumes = exports.syncJobDrives = exports.syncJobs = exports.syncAdminLogs = exports.syncFunnelEvents = exports.syncBlogEvents = exports.syncJobEvents = exports.syncResumeEvents = exports.syncEvents = exports.syncGovernmentExams = exports.syncPageViews = void 0;
 // functions/src/index.ts - COMPLETE UPDATED VERSION WITH DATA VALIDATION FIXES
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
@@ -2144,132 +2144,96 @@ exports.ping = runWithCors(async (req, res) => {
 /**
  * ADMIN LOGIN FUNCTION
  */
+// In your functions/index.ts, update the adminLogin function:
 exports.adminLogin = runWithCors(async (req, res) => {
     try {
-        // Log config status at runtime
-        console.log('🔧 Runtime Config Status:', {
-            hasPassword: !!ADMIN_PASSWORD,
-            passwordLength: ADMIN_PASSWORD.length,
-            emails: ADMIN_EMAILS,
-            emailsCount: ADMIN_EMAILS.length
-        });
-        if (ADMIN_EMAILS.length === 0) {
-            console.error('⚠️ WARNING: No admin emails configured in Firebase Config');
-            res.status(500).json({
+        console.log('🔐 Admin login request received');
+        // Set CORS headers explicitly
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+        res.set('Access-Control-Allow-Headers', 'Content-Type');
+        // Handle OPTIONS preflight
+        if (req.method === 'OPTIONS') {
+            return res.status(200).send();
+        }
+        // Check config
+        if (!ADMIN_PASSWORD || ADMIN_EMAILS.length === 0) {
+            console.error('❌ Admin credentials not configured');
+            return res.status(500).json({
                 success: false,
-                error: 'Server configuration error: No admin emails configured'
+                error: 'Server configuration error'
             });
-            return;
         }
         const { password, email } = req.body;
-        console.log('🔐 Admin login attempt for:', email);
-        // Input validation
         if (!password || !email) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 error: 'Email and password required'
             });
-            return;
         }
-        // Check if email is allowed
         const normalizedEmail = email.toLowerCase().trim();
+        // Check if email is allowed
         if (!ADMIN_EMAILS.includes(normalizedEmail)) {
-            console.log(`❌ Email ${normalizedEmail} not in allowed list`);
-            console.log(`   Allowed emails: ${ADMIN_EMAILS.join(', ')}`);
-            res.status(403).json({
+            console.log(`❌ Unauthorized email: ${normalizedEmail}`);
+            return res.status(403).json({
                 success: false,
-                error: `Email not authorized for admin access. Allowed: ${ADMIN_EMAILS.join(', ')}`
+                error: 'Unauthorized email address'
             });
-            return;
         }
         // Check password
         if (password !== ADMIN_PASSWORD) {
             console.log('❌ Invalid password attempt');
-            res.status(403).json({
+            return res.status(403).json({
                 success: false,
-                error: 'Invalid admin password'
+                error: 'Invalid password'
             });
-            return;
         }
-        // Get or create admin user
+        // Get or create user
         let adminUser;
         try {
             adminUser = await admin.auth().getUserByEmail(normalizedEmail);
-            console.log('✅ Found existing admin user:', adminUser.uid);
+            console.log('✅ Found existing user:', adminUser.uid);
         }
         catch (error) {
-            // Create admin user if doesn't exist
             if (error.code === 'auth/user-not-found') {
-                console.log('🆕 Creating new admin user for:', normalizedEmail);
-                // Use the provided password for the new user
+                console.log('🆕 Creating new admin user');
                 adminUser = await admin.auth().createUser({
                     email: normalizedEmail,
                     emailVerified: true,
-                    password: password, // Use the provided password
+                    password: ADMIN_PASSWORD, // Use the configured password
                     displayName: 'Admin User',
                     disabled: false,
                 });
-                console.log('✅ Created new admin user:', adminUser.uid);
+                console.log('✅ Created new user:', adminUser.uid);
             }
             else {
                 throw error;
             }
         }
-        // Set custom claims (admin role)
+        // Set admin claims
         await admin.auth().setCustomUserClaims(adminUser.uid, {
             admin: true,
             level: 'super_admin',
-            email: normalizedEmail,
-            canManageResumes: true,
-            canPostJobs: true,
-            canManageUsers: false
+            email: normalizedEmail
         });
         console.log('✅ Admin claims set for:', normalizedEmail);
-        // Log the login
-        await admin.firestore().collection('admin_logs').add({
-            email: normalizedEmail,
-            action: 'login',
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            ip: req.ip || req.headers['x-forwarded-for'],
-            userAgent: req.headers['user-agent'],
-            success: true
-        });
-        // Return success with user info (NO TOKEN NEEDED)
+        // Return success (NO custom token needed)
         res.json({
             success: true,
             user: {
                 uid: adminUser.uid,
                 email: adminUser.email,
-                admin: true,
-                claims: { admin: true }
+                admin: true
             },
-            message: 'Admin login successful. You can now sign in with Firebase Authentication.',
-            instructions: 'Use Firebase Authentication on frontend with same email/password',
-            frontendAuthMethod: 'signInWithEmailAndPassword',
-            note: 'The user has been created/updated in Firebase Auth with admin claims'
+            message: 'Admin login successful',
+            note: 'User created/updated in Firebase Auth with admin claims'
         });
     }
     catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Internal server error';
         console.error('❌ Admin login error:', error);
-        // Log failed login attempt
-        try {
-            await admin.firestore().collection('admin_logs').add({
-                email: req.body?.email || 'unknown',
-                action: 'login',
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                ip: req.ip || req.headers['x-forwarded-for'],
-                userAgent: req.headers['user-agent'],
-                success: false,
-                error: errorMessage
-            });
-        }
-        catch (logError) {
-            console.error('Failed to log login error:', logError);
-        }
         res.status(500).json({
             success: false,
-            error: errorMessage
+            error: error.message || 'Internal server error'
         });
     }
 });
@@ -2333,8 +2297,41 @@ exports.adminCheck = runWithCors(async (req, res) => {
 exports.setupAdminUsers = runWithCors(async (req, res) => {
     try {
         console.log('⚙️ Setting up admin users...');
+        // Your UID - ADD THIS
+        const YOUR_UID = 'MYM2cZssL3UNc7VY9WpgEdNVW9v1';
         const results = [];
+        // FIRST - Always set claims for YOUR account
+        try {
+            const yourUser = await admin.auth().getUser(YOUR_UID);
+            await admin.auth().setCustomUserClaims(YOUR_UID, {
+                admin: true,
+                level: 'super_admin',
+                email: yourUser.email,
+                canManageResumes: true,
+                canPostJobs: true,
+                canManageUsers: false
+            });
+            results.push({
+                email: yourUser.email,
+                uid: YOUR_UID,
+                status: 'claims_set',
+                claims: { admin: true }
+            });
+            console.log(`✅ Set admin claims for ${yourUser.email}`);
+        }
+        catch (yourError) {
+            results.push({
+                uid: YOUR_UID,
+                status: 'error',
+                error: yourError.message
+            });
+            console.error(`❌ Error setting claims for your account:`, yourError.message);
+        }
+        // Then continue with existing logic for other emails
         for (const email of ADMIN_EMAILS) {
+            // Skip if already processed your email
+            if (email === 'nelsonjoshua03@outlook.com')
+                continue;
             try {
                 // Try to get existing user
                 const user = await admin.auth().getUserByEmail(email);
@@ -2358,11 +2355,11 @@ exports.setupAdminUsers = runWithCors(async (req, res) => {
             catch (error) {
                 // Create new user if doesn't exist
                 if (error.code === 'auth/user-not-found') {
-                    const randomPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+                    const adminPassword = ADMIN_PASSWORD; // Only use environment config
                     const newUser = await admin.auth().createUser({
                         email: email,
                         emailVerified: true,
-                        password: randomPassword,
+                        password: adminPassword,
                         displayName: 'Admin User',
                         disabled: false,
                     });
@@ -2380,7 +2377,7 @@ exports.setupAdminUsers = runWithCors(async (req, res) => {
                         uid: newUser.uid,
                         status: 'created',
                         claims: { admin: true },
-                        note: 'User created with random password. Use adminLogin endpoint.'
+                        note: 'User created with admin password'
                     });
                     console.log(`✅ Created admin user: ${email} (${newUser.uid})`);
                 }
@@ -2398,15 +2395,15 @@ exports.setupAdminUsers = runWithCors(async (req, res) => {
             success: true,
             message: 'Admin users setup complete',
             results: results,
-            note: 'Users can now login via the frontend using Firebase Authentication'
+            your_account_processed: true,
+            note: 'Check your account (nelsonjoshua03@outlook.com) - admin claims should be set'
         });
     }
     catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Internal server error';
         console.error('❌ Setup error:', error);
         res.status(500).json({
             success: false,
-            error: errorMessage
+            error: error.message
         });
     }
 });
@@ -2530,6 +2527,47 @@ exports.getProfessionalResume = functions.https.onCall(async (data, context) => 
         const errorMessage = error instanceof Error ? error.message : 'Failed to get resume';
         console.error('❌ Get resume error:', error);
         throw new functions.https.HttpsError('internal', 'Failed to get resume: ' + errorMessage);
+    }
+});
+exports.setAdminClaimsNow = runWithCors(async (req, res) => {
+    try {
+        console.log('🚨 EMERGENCY: Setting admin claims now!');
+        // Your UID
+        const uid = 'vkNBhERkSbTYHwO86tKWb5D96K72';
+        // Get user first to verify
+        const user = await admin.auth().getUser(uid);
+        console.log('👤 User to update:', user.email);
+        // Set admin claims
+        await admin.auth().setCustomUserClaims(uid, {
+            admin: true,
+            level: 'super_admin',
+            email: user.email,
+            canManageResumes: true,
+            canPostJobs: true,
+            canManageUsers: false
+        });
+        console.log('✅ Admin claims SET!');
+        // Get updated user to verify
+        const updatedUser = await admin.auth().getUser(uid);
+        res.json({
+            success: true,
+            message: `🚀 ADMIN CLAIMS SET FOR: ${updatedUser.email}`,
+            user: {
+                uid: updatedUser.uid,
+                email: updatedUser.email,
+                claims: updatedUser.customClaims
+            },
+            critical: 'USER MUST LOG OUT AND LOG BACK IN NOW!',
+            timestamp: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        console.error('🔥 ERROR:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            stack: error.stack
+        });
     }
 });
 /**

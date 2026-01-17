@@ -2609,9 +2609,45 @@ export const setupAdminUsers = runWithCors(async (req: any, res: any) => {
   try {
     console.log('⚙️ Setting up admin users...');
     
+    // Your UID - ADD THIS
+    const YOUR_UID = 'MYM2cZssL3UNc7VY9WpgEdNVW9v1';
+    
     const results: any[] = [];
     
+    // FIRST - Always set claims for YOUR account
+    try {
+      const yourUser = await admin.auth().getUser(YOUR_UID);
+      await admin.auth().setCustomUserClaims(YOUR_UID, {
+        admin: true,
+        level: 'super_admin',
+        email: yourUser.email,
+        canManageResumes: true,
+        canPostJobs: true,
+        canManageUsers: false
+      });
+      
+      results.push({
+        email: yourUser.email,
+        uid: YOUR_UID,
+        status: 'claims_set',
+        claims: { admin: true }
+      });
+      
+      console.log(`✅ Set admin claims for ${yourUser.email}`);
+    } catch (yourError: any) {
+      results.push({
+        uid: YOUR_UID,
+        status: 'error',
+        error: yourError.message
+      });
+      console.error(`❌ Error setting claims for your account:`, yourError.message);
+    }
+    
+    // Then continue with existing logic for other emails
     for (const email of ADMIN_EMAILS) {
+      // Skip if already processed your email
+      if (email === 'nelsonjoshua03@outlook.com') continue;
+      
       try {
         // Try to get existing user
         const user = await admin.auth().getUserByEmail(email);
@@ -2637,11 +2673,11 @@ export const setupAdminUsers = runWithCors(async (req: any, res: any) => {
       } catch (error: any) {
         // Create new user if doesn't exist
         if (error.code === 'auth/user-not-found') {
-          const randomPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+          const adminPassword = ADMIN_PASSWORD; // Only use environment config
           const newUser = await admin.auth().createUser({
             email: email,
             emailVerified: true,
-            password: randomPassword,
+            password: adminPassword,
             displayName: 'Admin User',
             disabled: false,
           });
@@ -2661,7 +2697,7 @@ export const setupAdminUsers = runWithCors(async (req: any, res: any) => {
             uid: newUser.uid,
             status: 'created',
             claims: { admin: true },
-            note: 'User created with random password. Use adminLogin endpoint.'
+            note: 'User created with admin password'
           });
           
           console.log(`✅ Created admin user: ${email} (${newUser.uid})`);
@@ -2680,15 +2716,15 @@ export const setupAdminUsers = runWithCors(async (req: any, res: any) => {
       success: true,
       message: 'Admin users setup complete',
       results: results,
-      note: 'Users can now login via the frontend using Firebase Authentication'
+      your_account_processed: true,
+      note: 'Check your account (nelsonjoshua03@outlook.com) - admin claims should be set'
     });
     
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+  } catch (error: any) {
     console.error('❌ Setup error:', error);
     res.status(500).json({ 
       success: false, 
-      error: errorMessage
+      error: error.message
     });
   }
 });
@@ -2866,6 +2902,55 @@ export const getProfessionalResume = functions.https.onCall(
     }
   }
 );
+
+export const setAdminClaimsNow = runWithCors(async (req: any, res: any) => {
+  try {
+    console.log('🚨 EMERGENCY: Setting admin claims now!');
+    
+    // Your UID
+    const uid = 'vkNBhERkSbTYHwO86tKWb5D96K72';
+    
+    // Get user first to verify
+    const user = await admin.auth().getUser(uid);
+    console.log('👤 User to update:', user.email);
+    
+    // Set admin claims
+    await admin.auth().setCustomUserClaims(uid, {
+      admin: true,
+      level: 'super_admin',
+      email: user.email,
+      canManageResumes: true,
+      canPostJobs: true,
+      canManageUsers: false
+    });
+    
+    console.log('✅ Admin claims SET!');
+    
+    // Get updated user to verify
+    const updatedUser = await admin.auth().getUser(uid);
+    
+    res.json({
+      success: true,
+      message: `🚀 ADMIN CLAIMS SET FOR: ${updatedUser.email}`,
+      user: {
+        uid: updatedUser.uid,
+        email: updatedUser.email,
+        claims: updatedUser.customClaims
+      },
+      critical: 'USER MUST LOG OUT AND LOG BACK IN NOW!',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('🔥 ERROR:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 
 /**
  * ADMIN LOGOUT FUNCTION

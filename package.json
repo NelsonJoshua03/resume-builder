@@ -30,6 +30,7 @@
     "axios": "^1.12.2",
     "cheerio": "^1.0.0-rc.12",
     "firebase": "^9.23.0",
+    "firebase-admin": "^13.6.0",
     "gray-matter": "^4.0.3",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",
