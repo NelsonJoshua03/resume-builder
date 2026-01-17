@@ -1,4 +1,4 @@
-// src/pages/JobApplications.tsx - UPDATED WITH ENHANCED FILTERS INTEGRATION
+// src/pages/JobApplications.tsx - UPDATED WITH JOB DETAILS LINKS
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -58,7 +58,8 @@ import {
   Plus,
   RotateCcw,
   GraduationCap,
-  FolderTree
+  FolderTree,
+  FileText
 } from 'lucide-react';
 
 // Import components
@@ -108,13 +109,13 @@ const JobApplications: React.FC = () => {
   const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
   const [showMobileAnalytics, setShowMobileAnalytics] = useState<boolean>(false);
   
-  // Enhanced Filter Dialog State - UPDATED
+  // Enhanced Filter Dialog State
   const [showEnhancedFilterDialog, setShowEnhancedFilterDialog] = useState<boolean>(false);
   const [availableJobTitles, setAvailableJobTitles] = useState<string[]>([]);
   const [availableLocations, setAvailableLocations] = useState<string[]>([]);
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
   
-  // Enhanced Filter Data State - NEW: Store the enhanced filters separately
+  // Enhanced Filter Data State
   const [enhancedFilterData, setEnhancedFilterData] = useState<EnhancedFilterData>({
     jobTitles: [],
     experience: 'all'
@@ -410,7 +411,7 @@ const JobApplications: React.FC = () => {
     }
   }, []);
 
-  // Enhanced Filter Dialog Functions - UPDATED
+  // Enhanced Filter Dialog Functions
   const openEnhancedFilterDialog = () => {
     setShowEnhancedFilterDialog(true);
     trackGoogleButtonClick('open_enhanced_filter_dialog', 'filter_dialog', 'job_applications');
@@ -424,7 +425,7 @@ const JobApplications: React.FC = () => {
     setHasSeenDialogBefore(true);
   };
 
-  // UPDATED: Apply enhanced filters function
+  // Apply enhanced filters function
   const applyEnhancedFilters = (filters: EnhancedFilterData) => {
     // Store the enhanced filter data
     setEnhancedFilterData(filters);
@@ -461,7 +462,7 @@ const JobApplications: React.FC = () => {
     trackButtonClick('skip_enhanced_filters', 'filter_dialog', '/job-applications');
   };
 
-  // Clear all filters including enhanced filters - UPDATED
+  // Clear all filters including enhanced filters
   const clearAllFilters = () => {
     setSelectedSectors([]);
     setSelectedJobType('all');
@@ -582,7 +583,7 @@ const JobApplications: React.FC = () => {
     );
   };
 
-  // Memoized filtered jobs - UPDATED to include enhanced filters
+  // Memoized filtered jobs - updated to include enhanced filters
   const filteredJobs = useMemo(() => {
     // First filter by enhanced filters (job titles)
     let enhancedFilteredJobs = jobs;
@@ -760,7 +761,7 @@ const JobApplications: React.FC = () => {
 
   const copyToClipboard = async () => {
     if (selectedJob) {
-      const jobUrl = `${window.location.origin}/job-applications?job=${selectedJob.id}`;
+      const jobUrl = `${window.location.origin}/job-details/${selectedJob.id}`;
       try {
         await navigator.clipboard.writeText(jobUrl);
         setCopySuccess(true);
@@ -809,11 +810,11 @@ const JobApplications: React.FC = () => {
     if (!selectedJob) return;
     
     const shareUrls: Record<string, string> = {
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(`Check out this job: ${selectedJob.title} at ${selectedJob.company}`)}`,
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this job opportunity: ${selectedJob.title} at ${selectedJob.company} in ${selectedJob.location}`)}&url=${encodeURIComponent(window.location.href)}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`,
-      whatsapp: `https://wa.me/?text=${encodeURIComponent(`Check out this job opportunity on CareerCraft: ${selectedJob.title} at ${selectedJob.company} - ${window.location.href}`)}`,
-      telegram: `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`Check out this job: ${selectedJob.title}`)}`
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/job-details/${selectedJob.id}`)}&quote=${encodeURIComponent(`Check out this job: ${selectedJob.title} at ${selectedJob.company}`)}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this job opportunity: ${selectedJob.title} at ${selectedJob.company} in ${selectedJob.location}`)}&url=${encodeURIComponent(`${window.location.origin}/job-details/${selectedJob.id}`)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`${window.location.origin}/job-details/${selectedJob.id}`)}`,
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(`Check out this job opportunity on CareerCraft: ${selectedJob.title} at ${selectedJob.company} - ${window.location.origin}/job-details/${selectedJob.id}`)}`,
+      telegram: `https://t.me/share/url?url=${encodeURIComponent(`${window.location.origin}/job-details/${selectedJob.id}`)}&text=${encodeURIComponent(`Check out this job: ${selectedJob.title}`)}`
     };
     
     if (shareUrls[platform]) {
@@ -857,7 +858,7 @@ const JobApplications: React.FC = () => {
   const shareViaEmail = async () => {
     if (selectedJob) {
       const subject = `Job Opportunity: ${selectedJob.title} at ${selectedJob.company}`;
-      const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\nExperience: ${selectedJob.experience || 'Not specified'}\n\nView details: ${window.location.href}`;
+      const body = `Check out this job opportunity on CareerCraft:\n\nPosition: ${selectedJob.title}\nCompany: ${selectedJob.company}\nLocation: ${selectedJob.location}\nExperience: ${selectedJob.experience || 'Not specified'}\n\nView details: ${window.location.origin}/job-details/${selectedJob.id}`;
       window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
       
       if (selectedJob.id) {
@@ -1157,7 +1158,6 @@ const JobApplications: React.FC = () => {
     });
   };
 
-  // UPDATED: Add enhanced filters to Active Filters Summary
   const faqStructuredData = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -1592,7 +1592,7 @@ const JobApplications: React.FC = () => {
             </button>
           </div>
 
-          {/* Active Filters Summary - UPDATED with enhanced filters */}
+          {/* Active Filters Summary */}
           {(selectedSectors.length > 0 || selectedLocations.length > 0 || searchTerm || selectedExperience !== 'all' || selectedJobType !== 'all' || enhancedFilterData.jobTitles.length > 0) && (
             <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3 max-w-3xl mx-auto">
               <p className="text-blue-100 mb-2 text-sm font-medium">Active Filters:</p>

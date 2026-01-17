@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED TO FIX GOVERNMENT EXAMS LOOP
+// src/App.tsx - UPDATED TO INCLUDE JOB DETAILS ROUTE
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -31,6 +31,9 @@ import GoogleAnalytics from './components/GoogleAnalytics';
 import GovernmentExams from "./components/GovernmentExams";
 import AdminGovernmentExams from "./components/AdminGovernmentExams";
 import EditResumePage from './components/EditResumePage';
+
+// Import JobDetails component
+import JobDetails from "./components/JobDetails";
 
 // SEO Pages
 import FreeResumeBuilderPage from './components/seo-pages/FreeResumeBuilderPage';
@@ -110,6 +113,8 @@ function App() {
               <Route path="/job-disciplines" element={<JobDisciplines />} />
               <Route path="/latest-jobs-for-freshers-india" element={<Navigate to="/latest-job-updates-india" replace />} />
               <Route path="/job-applications" element={<Navigate to="/latest-job-updates-india" replace />} />
+              {/* ✅ Added Job Details Route */}
+              <Route path="/job-details/:jobId" element={<JobDetails />} />
               <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/blog" element={<Blog />} />

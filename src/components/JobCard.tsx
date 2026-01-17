@@ -1,5 +1,6 @@
-// src/components/JobCard.tsx - FIXED VERSION WITH VIEW TRACKING FIX
+// src/components/JobCard.tsx - UPDATED VERSION
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   MapPin,
   Briefcase,
@@ -15,7 +16,8 @@ import {
   ExternalLink,
   Building,
   Clock,
-  TrendingUp
+  TrendingUp,
+  FileText
 } from 'lucide-react';
 
 interface JobCardProps {
@@ -58,8 +60,9 @@ const JobCard: React.FC<JobCardProps> = ({
   onTrackView
 }) => {
   const [hasTrackedView, setHasTrackedView] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
-  // Track view when component mounts - FIXED: Only track once per session
+  // Track view when component mounts
   useEffect(() => {
     if (job.id && job.title && job.company && !hasTrackedView) {
       // Generate a unique tracking key for this session
@@ -115,6 +118,15 @@ const JobCard: React.FC<JobCardProps> = ({
   const requirements = Array.isArray(job.requirements) ? job.requirements : [];
   const qualifications = Array.isArray(job.qualifications) ? job.qualifications : [];
 
+  // Truncate title for display (max 60 characters)
+  const displayTitle = job.title.length > 60 ? `${job.title.substring(0, 60)}...` : job.title;
+  
+  // Truncate description (show 2 lines max in card)
+  const maxDescriptionLength = 180;
+  const truncatedDescription = job.description.length > maxDescriptionLength 
+    ? `${job.description.substring(0, maxDescriptionLength)}...` 
+    : job.description;
+
   return (
     <div className={`bg-white rounded-xl shadow-lg border hover:shadow-xl transition-all duration-300 ${featured ? 'border-amber-200 border-2' : 'border-gray-200'}`}>
       {featured && (
@@ -130,8 +142,19 @@ const JobCard: React.FC<JobCardProps> = ({
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg md:text-xl font-bold text-gray-800 line-clamp-2">
-                {job.title}
+              <h3 className="text-lg md:text-xl font-bold text-gray-800">
+                <Link 
+                  to={`/job-details/${job.id}`}
+                  className="hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    // Track click on job title
+                    if (job.id) {
+                      onTrackView(job.id, job.title, job.company);
+                    }
+                  }}
+                >
+                  {displayTitle}
+                </Link>
               </h3>
               {job.isNew && (
                 <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap">
@@ -190,22 +213,34 @@ const JobCard: React.FC<JobCardProps> = ({
           </span>
         </div>
 
-        {/* Description */}
+        {/* Description with "See More" link */}
         <div className="mb-4">
-          <p className="text-gray-700 text-sm line-clamp-3">
-            {job.description}
+          <p className="text-gray-700 text-sm mb-2">
+            {truncatedDescription}
           </p>
+          <Link 
+            to={`/job-details/${job.id}`}
+            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+            onClick={() => {
+              if (job.id) {
+                onTrackView(job.id, job.title, job.company);
+              }
+            }}
+          >
+            <FileText size={14} />
+            View Full Details
+          </Link>
         </div>
 
-        {/* Requirements */}
+        {/* Requirements - Show only 2 in card */}
         {requirements.length > 0 && (
           <div className="mb-4">
-            <h4 className="font-medium text-gray-800 mb-2 flex items-center gap-1">
+            <h4 className="font-medium text-gray-800 mb-2 flex items-center gap-1 text-sm">
               <CheckCircle size={14} />
               Key Requirements:
             </h4>
             <div className="flex flex-wrap gap-2">
-              {requirements.slice(0, 4).map((req, index) => (
+              {requirements.slice(0, 2).map((req, index) => (
                 <span
                   key={index}
                   className="bg-gray-50 text-gray-700 px-3 py-1 rounded-lg text-xs border border-gray-200"
@@ -213,35 +248,18 @@ const JobCard: React.FC<JobCardProps> = ({
                   {req.length > 30 ? `${req.substring(0, 30)}...` : req}
                 </span>
               ))}
-              {requirements.length > 4 && (
-                <span className="text-gray-500 text-xs">
-                  +{requirements.length - 4} more
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Qualifications */}
-        {qualifications.length > 0 && (
-          <div className="mb-4">
-            <h4 className="font-medium text-gray-800 mb-2 flex items-center gap-1">
-              <GraduationCap size={14} />
-              Qualifications:
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {qualifications.slice(0, 3).map((qual, index) => (
-                <span
-                  key={index}
-                  className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs border border-blue-200"
+              {requirements.length > 2 && (
+                <Link 
+                  to={`/job-details/${job.id}`}
+                  className="text-blue-600 text-xs font-medium hover:text-blue-800"
+                  onClick={() => {
+                    if (job.id) {
+                      onTrackView(job.id, job.title, job.company);
+                    }
+                  }}
                 >
-                  {qual.length > 25 ? `${qual.substring(0, 25)}...` : qual}
-                </span>
-              ))}
-              {qualifications.length > 3 && (
-                <span className="text-gray-500 text-xs">
-                  +{qualifications.length - 3} more
-                </span>
+                  +{requirements.length - 2} more
+                </Link>
               )}
             </div>
           </div>
@@ -274,12 +292,18 @@ const JobCard: React.FC<JobCardProps> = ({
             <ExternalLink size={16} />
             Apply Now
           </button>
-          <button
-            onClick={() => onShare(job)}
-            className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          <Link
+            to={`/job-details/${job.id}`}
+            className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+            onClick={() => {
+              if (job.id) {
+                onTrackView(job.id, job.title, job.company);
+              }
+            }}
           >
-            Share
-          </button>
+            <FileText size={16} />
+            Details
+          </Link>
         </div>
       </div>
     </div>
