@@ -1,4 +1,4 @@
-// src/firebase/govExamService.ts - UPDATED WITH BETTER ERROR HANDLING
+// src/firebase/govExamService.ts - UPDATED WITH SIMPLIFIED QUERIES
 import { 
   collection,
   doc,
@@ -129,10 +129,10 @@ export class FirebaseGovExamService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - this.AUTO_CLEANUP_DAYS);
       
+      // SIMPLIFIED: Get all active exams first, then filter in memory
       const examsQuery = query(
         collection(firestore, this.collectionName),
-        where('isActive', '==', true),
-        where('createdAt', '>=', Timestamp.fromDate(cutoffDate))
+        where('isActive', '==', true)
       );
 
       const snapshot = await getDocs(examsQuery);
@@ -275,47 +275,27 @@ export class FirebaseGovExamService {
     try {
       console.log('🔄 Fetching government exams from Firestore...');
       
-      // Start with basic query for active exams
+      // SIMPLIFIED: Start with basic query for active exams only
       const conditions: any[] = [
         where('isActive', '==', true)
       ];
       
-      if (filters?.examLevel && filters.examLevel !== 'all') {
-        conditions.push(where('examLevel', '==', filters.examLevel));
-      }
+      // NOTE: Removing complex queries that require indexes
+      // We'll do filtering in memory instead
       
-      if (filters?.organization && filters.organization !== 'all') {
-        conditions.push(where('organization', '==', filters.organization));
-      }
-      
-      if (filters?.featured) {
-        conditions.push(where('featured', '==', true));
-      }
-
-      if (filters?.isNew) {
-        conditions.push(where('isNew', '==', true));
-      }
-      
-      // First try with ordering
+      // Create query with just the basic condition
       let q = query(
         collection(firestore, this.collectionName),
         ...conditions
       );
       
-      try {
-        // Try to add ordering
-        q = query(q, orderBy('createdAt', 'desc'));
-        console.log('✅ Using ordered query');
-      } catch (orderError: any) {
-        console.warn('⚠️ OrderBy failed, using unordered query:', orderError.message);
-        // Continue without ordering
-      }
+      console.log('✅ Using simplified query without ordering');
       
       const snapshot = await getDocs(q);
-      console.log(`📊 Found ${snapshot.size} exams in Firestore`);
+      console.log(`📊 Found ${snapshot.size} active exams in Firestore`);
       
       if (snapshot.empty) {
-        console.log('ℹ️ No exams found in Firestore');
+        console.log('ℹ️ No active exams found in Firestore');
         return { exams: [], total: 0 };
       }
       
@@ -383,24 +363,48 @@ export class FirebaseGovExamService {
         }
       });
       
-      // Apply additional filters in memory
+      // Apply all filters in memory (to avoid complex indexes)
       let filteredExams = allExams;
+      
+      // Filter by exam level
+      if (filters?.examLevel && filters.examLevel !== 'all') {
+        filteredExams = filteredExams.filter(exam => exam.examLevel === filters.examLevel);
+      }
+      
+      // Filter by organization
+      if (filters?.organization && filters.organization !== 'all') {
+        filteredExams = filteredExams.filter(exam => exam.organization === filters.organization);
+      }
+      
+      // Filter by featured
+      if (filters?.featured) {
+        filteredExams = filteredExams.filter(exam => exam.featured === true);
+      }
+      
+      // Filter by isNew
+      if (filters?.isNew) {
+        filteredExams = filteredExams.filter(exam => exam.isNew === true);
+      }
       
       // Filter by application status
       if (filters?.applicationStatus && filters.applicationStatus !== 'all') {
         const now = new Date();
         filteredExams = filteredExams.filter(exam => {
-          const startDate = new Date(exam.applicationStartDate);
-          const endDate = new Date(exam.applicationEndDate);
-          
-          if (filters.applicationStatus === 'open') {
-            return now >= startDate && now <= endDate;
-          } else if (filters.applicationStatus === 'upcoming') {
-            return now < startDate;
-          } else if (filters.applicationStatus === 'closed') {
-            return now > endDate;
+          try {
+            const startDate = new Date(exam.applicationStartDate);
+            const endDate = new Date(exam.applicationEndDate);
+            
+            if (filters.applicationStatus === 'open') {
+              return now >= startDate && now <= endDate;
+            } else if (filters.applicationStatus === 'upcoming') {
+              return now < startDate;
+            } else if (filters.applicationStatus === 'closed') {
+              return now > endDate;
+            }
+            return true;
+          } catch {
+            return false;
           }
-          return true;
         });
       }
       
@@ -690,14 +694,19 @@ export class FirebaseGovExamService {
         stats.examsByLevel[exam.examLevel] = (stats.examsByLevel[exam.examLevel] || 0) + 1;
         stats.examsByOrganization[exam.organization] = (stats.examsByOrganization[exam.organization] || 0) + 1;
         
-        const startDate = new Date(exam.applicationStartDate);
-        const endDate = new Date(exam.applicationEndDate);
-        
-        if (now >= startDate && now <= endDate) {
-          stats.applicationStatus.open++;
-        } else if (now < startDate) {
-          stats.applicationStatus.upcoming++;
-        } else {
+        try {
+          const startDate = new Date(exam.applicationStartDate);
+          const endDate = new Date(exam.applicationEndDate);
+          
+          if (now >= startDate && now <= endDate) {
+            stats.applicationStatus.open++;
+          } else if (now < startDate) {
+            stats.applicationStatus.upcoming++;
+          } else {
+            stats.applicationStatus.closed++;
+          }
+        } catch {
+          // If date parsing fails, treat as closed
           stats.applicationStatus.closed++;
         }
       });
@@ -769,18 +778,26 @@ export class FirebaseGovExamService {
 
   // Helper method to check if application is open
   isApplicationOpen(exam: GovExamData): boolean {
-    const now = new Date();
-    const startDate = new Date(exam.applicationStartDate);
-    const endDate = new Date(exam.applicationEndDate);
-    return now >= startDate && now <= endDate;
+    try {
+      const now = new Date();
+      const startDate = new Date(exam.applicationStartDate);
+      const endDate = new Date(exam.applicationEndDate);
+      return now >= startDate && now <= endDate;
+    } catch {
+      return false;
+    }
   }
 
   // Helper method to get days remaining
   getDaysRemaining(exam: GovExamData): number {
-    const now = new Date();
-    const endDate = new Date(exam.applicationEndDate);
-    const diff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+    try {
+      const now = new Date();
+      const endDate = new Date(exam.applicationEndDate);
+      const diff = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 0;
+    } catch {
+      return 0;
+    }
   }
 
   // Get popular exam levels
