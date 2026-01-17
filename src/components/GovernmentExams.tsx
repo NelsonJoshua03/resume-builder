@@ -1,4 +1,4 @@
-// src/components/GovernmentExams.tsx - UPDATED WITH DEBUGGING
+// src/components/GovernmentExams.tsx - UPDATED WITH FIXED FIREBASE LOADING
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -27,7 +27,7 @@ const GovernmentExams: React.FC = () => {
   const { trackDailyPageView, trackGovExamApplication } = useEnhancedAnalytics();
   const { trackButtonClick } = useGoogleAnalytics();
 
-  // Load exams with error handling - SIMPLIFIED VERSION
+  // Load exams with improved error handling
   const loadExams = async () => {
     setLoading(true);
     setError(null);
@@ -36,7 +36,7 @@ const GovernmentExams: React.FC = () => {
     try {
       console.log('🔄 [GovernmentExams] Starting loadExams...');
       
-      // Test Firebase connection
+      // Test Firebase connection first
       try {
         const connection = await firebaseGovExamService.testFirebaseConnection();
         console.log('✅ [GovernmentExams] Firebase connection test:', connection);
@@ -69,10 +69,11 @@ const GovernmentExams: React.FC = () => {
           return;
         }
         
-        // Process the exams
+        // Process the exams with proper date handling
         const processedExams = loadedExams.map(exam => ({
           ...exam,
           // Ensure all required fields exist
+          id: exam.id || `exam_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           examName: exam.examName || 'Untitled Exam',
           organization: exam.organization || 'Unknown Organization',
           posts: exam.posts || 'Various Posts',
@@ -90,7 +91,10 @@ const GovernmentExams: React.FC = () => {
           applyLink: exam.applyLink || '#',
           views: exam.views || 0,
           applications: exam.applications || 0,
-          shares: exam.shares || 0
+          shares: exam.shares || 0,
+          featured: exam.featured || false,
+          isNew: exam.isNew !== undefined ? exam.isNew : true,
+          addedTimestamp: exam.addedTimestamp || Date.now()
         }));
         
         setExams(processedExams);
@@ -396,7 +400,8 @@ const GovernmentExams: React.FC = () => {
         isNew: true,
         views: 1500,
         applications: 450,
-        shares: 120
+        shares: 120,
+        addedTimestamp: Date.now() - 2 * 24 * 60 * 60 * 1000 // 2 days ago
       },
       {
         id: 'exam_2',
@@ -416,9 +421,35 @@ const GovernmentExams: React.FC = () => {
         notificationLink: 'https://ssc.nic.in/SSC-CGL-2025-Notification.pdf',
         applyLink: 'https://ssconline.nic.in',
         featured: true,
+        isNew: false,
         views: 2200,
         applications: 1800,
-        shares: 350
+        shares: 350,
+        addedTimestamp: Date.now() - 15 * 24 * 60 * 60 * 1000 // 15 days ago
+      },
+      {
+        id: 'exam_3',
+        examName: 'IBPS PO 2025',
+        organization: 'IBPS',
+        posts: 'Probationary Officer',
+        vacancies: '4000+',
+        eligibility: "Bachelor's degree in any discipline",
+        applicationStartDate: '2025-08-01',
+        applicationEndDate: '2025-08-31',
+        examDate: '2025-10-15',
+        examLevel: 'Banking',
+        ageLimit: '20-30 years',
+        applicationFee: '₹850 for General/OBC, ₹175 for SC/ST/PWD',
+        examMode: 'Online',
+        officialWebsite: 'https://ibps.in',
+        notificationLink: 'https://ibps.in/notifications/ibps-po-2025.pdf',
+        applyLink: 'https://ibpsonline.ibps.in',
+        featured: false,
+        isNew: true,
+        views: 1800,
+        applications: 1200,
+        shares: 200,
+        addedTimestamp: Date.now() - 1 * 24 * 60 * 60 * 1000 // 1 day ago
       }
     ];
     
