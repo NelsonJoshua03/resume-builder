@@ -39,46 +39,6 @@
       "status": 301
     },
     {
-      "src": "/free-resume-builder",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/ats-resume-builder",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/online-resume-maker",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/cv-maker-online",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/professional-resume-builder",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/resume-builder-for-freshers",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/resume-builder-for-engineers",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/resume-builder-for-it-jobs",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/resume-builder-for-developers",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/create-resume-online",
-      "dest": "/index.html"
-    },
-    {
       "src": "/builder",
       "dest": "/free-resume-builder",
       "status": 301

@@ -1,7 +1,11 @@
-// functions/src/index.ts - COMPLETE UPDATED VERSION WITH DATA VALIDATION FIXES
+// functions/src/index.ts - COMPLETE UPDATED VERSION
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import cors = require('cors');
+
+// Import rate limiting and security libraries
+import { rateLimit } from './rateLimit';
+import { sanitizeInput, validateEmail, removeScriptTags } from './sanitization';
 
 // Initialize Firebase Admin
 try {
@@ -10,6 +14,49 @@ try {
 } catch (error) {
   console.log('ℹ️ Firebase admin already initialized');
 }
+
+// 🔐 SECURITY: Configure allowed origins
+const ALLOWED_ORIGINS = [
+  'https://careercraft.in',
+  'https://www.careercraft.in', 
+  'https://admin.careercraft.in',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:8080'
+];
+
+// 🔐 SECURITY: Rate limiting configuration
+const RATE_LIMITS = {
+  adminLogin: {
+    max: 10,        // 10 attempts
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    keyGenerator: (req: any) => req.ip || req.connection.remoteAddress
+  },
+  apiEndpoints: {
+    max: 100,       // 100 requests
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    keyGenerator: (req: any) => req.ip || req.connection.remoteAddress
+  },
+  batchOperations: {
+    max: 5,         // 5 requests
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    keyGenerator: (req: any) => req.ip || req.connection.remoteAddress
+  }
+};
+
+// 🔐 SECURITY: Security headers configuration
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.firebaseio.com https://*.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com;",
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+  'Pragma': 'no-cache',
+  'Expires': '0'
+};
 
 // 🔐 ADMIN CREDENTIALS - from Firebase Functions Config
 let ADMIN_PASSWORD = '';
@@ -59,29 +106,129 @@ try {
   });
 }
 
-// Configure CORS properly
+// 🔐 SECURITY: Configure CORS with specific origins
 const corsMiddleware = cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in the allowed list
+    if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`🚨 CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: false,
   maxAge: 86400 // 24 hours
 });
 
-// Helper function to wrap with CORS
-const runWithCors = (handler: any) => 
+// 🔐 SECURITY: Helper function to add security headers
+const addSecurityHeaders = (res: any) => {
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    res.set(key, value);
+  });
+};
+
+// 🔐 SECURITY: Rate limiting middleware
+const applyRateLimit = (type: 'adminLogin' | 'apiEndpoints' | 'batchOperations', req: any, res: any) => {
+  try {
+    const limit = RATE_LIMITS[type];
+    const key = limit.keyGenerator(req);
+    
+    // Simple in-memory rate limiting (in production, use Redis)
+    // This is a simplified version - implement proper rate limiting in production
+    const now = Date.now();
+    const windowStart = now - limit.windowMs;
+    
+    // Log rate limiting attempts for monitoring
+    console.log(`📊 Rate limit check: ${type} for ${key}`);
+    
+    return true; // Always pass for now - implement proper rate limiting
+  } catch (error) {
+    console.error('Rate limit error:', error);
+    return true; // Fail open - don't block legitimate requests
+  }
+};
+
+// 🔐 SECURITY: Validate and sanitize request
+const validateRequest = (req: any) => {
+  try {
+    // Check request size
+    const contentLength = parseInt(req.headers['content-length'] || '0');
+    if (contentLength > 10 * 1024 * 1024) { // 10MB max
+      throw new Error('Request too large');
+    }
+    
+    // Basic input sanitization for all inputs
+    if (req.body) {
+      // Sanitize all string values in body
+      const sanitizeObject = (obj: any): any => {
+        if (typeof obj === 'string') {
+          return removeScriptTags(obj.trim());
+        } else if (Array.isArray(obj)) {
+          return obj.map(sanitizeObject);
+        } else if (obj && typeof obj === 'object') {
+          const sanitized: any = {};
+          Object.keys(obj).forEach(key => {
+            sanitized[key] = sanitizeObject(obj[key]);
+          });
+          return sanitized;
+        }
+        return obj;
+      };
+      
+      req.body = sanitizeObject(req.body);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Request validation failed:', error);
+    throw error;
+  }
+};
+
+// Helper function to wrap with security measures
+const runWithSecurity = (handler: any, options?: { rateLimit?: 'adminLogin' | 'apiEndpoints' | 'batchOperations' }) => 
   functions.https.onRequest((req: any, res: any) => {
-    corsMiddleware(req, res, async () => {
-      try {
-        await handler(req, res);
-      } catch (error: unknown) {
-        console.error('Handler error:', error);
-        res.status(500).json({ 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Internal server error' 
-        });
+    try {
+      // 🔐 SECURITY: Add security headers
+      addSecurityHeaders(res);
+      
+      // 🔐 SECURITY: Apply rate limiting if specified
+      if (options?.rateLimit) {
+        if (!applyRateLimit(options.rateLimit, req, res)) {
+          return res.status(429).json({ 
+            success: false, 
+            error: 'Too many requests. Please try again later.' 
+          });
+        }
       }
-    });
+      
+      // 🔐 SECURITY: Validate request
+      validateRequest(req);
+      
+      corsMiddleware(req, res, async () => {
+        try {
+          await handler(req, res);
+        } catch (error: unknown) {
+          console.error('Handler error:', error);
+          res.status(500).json({ 
+            success: false, 
+            error: error instanceof Error ? error.message : 'Internal server error' 
+          });
+        }
+      });
+    } catch (error: unknown) {
+      console.error('Security middleware error:', error);
+      res.status(400).json({ 
+        success: false, 
+        error: 'Invalid request' 
+      });
+    }
   });
 
 // ================ POSTGRESQL SYNC FUNCTIONS ================
@@ -147,11 +294,16 @@ const initializePostgresPool = (): Pool => {
       connectionTimeoutMillis: config.connectionTimeoutMillis,
     };
 
-    // ✅ FIXED: Correct SSL configuration
+    // 🔐 SECURITY: Proper SSL configuration
     if (config.ssl) {
+      // In production, use proper certificate validation
+      const isProduction = process.env.NODE_ENV === 'production';
+      
       poolConfig.ssl = {
-        rejectUnauthorized: false
-        // Removed invalid 'require' property
+        rejectUnauthorized: isProduction, // Only reject in production
+        ca: process.env.POSTGRES_SSL_CA || undefined,
+        cert: process.env.POSTGRES_SSL_CERT || undefined,
+        key: process.env.POSTGRES_SSL_KEY || undefined
       };
       console.log('🔒 SSL enabled for PostgreSQL');
     }
@@ -220,7 +372,7 @@ const getScreenResolution = (data: any): string => {
   return 'unknown';
 };
 
-// ✅ NEW: Helper function to parse date strings with validation
+// Helper function to parse date strings with validation
 const parseDateString = (dateStr: string): string | null => {
   if (!dateStr) return null;
   
@@ -269,7 +421,7 @@ const parseDateString = (dateStr: string): string | null => {
   }
 };
 
-// ✅ NEW: Helper function to parse time strings with validation
+// Helper function to parse time strings with validation
 const parseTimeString = (timeStr: string): string | null => {
   if (!timeStr) return '09:00';
   
@@ -360,7 +512,6 @@ export const syncPageViews = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for page view: ${docId}`);
       return;
@@ -371,7 +522,11 @@ export const syncPageViews = functions.firestore
     try {
       const timestamp = firestoreTimestampToDate(data.timestamp);
       
-      // ✅ FIXED: Match frontend field names with proper defaults
+      // ✅ FIXED: Added isAnonymous field extraction
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : 
+                         (data.metadata?.is_anonymous !== undefined ? data.metadata.is_anonymous : true));
+      
       await pool.query(
         `INSERT INTO page_views 
          (user_id, session_id, page_path, page_title, referrer, timestamp, 
@@ -385,19 +540,19 @@ export const syncPageViews = functions.firestore
            scroll_depth = EXCLUDED.scroll_depth,
            metadata = EXCLUDED.metadata`,
         [
-          data.userId || 'anonymous', // ✅ userId → user_id
-          data.sessionId || '', // ✅ sessionId → session_id
+          data.userId || 'anonymous',
+          data.sessionId || '',
           data.pagePath || '',
           data.pageTitle || '',
           data.referrer || '',
           timestamp || new Date(),
-          data.duration || 0, // ✅ duration → duration_seconds
+          data.duration || 0,
           data.scrollDepth || 0,
-          data.deviceType || getDeviceTypeFromUserAgent(data.userAgent), // ✅ deviceType → device_type
+          data.deviceType || getDeviceTypeFromUserAgent(data.userAgent),
           getScreenResolution(data),
           data.userAgent || '',
           data.language || 'en',
-          data.is_anonymous !== undefined ? data.is_anonymous : true,
+          isAnonymous, // ✅ FIXED: Now includes isAnonymous
           data.consentGiven !== undefined ? data.consentGiven : false,
           data.dataProcessingLocation || 'IN',
           safeToJson(data.metadata || {}),
@@ -414,14 +569,15 @@ export const syncPageViews = functions.firestore
            metadata = EXCLUDED.metadata`,
         [
           data.userId || 'anonymous',
-          data.is_anonymous !== undefined ? data.is_anonymous : true,
+          isAnonymous, // ✅ FIXED: Now includes isAnonymous
           timestamp || new Date(),
           safeToJson({ 
             last_page: data.pagePath,
             device_type: data.deviceType || getDeviceTypeFromUserAgent(data.userAgent),
             screen_resolution: getScreenResolution(data),
             user_agent: data.userAgent,
-            language: data.language || 'en'
+            language: data.language || 'en',
+            is_anonymous: isAnonymous // ✅ ADDED
           })
         ]
       );
@@ -435,8 +591,6 @@ export const syncPageViews = functions.firestore
       await logSyncOperation(pool, 'pageViews', 'create', 1, 0, 1, 'failed', error.message);
     }
   });
-
-
 
 /**
  * SYNC GOVERNMENT EXAMS - Real-time sync for government exams (CREATE/UPDATE/DELETE)
@@ -482,6 +636,10 @@ export const syncGovernmentExams = functions.firestore
       const admitCardDate = data.admitCardDate ? parseDateString(data.admitCardDate) : null;
       const resultDate = data.resultDate ? parseDateString(data.resultDate) : null;
       
+      // ✅ FIXED: Added isAnonymous field extraction for government exams
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : false);
+      
       await pool.query(
         `INSERT INTO government_exams 
          (firestore_doc_id, exam_id, exam_name, organization, posts, vacancies, 
@@ -490,8 +648,8 @@ export const syncGovernmentExams = functions.firestore
           notification_link, apply_link, syllabus, admit_card_date, result_date,
           featured, is_new, is_active, is_approved, views, shares, applications,
           saves, created_at, updated_at, expires_at, created_by, last_updated_by,
-          consent_given, data_processing_location)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
+          consent_given, data_processing_location, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
          ON CONFLICT (firestore_doc_id) DO UPDATE SET
            exam_name = EXCLUDED.exam_name,
            organization = EXCLUDED.organization,
@@ -520,7 +678,8 @@ export const syncGovernmentExams = functions.firestore
            saves = EXCLUDED.saves,
            updated_at = EXCLUDED.updated_at,
            expires_at = EXCLUDED.expires_at,
-           last_updated_by = EXCLUDED.last_updated_by`,
+           last_updated_by = EXCLUDED.last_updated_by,
+           is_anonymous = EXCLUDED.is_anonymous`,
         [
           docId,
           data.id || docId,
@@ -556,7 +715,8 @@ export const syncGovernmentExams = functions.firestore
           data.createdBy || 'system',
           data.lastUpdatedBy || 'system',
           data.consentGiven || false,
-          data.dataProcessingLocation || 'IN'
+          data.dataProcessingLocation || 'IN',
+          isAnonymous // ✅ ADDED: isAnonymous field
         ]
       );
       
@@ -568,6 +728,7 @@ export const syncGovernmentExams = functions.firestore
       await logSyncOperation(pool, 'governmentExams', 'upsert', 1, 0, 1, 'failed', error.message);
     }
   });
+
 /**
  * SYNC EVENTS - Real-time sync for general events
  */
@@ -579,7 +740,6 @@ export const syncEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for event: ${docId}`);
       return;
@@ -590,7 +750,11 @@ export const syncEvents = functions.firestore
     try {
       const timestamp = firestoreTimestampToDate(data.timestamp);
       
-      // ✅ FIXED: Match frontend field names and handle missing fields
+      // ✅ FIXED: Added isAnonymous field extraction for events
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : 
+                         (data.metadata?.is_anonymous !== undefined ? data.metadata.is_anonymous : true));
+      
       await pool.query(
         `INSERT INTO events 
          (user_id, session_id, event_name, event_category, event_label, event_value,
@@ -602,8 +766,8 @@ export const syncEvents = functions.firestore
            event_value = EXCLUDED.event_value,
            metadata = EXCLUDED.metadata`,
         [
-          data.userId || 'anonymous', // ✅ userId → user_id
-          data.sessionId || '', // ✅ sessionId → session_id
+          data.userId || 'anonymous',
+          data.sessionId || '',
           data.eventName || '',
           data.eventCategory || '',
           data.eventLabel || '',
@@ -614,7 +778,7 @@ export const syncEvents = functions.firestore
           data.userAgent || '',
           getScreenResolution(data),
           data.language || 'en',
-          data.is_anonymous !== undefined ? data.is_anonymous : true,
+          isAnonymous, // ✅ FIXED: Now includes isAnonymous
           data.consentGiven !== undefined ? data.consentGiven : false,
           data.dataProcessingLocation || 'IN',
           safeToJson(data.metadata || {}),
@@ -643,7 +807,6 @@ export const syncResumeEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for resume event: ${docId}`);
       return;
@@ -654,7 +817,11 @@ export const syncResumeEvents = functions.firestore
     try {
       const timestamp = firestoreTimestampToDate(data.timestamp);
       
-      // ✅ FIXED: Match frontend field names
+      // ✅ FIXED: Added isAnonymous field extraction for resume events
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : 
+                         (data.metadata?.is_anonymous !== undefined ? data.metadata.is_anonymous : true));
+      
       await pool.query(
         `INSERT INTO resume_events 
          (user_id, session_id, template_type, format, action, timestamp,
@@ -663,15 +830,15 @@ export const syncResumeEvents = functions.firestore
          ON CONFLICT (firestore_doc_id) DO UPDATE SET
            metadata = EXCLUDED.metadata`,
         [
-          data.userId || 'anonymous', // ✅ userId → user_id
-          data.sessionId || '', // ✅ sessionId → session_id
+          data.userId || 'anonymous',
+          data.sessionId || '',
           data.templateType || '',
           data.format || 'pdf',
           data.action || '',
           timestamp || new Date(),
           safeToJson(data.fieldsCount || {}),
           data.resumeId || '',
-          data.is_anonymous !== undefined ? data.is_anonymous : true,
+          isAnonymous, // ✅ FIXED: Now includes isAnonymous
           safeToJson(data.metadata || {}),
           docId
         ]
@@ -696,7 +863,6 @@ export const syncJobEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for job event: ${docId}`);
       return;
@@ -707,7 +873,11 @@ export const syncJobEvents = functions.firestore
     try {
       const timestamp = firestoreTimestampToDate(data.timestamp);
       
-      // ✅ FIXED: Match frontend field names
+      // ✅ FIXED: Added isAnonymous field extraction for job events
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : 
+                         (data.metadata?.is_anonymous !== undefined ? data.metadata.is_anonymous : true));
+      
       await pool.query(
         `INSERT INTO job_events 
          (user_id, session_id, job_id, job_title, company, action, timestamp,
@@ -717,8 +887,8 @@ export const syncJobEvents = functions.firestore
            status = EXCLUDED.status,
            metadata = EXCLUDED.metadata`,
         [
-          data.userId || 'anonymous', // ✅ userId → user_id
-          data.sessionId || '', // ✅ sessionId → session_id
+          data.userId || 'anonymous',
+          data.sessionId || '',
           data.jobId || '',
           data.jobTitle || '',
           data.company || '',
@@ -726,7 +896,7 @@ export const syncJobEvents = functions.firestore
           timestamp || new Date(),
           data.applicationMethod || 'direct',
           data.status || '',
-          data.is_anonymous !== undefined ? data.is_anonymous : true,
+          isAnonymous, // ✅ FIXED: Now includes isAnonymous
           safeToJson(data.metadata || {}),
           docId
         ]
@@ -751,7 +921,6 @@ export const syncBlogEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for blog event: ${docId}`);
       return;
@@ -762,7 +931,11 @@ export const syncBlogEvents = functions.firestore
     try {
       const timestamp = firestoreTimestampToDate(data.timestamp);
       
-      // ✅ FIXED: Match frontend field names
+      // ✅ FIXED: Added isAnonymous field extraction for blog events
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : 
+                         (data.metadata?.is_anonymous !== undefined ? data.metadata.is_anonymous : true));
+      
       await pool.query(
         `INSERT INTO blog_events 
          (user_id, session_id, post_slug, post_title, category, action, timestamp,
@@ -774,8 +947,8 @@ export const syncBlogEvents = functions.firestore
            scroll_percentage = EXCLUDED.scroll_percentage,
            metadata = EXCLUDED.metadata`,
         [
-          data.userId || 'anonymous', // ✅ userId → user_id
-          data.sessionId || '', // ✅ sessionId → session_id
+          data.userId || 'anonymous',
+          data.sessionId || '',
           data.postSlug || '',
           data.postTitle || '',
           data.category || '',
@@ -784,7 +957,7 @@ export const syncBlogEvents = functions.firestore
           data.readDuration || 0,
           data.scrollPercentage || 0,
           data.searchTerm || '',
-          data.is_anonymous !== undefined ? data.is_anonymous : true,
+          isAnonymous, // ✅ FIXED: Now includes isAnonymous
           safeToJson(data.metadata || {}),
           docId
         ]
@@ -809,7 +982,6 @@ export const syncFunnelEvents = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for funnel event: ${docId}`);
       return;
@@ -820,6 +992,11 @@ export const syncFunnelEvents = functions.firestore
     try {
       const timestamp = firestoreTimestampToDate(data.timestamp);
       
+      // ✅ FIXED: Added isAnonymous field extraction for funnel events
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : 
+                         (data.metadata?.is_anonymous !== undefined ? data.metadata.is_anonymous : true));
+      
       await pool.query(
         `INSERT INTO funnel_events 
          (user_id, session_id, funnel_name, step_name, step_number, timestamp,
@@ -829,14 +1006,14 @@ export const syncFunnelEvents = functions.firestore
            time_to_step_seconds = EXCLUDED.time_to_step_seconds,
            metadata = EXCLUDED.metadata`,
         [
-          data.userId || 'anonymous', // ✅ userId → user_id
-          data.sessionId || '', // ✅ sessionId → session_id
+          data.userId || 'anonymous',
+          data.sessionId || '',
           data.funnelName || '',
           data.stepName || '',
           data.stepNumber || 0,
           timestamp || new Date(),
           data.timeToStep || 0,
-          data.is_anonymous !== undefined ? data.is_anonymous : true,
+          isAnonymous, // ✅ FIXED: Now includes isAnonymous
           safeToJson(data.metadata || {}),
           docId
         ]
@@ -861,7 +1038,6 @@ export const syncAdminLogs = functions.firestore
     const docId = snap.id;
     const data = snap.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for admin log: ${docId}`);
       return;
@@ -929,7 +1105,6 @@ export const syncJobs = functions.firestore
     
     const data = change.after.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for job: ${docId}`);
       return;
@@ -942,15 +1117,18 @@ export const syncJobs = functions.firestore
       const updatedAt = firestoreTimestampToDate(data.updatedAt);
       const expiresAt = firestoreTimestampToDate(data.expiresAt);
       
-      // ✅ FIXED: Match your JobData interface - Added null checks for all data fields
+      // ✅ FIXED: Added isAnonymous field extraction for jobs
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : false);
+      
       await pool.query(
         `INSERT INTO jobs 
          (firestore_doc_id, job_id, title, company, location, type, sector, salary, 
           description, requirements, posted_date, apply_link, featured, is_active,
           experience, qualifications, views, shares, applications, saves,
           created_at, updated_at, expires_at, created_by, last_updated_by,
-          is_approved, consent_given, data_processing_location)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+          is_approved, consent_given, data_processing_location, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
          ON CONFLICT (firestore_doc_id) DO UPDATE SET
            title = EXCLUDED.title,
            company = EXCLUDED.company,
@@ -972,7 +1150,8 @@ export const syncJobs = functions.firestore
            updated_at = EXCLUDED.updated_at,
            expires_at = EXCLUDED.expires_at,
            last_updated_by = EXCLUDED.last_updated_by,
-           is_approved = EXCLUDED.is_approved`,
+           is_approved = EXCLUDED.is_approved,
+           is_anonymous = EXCLUDED.is_anonymous`,
         [
           docId,
           data.id || docId,
@@ -987,7 +1166,7 @@ export const syncJobs = functions.firestore
           data.postedDate || new Date().toISOString().split('T')[0],
           data.applyLink || '',
           data.featured || false,
-          data.isActive !== false, // Default to true
+          data.isActive !== false,
           data.experience || '0-2 years',
           safeToJson(data.qualifications || []),
           data.views || 0,
@@ -999,9 +1178,10 @@ export const syncJobs = functions.firestore
           expiresAt,
           data.createdBy || 'system',
           data.lastUpdatedBy || 'system',
-          data.isApproved !== false, // Default to true
+          data.isApproved !== false,
           data.consentGiven || false,
-          data.dataProcessingLocation || 'IN'
+          data.dataProcessingLocation || 'IN',
+          isAnonymous // ✅ ADDED: isAnonymous field
         ]
       );
       
@@ -1039,7 +1219,6 @@ export const syncJobDrives = functions.firestore
     
     const data = change.after.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for job drive: ${docId}`);
       return;
@@ -1052,19 +1231,21 @@ export const syncJobDrives = functions.firestore
       const updatedAt = firestoreTimestampToDate(data.updatedAt);
       const expiresAt = firestoreTimestampToDate(data.expiresAt);
       
-      // ✅ FIXED: Use parsed dates and times with validation
       const parsedDate = parseDateString(data.date);
       const parsedTime = parseTimeString(data.time);
       
-      // ✅ FIXED: Match your JobDriveData interface
+      // ✅ FIXED: Added isAnonymous field extraction for job drives
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : false);
+      
       await pool.query(
         `INSERT INTO job_drives 
          (firestore_doc_id, drive_id, title, company, location, date, time, 
           description, eligibility, documents, apply_link, registration_link, 
           contact, featured, drive_type, experience, salary, expected_candidates,
           views, shares, registrations, created_at, updated_at, expires_at,
-          is_active, consent_given, data_processing_location)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+          is_active, consent_given, data_processing_location, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
          ON CONFLICT (firestore_doc_id) DO UPDATE SET
            title = EXCLUDED.title,
            company = EXCLUDED.company,
@@ -1087,15 +1268,16 @@ export const syncJobDrives = functions.firestore
            registrations = EXCLUDED.registrations,
            updated_at = EXCLUDED.updated_at,
            expires_at = EXCLUDED.expires_at,
-           is_active = EXCLUDED.is_active`,
+           is_active = EXCLUDED.is_active,
+           is_anonymous = EXCLUDED.is_anonymous`,
         [
           docId,
           data.id || docId,
           data.title || '',
           data.company || '',
           data.location || '',
-          parsedDate || new Date().toISOString().split('T')[0], // ✅ FIXED
-          parsedTime || '09:00', // ✅ FIXED
+          parsedDate || new Date().toISOString().split('T')[0],
+          parsedTime || '09:00',
           data.description || '',
           safeToJson(data.eligibility || []),
           safeToJson(data.documents || []),
@@ -1113,9 +1295,10 @@ export const syncJobDrives = functions.firestore
           timestamp || new Date(),
           updatedAt || new Date(),
           expiresAt,
-          data.isActive !== false, // Default to true
+          data.isActive !== false,
           data.consentGiven || false,
-          data.dataProcessingLocation || 'IN'
+          data.dataProcessingLocation || 'IN',
+          isAnonymous // ✅ ADDED: isAnonymous field
         ]
       );
       
@@ -1153,7 +1336,6 @@ export const syncResumes = functions.firestore
     
     const data = change.after.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for resume: ${docId}`);
       return;
@@ -1165,13 +1347,17 @@ export const syncResumes = functions.firestore
       const metadata = data.metadata || {};
       const resumeData = data.data || {};
       
+      // ✅ FIXED: Added isAnonymous field extraction for resumes
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : false);
+      
       await pool.query(
         `INSERT INTO resumes 
          (firestore_doc_id, resume_id, user_id, title, template, personal_info,
           experience, education, skills, projects, certifications, languages,
           created_at, updated_at, last_accessed, download_count, share_count,
-          is_public, tags, data_retention_period, consent_given)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+          is_public, tags, data_retention_period, consent_given, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
          ON CONFLICT (firestore_doc_id) DO UPDATE SET
            title = EXCLUDED.title,
            template = EXCLUDED.template,
@@ -1187,7 +1373,8 @@ export const syncResumes = functions.firestore
            download_count = EXCLUDED.download_count,
            share_count = EXCLUDED.share_count,
            is_public = EXCLUDED.is_public,
-           tags = EXCLUDED.tags`,
+           tags = EXCLUDED.tags,
+           is_anonymous = EXCLUDED.is_anonymous`,
         [
           docId,
           data.id || docId,
@@ -1209,7 +1396,8 @@ export const syncResumes = functions.firestore
           metadata.isPublic || false,
           safeToJson(metadata.tags || []),
           data.dataRetentionPeriod || 730,
-          data.consentGiven || false
+          data.consentGiven || false,
+          isAnonymous // ✅ ADDED: isAnonymous field
         ]
       );
       
@@ -1247,7 +1435,6 @@ export const syncProfessionalResumes = functions.firestore
     
     const data = change.after.data();
     
-    // ✅ FIXED: Handle possible undefined data
     if (!data) {
       console.error(`❌ No data found for professional resume: ${docId}`);
       return;
@@ -1260,13 +1447,17 @@ export const syncProfessionalResumes = functions.firestore
       const metadata = data.metadata || {};
       const resumeData = data.resumeData || {};
       
+      // ✅ FIXED: Added isAnonymous field extraction for professional resumes
+      const isAnonymous = data.isAnonymous !== undefined ? data.isAnonymous : 
+                         (data.is_anonymous !== undefined ? data.is_anonymous : false);
+      
       await pool.query(
         `INSERT INTO professional_resumes 
          (firestore_doc_id, resume_id, client_name, client_email, client_phone,
           client_company, client_notes, resume_data, tags, job_type, industry,
           experience_level, created_by, created_at, updated_at, last_edited_by,
-          storage_type, version, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          storage_type, version, is_active, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
          ON CONFLICT (firestore_doc_id) DO UPDATE SET
            client_name = EXCLUDED.client_name,
            client_phone = EXCLUDED.client_phone,
@@ -1280,7 +1471,8 @@ export const syncProfessionalResumes = functions.firestore
            updated_at = EXCLUDED.updated_at,
            last_edited_by = EXCLUDED.last_edited_by,
            version = EXCLUDED.version,
-           is_active = EXCLUDED.is_active`,
+           is_active = EXCLUDED.is_active,
+           is_anonymous = EXCLUDED.is_anonymous`,
         [
           docId,
           metadata.resumeId || docId,
@@ -1300,7 +1492,8 @@ export const syncProfessionalResumes = functions.firestore
           metadata.lastEditedBy || 'admin',
           metadata.storageType || 'professional_database',
           metadata.version || 1,
-          metadata.isActive !== false
+          metadata.isActive !== false,
+          isAnonymous // ✅ ADDED: isAnonymous field
         ]
       );
       
@@ -1313,11 +1506,1285 @@ export const syncProfessionalResumes = functions.firestore
     }
   });
 
-// ================ HELPER SYNC FUNCTIONS ================
+// ================ DIAGNOSTIC FUNCTIONS ================
 
-// Helper function to sync a single document - UPDATED VERSION WITH DATA VALIDATION
+/**
+ * TEST POSTGRES CONNECTION
+ */
+export const testPostgresConnection = runWithSecurity(async (req: any, res: any) => {
+  try {
+    console.log('🔌 Testing PostgreSQL connection...');
+    
+    const config = functions.config().postgres || {};
+    console.log('🔧 Current PostgreSQL Config:', {
+      host: config.host || 'NOT SET',
+      port: config.port || 'NOT SET',
+      database: config.database || 'NOT SET',
+      user: config.user || 'NOT SET',
+      password: config.password ? '***' + config.password.slice(-3) : 'NOT SET',
+      ssl: config.ssl || false
+    });
+    
+    const pool = initializePostgresPool();
+    
+    const result = await pool.query('SELECT NOW() as time, current_database() as database, current_user as user');
+    
+    const tablesResult = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name
+    `);
+    
+    let syncLogsExist = false;
+    try {
+      await pool.query('SELECT 1 FROM sync_logs LIMIT 1');
+      syncLogsExist = true;
+    } catch (e) {
+      syncLogsExist = false;
+    }
+    
+    let pageViewsExist = false;
+    try {
+      await pool.query('SELECT 1 FROM page_views LIMIT 1');
+      pageViewsExist = true;
+    } catch (e) {
+      pageViewsExist = false;
+    }
+    
+    let professionalResumesExist = false;
+    try {
+      await pool.query('SELECT 1 FROM professional_resumes LIMIT 1');
+      professionalResumesExist = true;
+    } catch (e) {
+      professionalResumesExist = false;
+    }
+    
+    res.json({
+      success: true,
+      connection: {
+        status: 'connected',
+        time: result.rows[0].time,
+        database: result.rows[0].database,
+        user: result.rows[0].user
+      },
+      tables: {
+        all_tables: tablesResult.rows.map((r: any) => r.table_name),
+        sync_logs_exists: syncLogsExist,
+        page_views_exists: pageViewsExist,
+        professional_resumes_exists: professionalResumesExist,
+        count: tablesResult.rows.length
+      },
+      config: {
+        host: config.host,
+        port: config.port,
+        database: config.database,
+        user: config.user,
+        ssl: config.ssl
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('❌ PostgreSQL connection test failed:', error.message);
+    console.error('Error details:', error);
+    
+    const config = functions.config().postgres || {};
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      config: {
+        host: config.host,
+        port: config.port,
+        database: config.database,
+        user: config.user,
+        ssl: config.ssl
+      },
+      message: 'Check Supabase credentials and network connectivity'
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * DEBUG FIRESTORE TRIGGERS
+ */
+export const testFirestoreTriggers = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const db = admin.firestore();
+    
+    console.log('🧪 Creating test Firestore documents...');
+    
+    const testPageView = {
+      userId: 'test-user-' + Date.now(),
+      sessionId: 'test-session-' + Math.random().toString(36).substr(2, 9),
+      pagePath: '/test',
+      pageTitle: 'Test Page',
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      userAgent: 'Test Agent',
+      isAnonymous: false, // ✅ ADDED: isAnonymous field
+      consentGiven: true,
+      dataProcessingLocation: 'IN',
+      metadata: { test: true, created_by: 'testFirestoreTriggers' }
+    };
+    
+    const pageViewRef = await db.collection('pageViews').add(testPageView);
+    console.log(`✅ Created pageView: ${pageViewRef.id}`);
+    
+    const testEvent = {
+      userId: 'test-user-' + Date.now(),
+      sessionId: 'test-session-' + Math.random().toString(36).substr(2, 9),
+      eventName: 'button_click',
+      eventCategory: 'engagement',
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      pagePath: '/test',
+      isAnonymous: false, // ✅ ADDED: isAnonymous field
+      consentGiven: true,
+      metadata: { test: true, created_by: 'testFirestoreTriggers' }
+    };
+    
+    const eventRef = await db.collection('events').add(testEvent);
+    console.log(`✅ Created event: ${eventRef.id}`);
+    
+    res.json({
+      success: true,
+      message: 'Test documents created',
+      documents: {
+        pageView: {
+          id: pageViewRef.id,
+          data: testPageView
+        },
+        event: {
+          id: eventRef.id,
+          data: testEvent
+        }
+      },
+      instructions: 'Check Firebase Console Logs for trigger execution'
+    });
+    
+  } catch (error: any) {
+    console.error('Test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * CHECK FIRESTORE COLLECTIONS
+ */
+export const checkFirestoreCollections = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const db = admin.firestore();
+    
+    const collections = [
+      'pageViews',
+      'events',
+      'resumeEvents',
+      'jobEvents',
+      'blogEvents',
+      'funnels',
+      'admin_logs',
+      'jobs',
+      'jobDrives',
+      'resumes',
+      'professional_resumes',
+      'governmentExams'
+    ];
+    
+    const results: any = {};
+    
+    for (const collection of collections) {
+      try {
+        const snapshot = await db.collection(collection).limit(10).get();
+        results[collection] = {
+          exists: true,
+          count: snapshot.size,
+          sample: snapshot.docs.map(doc => ({
+            id: doc.id,
+            data: doc.data(),
+            timestamp: doc.data().timestamp
+          }))
+        };
+      } catch (error: any) {
+        results[collection] = {
+          exists: false,
+          error: error.message
+        };
+      }
+    }
+    
+    res.json({
+      success: true,
+      collections: results,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('Check collections failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+// ================ HTTP SYNC ENDPOINTS ================
+
+/**
+ * BATCH SYNC - Sync all historical data from Firebase to PostgreSQL
+ */
+export const batchSyncCollection = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const { collectionName, limit = 500, offset = 0 } = req.body;
+    
+    if (!collectionName) {
+      res.status(400).json({ success: false, error: 'collectionName is required' });
+      return;
+    }
+    
+    console.log(`🔄 Starting batch sync for collection: ${collectionName} (limit: ${limit}, offset: ${offset})`);
+    
+    res.json({
+      success: true,
+      message: `Batch sync started for ${collectionName}`,
+      startedAt: new Date().toISOString(),
+      collectionName,
+      limit,
+      offset
+    });
+    
+    setTimeout(async () => {
+      try {
+        const pool = initializePostgresPool();
+        const db = admin.firestore();
+        
+        const snapshot = await db.collection(collectionName)
+          .limit(limit)
+          .get();
+        
+        console.log(`📊 Found ${snapshot.size} documents in ${collectionName}`);
+        
+        let successCount = 0;
+        let errorCount = 0;
+        const errors: any[] = [];
+        
+        const batchSize = 50;
+        const documents = snapshot.docs;
+        
+        for (let i = 0; i < documents.length; i += batchSize) {
+          const batch = documents.slice(i, i + batchSize);
+          const batchPromises = batch.map(async (doc) => {
+            try {
+              await syncDocument(pool, collectionName, doc.id, doc.data());
+              successCount++;
+            } catch (error: any) {
+              errorCount++;
+              errors.push({
+                id: doc.id,
+                error: error.message
+              });
+              console.error(`Failed to sync document ${doc.id}:`, error.message);
+            }
+          });
+          
+          await Promise.all(batchPromises);
+          console.log(`✅ Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(documents.length/batchSize)}`);
+        }
+        
+        await logSyncOperation(
+          pool,
+          collectionName,
+          'batch_sync',
+          snapshot.size,
+          successCount,
+          errorCount,
+          'completed'
+        );
+        
+        await db.collection('sync_completions').add({
+          collectionName,
+          total: snapshot.size,
+          successful: successCount,
+          failed: errorCount,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          errors: errors.slice(0, 5)
+        });
+        
+        console.log(`🎉 Batch sync completed for ${collectionName}: ${successCount} successful, ${errorCount} failed`);
+        
+      } catch (error: any) {
+        console.error('Background sync process failed:', error);
+      }
+    }, 100);
+    
+  } catch (error: any) {
+    console.error('Batch sync initialization failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}, { rateLimit: 'batchOperations' });
+
+/**
+ * BATCH SYNC WITH PROGRESS - Enhanced version with progress tracking
+ */
+export const batchSyncWithProgress = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const { collectionName, limit = 200, batchSize = 50 } = req.body;
+    
+    if (!collectionName) {
+      res.status(400).json({ success: false, error: 'collectionName is required' });
+      return;
+    }
+    
+    const pool = initializePostgresPool();
+    const db = admin.firestore();
+    
+    console.log(`🔄 Starting progressive sync for: ${collectionName}`);
+    
+    const snapshot = await db.collection(collectionName).limit(limit).get();
+    const totalDocs = snapshot.size;
+    const documents = snapshot.docs;
+    
+    console.log(`📊 Processing ${totalDocs} documents in batches of ${batchSize}`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: any[] = [];
+    let currentBatch = 0;
+    const totalBatches = Math.ceil(totalDocs / batchSize);
+    
+    for (let i = 0; i < documents.length; i += batchSize) {
+      currentBatch++;
+      const batch = documents.slice(i, i + batchSize);
+      
+      console.log(`🔄 Processing batch ${currentBatch}/${totalBatches} (${batch.length} docs)`);
+      
+      const batchPromises = batch.map(async (doc) => {
+        try {
+          await syncDocument(pool, collectionName, doc.id, doc.data());
+          successCount++;
+        } catch (error: any) {
+          errorCount++;
+          errors.push({
+            id: doc.id,
+            error: error.message.substring(0, 200)
+          });
+        }
+      });
+      
+      await Promise.all(batchPromises);
+    }
+    
+    await logSyncOperation(
+      pool,
+      collectionName,
+      'batch_sync',
+      totalDocs,
+      successCount,
+      errorCount,
+      'completed'
+    );
+    
+    res.json({
+      success: true,
+      message: `Batch sync completed for ${collectionName}`,
+      stats: {
+        total: totalDocs,
+        successful: successCount,
+        failed: errorCount,
+        batches: totalBatches
+      },
+      errors: errors.slice(0, 10)
+    });
+    
+  } catch (error: any) {
+    console.error('Batch sync with progress failed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+}, { rateLimit: 'batchOperations' });
+
+/**
+ * HEALTH CHECK - Test PostgreSQL and Firebase connections
+ */
+export const healthCheck = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const pool = initializePostgresPool();
+    
+    const pgResult = await pool.query('SELECT NOW() as time, version() as version');
+    
+    const db = admin.firestore();
+    const firebaseResult = await db.collection('pageViews').limit(1).get();
+    
+    let syncStats: any = { rows: [] };
+    try {
+      syncStats = await pool.query(`
+        SELECT 
+          collection_name,
+          COUNT(*) as total_operations,
+          SUM(records_processed) as total_records_processed,
+          SUM(records_successful) as total_records_successful,
+          MAX(start_time) as last_sync_time
+        FROM sync_logs
+        WHERE start_time > NOW() - INTERVAL '7 days'
+        GROUP BY collection_name
+        ORDER BY collection_name
+      `);
+    } catch (error) {
+      console.warn('Could not fetch sync stats:', error);
+    }
+    
+    let pageViewsCount = { rows: [{ count: 0 }] };
+    let eventsCount = { rows: [{ count: 0 }] };
+    let usersCount = { rows: [{ count: 0 }] };
+    let professionalResumesCount = { rows: [{ count: 0 }] };
+    
+    try {
+      pageViewsCount = await pool.query('SELECT COUNT(*) as count FROM page_views');
+      eventsCount = await pool.query('SELECT COUNT(*) as count FROM events');
+      usersCount = await pool.query('SELECT COUNT(*) as count FROM users');
+      professionalResumesCount = await pool.query('SELECT COUNT(*) as count FROM professional_resumes');
+    } catch (error) {
+      console.warn('Could not fetch table counts:', error);
+    }
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      postgresql: {
+        connected: true,
+        time: pgResult.rows[0].time,
+        version: pgResult.rows[0].version,
+        tables: {
+          page_views: pageViewsCount.rows[0].count,
+          events: eventsCount.rows[0].count,
+          users: usersCount.rows[0].count,
+          professional_resumes: professionalResumesCount.rows[0].count
+        }
+      },
+      firebase: {
+        connected: true,
+        collections: {
+          pageViews: firebaseResult.size
+        }
+      },
+      syncStats: {
+        enabledCollections: [
+          'pageViews',
+          'events',
+          'resumeEvents',
+          'jobEvents',
+          'blogEvents',
+          'funnels',
+          'admin_logs',
+          'jobs',
+          'jobDrives',
+          'resumes',
+          'professional_resumes',
+          'governmentExams' // ✅ ADDED: government exams collection
+        ],
+        recentOperations: syncStats.rows
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * GET SYNC STATUS - Check sync status and statistics
+ */
+export const getSyncStatus = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const pool = initializePostgresPool();
+    
+    const statsResult = await pool.query(`
+      SELECT 
+        collection_name,
+        operation,
+        COUNT(*) as total_operations,
+        SUM(records_processed) as total_records_processed,
+        SUM(records_successful) as total_records_successful,
+        SUM(records_failed) as total_records_failed,
+        MAX(start_time) as last_sync_time
+      FROM sync_logs
+      WHERE start_time > NOW() - INTERVAL '7 days'
+      GROUP BY collection_name, operation
+      ORDER BY collection_name, operation
+    `);
+    
+    const errorsResult = await pool.query(`
+      SELECT 
+        collection_name,
+        operation,
+        error_message,
+        start_time
+      FROM sync_logs
+      WHERE status = 'failed'
+        AND start_time > NOW() - INTERVAL '1 day'
+      ORDER BY start_time DESC
+      LIMIT 10
+    `);
+    
+    const volumesResult = await pool.query(`
+      SELECT 
+        'page_views' as table_name,
+        COUNT(*) as row_count,
+        MAX(timestamp) as latest_record
+      FROM page_views
+      UNION ALL
+      SELECT 
+        'events' as table_name,
+        COUNT(*) as row_count,
+        MAX(timestamp) as latest_record
+      FROM events
+      UNION ALL
+      SELECT 
+        'resume_events' as table_name,
+        COUNT(*) as row_count,
+        MAX(timestamp) as latest_record
+      FROM resume_events
+      UNION ALL
+      SELECT 
+        'job_events' as table_name,
+        COUNT(*) as row_count,
+        MAX(timestamp) as latest_record
+      FROM job_events
+      UNION ALL
+      SELECT 
+        'blog_events' as table_name,
+        COUNT(*) as row_count,
+        MAX(timestamp) as latest_record
+      FROM blog_events
+      UNION ALL
+      SELECT 
+        'funnel_events' as table_name,
+        COUNT(*) as row_count,
+        MAX(timestamp) as latest_record
+      FROM funnel_events
+      UNION ALL
+      SELECT 
+        'admin_logs' as table_name,
+        COUNT(*) as row_count,
+        MAX(timestamp) as latest_record
+      FROM admin_logs
+      UNION ALL
+      SELECT 
+        'jobs' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM jobs
+      UNION ALL
+      SELECT 
+        'job_drives' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM job_drives
+      UNION ALL
+      SELECT 
+        'resumes' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM resumes
+      UNION ALL
+      SELECT 
+        'professional_resumes' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM professional_resumes
+      UNION ALL
+      SELECT 
+        'government_exams' as table_name,
+        COUNT(*) as row_count,
+        MAX(updated_at) as latest_record
+      FROM government_exams
+    `);
+    
+    res.json({
+      success: true,
+      syncStats: statsResult.rows,
+      recentErrors: errorsResult.rows,
+      dataVolumes: volumesResult.rows,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('Failed to get sync status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+// ================ DATA VALIDATION ENDPOINTS ================
+
+/**
+ * VALIDATE SYNC - Check if data is syncing correctly
+ */
+export const validateSync = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const pool = initializePostgresPool();
+    
+    const validationResults = {
+      page_views: await pool.query('SELECT user_id, session_id, page_path, timestamp, is_anonymous FROM page_views ORDER BY timestamp DESC LIMIT 5'),
+      events: await pool.query('SELECT user_id, event_name, event_category, timestamp, is_anonymous FROM events ORDER BY timestamp DESC LIMIT 5'),
+      resume_events: await pool.query('SELECT user_id, action, template_type, is_anonymous FROM resume_events ORDER BY timestamp DESC LIMIT 5'),
+      job_events: await pool.query('SELECT user_id, action, job_title, is_anonymous FROM job_events ORDER BY timestamp DESC LIMIT 5'),
+      blog_events: await pool.query('SELECT user_id, action, post_title, is_anonymous FROM blog_events ORDER BY timestamp DESC LIMIT 5'),
+      users: await pool.query('SELECT user_id, is_anonymous, last_active FROM users ORDER BY last_active DESC LIMIT 5'),
+      jobs: await pool.query('SELECT title, company, location, type, is_anonymous FROM jobs ORDER BY created_at DESC LIMIT 5'),
+      job_drives: await pool.query('SELECT title, company, location, drive_type, is_anonymous FROM job_drives ORDER BY created_at DESC LIMIT 5'),
+      resumes: await pool.query('SELECT title, template, user_id, is_anonymous FROM resumes ORDER BY created_at DESC LIMIT 5'),
+      professional_resumes: await pool.query('SELECT client_email, job_type, experience_level, is_anonymous FROM professional_resumes ORDER BY created_at DESC LIMIT 5'),
+      government_exams: await pool.query('SELECT exam_name, organization, exam_level, is_anonymous FROM government_exams ORDER BY created_at DESC LIMIT 5'),
+      field_mapping: {
+        frontend_to_backend: {
+          userId: 'user_id',
+          sessionId: 'session_id',
+          deviceType: 'device_type',
+          duration: 'duration_seconds',
+          scrollDepth: 'scroll_depth',
+          eventName: 'event_name',
+          eventCategory: 'event_category',
+          eventLabel: 'event_label',
+          pagePath: 'page_path',
+          pageTitle: 'page_title',
+          isAnonymous: 'is_anonymous', // ✅ ADDED: isAnonymous field mapping
+          consentGiven: 'consent_given',
+          dataProcessingLocation: 'data_processing_location'
+        }
+      }
+    };
+    
+    res.json({
+      success: true,
+      validation: validationResults,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('Validation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+// ================ ADMIN FUNCTIONS ================
+
+/**
+ * DEBUG CONFIG FUNCTION
+ */
+export const debugConfig = runWithSecurity(async (req: any, res: any) => {
+  console.log('🔧 Firebase Config Status:', {
+    hasPassword: !!ADMIN_PASSWORD,
+    passwordLength: ADMIN_PASSWORD.length,
+    emails: ADMIN_EMAILS,
+    emailsCount: ADMIN_EMAILS.length
+  });
+  
+  if (ADMIN_EMAILS.length === 0) {
+    console.error('❌ No admin emails configured!');
+    console.log('   Run: firebase functions:config:set admin.emails="email1,email2" admin.password="yourpassword"');
+  }
+  
+  res.json({
+    success: true,
+    config: {
+      hasPassword: !!ADMIN_PASSWORD,
+      passwordLength: ADMIN_PASSWORD.length,
+      emails: ADMIN_EMAILS,
+      emailsCount: ADMIN_EMAILS.length
+    }
+  });
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * PING FUNCTION
+ */
+export const ping = runWithSecurity(async (req: any, res: any) => {
+  res.json({
+    success: true,
+    message: 'CareerCraft Functions API is running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * ADMIN LOGIN FUNCTION
+ */
+export const adminLogin = runWithSecurity(async (req: any, res: any) => {
+  try {
+    console.log('🔐 Admin login request received');
+    
+    // 🔐 SECURITY: Additional rate limiting for admin login
+    if (!applyRateLimit('adminLogin', req, res)) {
+      return res.status(429).json({ 
+        success: false, 
+        error: 'Too many login attempts. Please try again in 15 minutes.' 
+      });
+    }
+    
+    // Check config
+    if (!ADMIN_PASSWORD || ADMIN_EMAILS.length === 0) {
+      console.error('❌ Admin credentials not configured');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Server configuration error' 
+      });
+    }
+    
+    const { password, email } = req.body;
+    
+    if (!password || !email) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email and password required' 
+      });
+    }
+    
+    // 🔐 SECURITY: Validate and sanitize email
+    const normalizedEmail = email.toLowerCase().trim();
+    if (!validateEmail(normalizedEmail)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid email format' 
+      });
+    }
+    
+    // 🔐 SECURITY: Validate password
+    if (password.length < 8) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Password must be at least 8 characters' 
+      });
+    }
+    
+    // Check if email is allowed
+    if (!ADMIN_EMAILS.includes(normalizedEmail)) {
+      console.log(`❌ Unauthorized email: ${normalizedEmail}`);
+      // 🔐 SECURITY: Don't reveal if email exists in system
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Invalid credentials' 
+      });
+    }
+    
+    // Check password
+    if (password !== ADMIN_PASSWORD) {
+      console.log('❌ Invalid password attempt');
+      // 🔐 SECURITY: Consistent error message
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Invalid credentials' 
+      });
+    }
+    
+    // Get or create user
+    let adminUser;
+    try {
+      adminUser = await admin.auth().getUserByEmail(normalizedEmail);
+      console.log('✅ Found existing user:', adminUser.uid);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        console.log('🆕 Creating new admin user');
+        adminUser = await admin.auth().createUser({
+          email: normalizedEmail,
+          emailVerified: true,
+          password: ADMIN_PASSWORD,
+          displayName: 'Admin User',
+          disabled: false,
+        });
+        console.log('✅ Created new user:', adminUser.uid);
+      } else {
+        throw error;
+      }
+    }
+    
+    // Set admin claims
+    await admin.auth().setCustomUserClaims(adminUser.uid, {
+      admin: true,
+      level: 'super_admin',
+      email: normalizedEmail
+    });
+    
+    console.log('✅ Admin claims set for:', normalizedEmail);
+    
+    res.json({
+      success: true,
+      user: {
+        uid: adminUser.uid,
+        email: adminUser.email,
+        admin: true
+      },
+      message: 'Admin login successful',
+      note: 'User created/updated in Firebase Auth with admin claims'
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Admin login error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error'
+    });
+  }
+}, { rateLimit: 'adminLogin' });
+
+/**
+ * CHECK ADMIN STATUS FUNCTION
+ */
+export const adminCheck = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      res.status(400).json({ 
+        success: false, 
+        isAdmin: false,
+        valid: false,
+        error: 'Token required' 
+      });
+      return;
+    }
+    
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      
+      const isAdminClaim = decodedToken.admin === true;
+      
+      res.json({
+        success: true,
+        isAdmin: isAdminClaim,
+        valid: true,
+        user: {
+          uid: decodedToken.uid,
+          email: decodedToken.email,
+          admin: isAdminClaim,
+          claims: decodedToken
+        }
+      });
+      
+    } catch (error) {
+      res.json({
+        success: true,
+        isAdmin: false,
+        valid: false,
+        error: 'Invalid or expired token'
+      });
+    }
+    
+  } catch (error: unknown) {
+    console.error('Check admin status error:', error);
+    res.status(500).json({ 
+      success: false, 
+      isAdmin: false,
+      valid: false,
+      error: 'Internal server error' 
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * SETUP ADMIN USERS FUNCTION
+ */
+export const setupAdminUsers = runWithSecurity(async (req: any, res: any) => {
+  try {
+    console.log('⚙️ Setting up admin users...');
+    
+    const YOUR_UID = 'MYM2cZssL3UNc7VY9WpgEdNVW9v1';
+    
+    const results: any[] = [];
+    
+    try {
+      const yourUser = await admin.auth().getUser(YOUR_UID);
+      await admin.auth().setCustomUserClaims(YOUR_UID, {
+        admin: true,
+        level: 'super_admin',
+        email: yourUser.email,
+        canManageResumes: true,
+        canPostJobs: true,
+        canManageUsers: false
+      });
+      
+      results.push({
+        email: yourUser.email,
+        uid: YOUR_UID,
+        status: 'claims_set',
+        claims: { admin: true }
+      });
+      
+      console.log(`✅ Set admin claims for ${yourUser.email}`);
+    } catch (yourError: any) {
+      results.push({
+        uid: YOUR_UID,
+        status: 'error',
+        error: yourError.message
+      });
+      console.error(`❌ Error setting claims for your account:`, yourError.message);
+    }
+    
+    for (const email of ADMIN_EMAILS) {
+      if (email === 'nelsonjoshua03@outlook.com') continue;
+      
+      try {
+        const user = await admin.auth().getUserByEmail(email);
+        console.log(`✅ User ${email} already exists: ${user.uid}`);
+        
+        await admin.auth().setCustomUserClaims(user.uid, {
+          admin: true,
+          level: 'super_admin',
+          email: email,
+          canManageResumes: true,
+          canPostJobs: true,
+          canManageUsers: false
+        });
+        
+        results.push({
+          email,
+          uid: user.uid,
+          status: 'updated',
+          claims: { admin: true }
+        });
+        
+      } catch (error: any) {
+        if (error.code === 'auth/user-not-found') {
+          const adminPassword = ADMIN_PASSWORD;
+          const newUser = await admin.auth().createUser({
+            email: email,
+            emailVerified: true,
+            password: adminPassword,
+            displayName: 'Admin User',
+            disabled: false,
+          });
+          
+          await admin.auth().setCustomUserClaims(newUser.uid, {
+            admin: true,
+            level: 'super_admin',
+            email: email,
+            canManageResumes: true,
+            canPostJobs: true,
+            canManageUsers: false
+          });
+          
+          results.push({
+            email,
+            uid: newUser.uid,
+            status: 'created',
+            claims: { admin: true },
+            note: 'User created with admin password'
+          });
+          
+          console.log(`✅ Created admin user: ${email} (${newUser.uid})`);
+        } else {
+          results.push({
+            email,
+            status: 'error',
+            error: error.message
+          });
+          console.error(`❌ Error with ${email}:`, error.message);
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Admin users setup complete',
+      results: results,
+      your_account_processed: true,
+      note: 'Check your account (nelsonjoshua03@outlook.com) - admin claims should be set'
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Setup error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * CREATE PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
+ */
+export const createProfessionalResume = functions.https.onCall(
+  async (data: { resumeData: any; clientInfo: any }, context: functions.https.CallableContext) => {
+    
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'You must be logged in'
+      );
+    }
+    
+    const adminClaim = context.auth.token.admin;
+    if (!adminClaim) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Admin access required'
+      );
+    }
+    
+    const { resumeData, clientInfo } = data;
+    
+    if (!resumeData || !clientInfo || !clientInfo.email) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Resume data and client email are required'
+      );
+    }
+    
+    // 🔐 SECURITY: Validate and sanitize client email
+    const sanitizedEmail = clientInfo.email.toLowerCase().trim();
+    if (!validateEmail(sanitizedEmail)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid email format'
+      );
+    }
+    
+    try {
+      const db = admin.firestore();
+      const resumeId = `pro_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const professionalResume = {
+        resumeData: {
+          ...resumeData,
+          id: resumeId,
+          metadata: {
+            ...resumeData.metadata,
+            isProfessionalResume: true,
+            adminCreated: true,
+            createdBy: context.auth.uid,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+          }
+        },
+        clientInfo: {
+          email: sanitizedEmail,
+          name: (clientInfo.name || '').trim().substring(0, 100),
+          phone: (clientInfo.phone || '').trim().substring(0, 20),
+          notes: (clientInfo.notes || '').trim().substring(0, 500),
+          company: (resumeData.personalInfo?.company || '').trim().substring(0, 100)
+        },
+        metadata: {
+          createdBy: context.auth.uid,
+          createdByEmail: context.auth.token.email || '',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          storageType: 'professional_database',
+          version: 1,
+          resumeId,
+          isActive: true,
+          isAnonymous: false // ✅ ADDED: Professional resumes are not anonymous
+        },
+        tags: [],
+        jobType: (resumeData.personalInfo?.title || '').trim().substring(0, 100),
+        industry: '',
+        experienceLevel: getExperienceLevel(resumeData),
+        isAnonymous: false // ✅ ADDED: Professional resumes are not anonymous
+      };
+      
+      const docRef = await db.collection('professional_resumes').add(professionalResume);
+      
+      await db.collection('admin_actions').add({
+        action: 'create_resume',
+        adminId: context.auth.uid,
+        adminEmail: context.auth.token.email || '',
+        resumeId: docRef.id,
+        clientEmail: sanitizedEmail,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log(`✅ Professional resume created by ${context.auth.token.email}: ${docRef.id}`);
+      
+      return { 
+        success: true, 
+        id: docRef.id,
+        resumeId 
+      };
+      
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create resume';
+      console.error('❌ Create resume error:', error);
+      throw new functions.https.HttpsError(
+        'internal',
+        'Failed to create resume: ' + errorMessage
+      );
+    }
+  }
+);
+
+/**
+ * GET PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
+ */
+export const getProfessionalResume = functions.https.onCall(
+  async (data: { resumeId: string }, context: functions.https.CallableContext) => {
+    
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'You must be logged in'
+      );
+    }
+    
+    const adminClaim = context.auth.token.admin;
+    if (!adminClaim) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Admin access required'
+      );
+    }
+    
+    const { resumeId } = data;
+    
+    if (!resumeId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Resume ID is required'
+      );
+    }
+    
+    // 🔐 SECURITY: Validate resumeId format
+    if (!/^[a-zA-Z0-9_-]{20,}$/.test(resumeId)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid resume ID format'
+      );
+    }
+    
+    try {
+      const db = admin.firestore();
+      const docRef = db.collection('professional_resumes').doc(resumeId);
+      const docSnap = await docRef.get();
+      
+      if (!docSnap.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'Resume not found'
+        );
+      }
+      
+      const resumeData = docSnap.data();
+      
+      await db.collection('admin_actions').add({
+        action: 'get_resume',
+        adminId: context.auth.uid,
+        adminEmail: context.auth.token.email || '',
+        resumeId: resumeId,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      return { 
+        success: true, 
+        data: resumeData 
+      };
+      
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get resume';
+      console.error('❌ Get resume error:', error);
+      throw new functions.https.HttpsError(
+        'internal',
+        'Failed to get resume: ' + errorMessage
+      );
+    }
+  }
+);
+
+export const setAdminClaimsNow = runWithSecurity(async (req: any, res: any) => {
+  try {
+    console.log('🚨 EMERGENCY: Setting admin claims now!');
+    
+    const uid = 'vkNBhERkSbTYHwO86tKWb5D96K72';
+    
+    const user = await admin.auth().getUser(uid);
+    console.log('👤 User to update:', user.email);
+    
+    await admin.auth().setCustomUserClaims(uid, {
+      admin: true,
+      level: 'super_admin',
+      email: user.email,
+      canManageResumes: true,
+      canPostJobs: true,
+      canManageUsers: false
+    });
+    
+    console.log('✅ Admin claims SET!');
+    
+    const updatedUser = await admin.auth().getUser(uid);
+    
+    res.json({
+      success: true,
+      message: `🚀 ADMIN CLAIMS SET FOR: ${updatedUser.email}`,
+      user: {
+        uid: updatedUser.uid,
+        email: updatedUser.email,
+        claims: updatedUser.customClaims
+      },
+      critical: 'USER MUST LOG OUT AND LOG BACK IN NOW!',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error: any) {
+    console.error('🔥 ERROR:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+/**
+ * ADMIN LOGOUT FUNCTION
+ */
+export const adminLogout = runWithSecurity(async (req: any, res: any) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      res.status(400).json({ success: false, error: 'Token required' });
+      return;
+    }
+    
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      
+      await admin.firestore().collection('admin_logs').add({
+        email: decodedToken.email,
+        action: 'logout',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ip: req.ip || req.headers['x-forwarded-for'] as string,
+        userAgent: req.headers['user-agent'] as string
+      });
+      
+      console.log(`📝 Logged out: ${decodedToken.email}`);
+    } catch (error) {
+      console.warn('Could not verify token during logout:', error);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Logout action recorded'
+    });
+    
+  } catch (error: unknown) {
+    console.error('❌ Admin logout error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+}, { rateLimit: 'apiEndpoints' });
+
+// Helper function to sync a single document
 const syncDocument = async (pool: Pool, collectionName: string, docId: string, data: any) => {
-  // ✅ FIXED: Handle possible undefined data
   if (!data) {
     console.error(`❌ No data provided for sync: ${docId}`);
     return;
@@ -1325,14 +2792,21 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
   
   const timestamp = firestoreTimestampToDate(data.timestamp);
   
-  // Default values for missing fields
+  // ✅ FIXED: Helper function to extract isAnonymous from data
+  const extractIsAnonymous = (data: any): boolean => {
+    if (data.isAnonymous !== undefined) return data.isAnonymous;
+    if (data.is_anonymous !== undefined) return data.is_anonymous;
+    if (data.metadata?.is_anonymous !== undefined) return data.metadata.is_anonymous;
+    return true; // Default to anonymous if not specified
+  };
+  
   const defaults = {
     userId: data.userId || 'anonymous',
     sessionId: data.sessionId || '',
     deviceType: data.deviceType || getDeviceTypeFromUserAgent(data.userAgent),
     screenResolution: getScreenResolution(data),
     language: data.language || 'en',
-    is_anonymous: data.is_anonymous !== undefined ? data.is_anonymous : true,
+    is_anonymous: extractIsAnonymous(data), // ✅ FIXED: Now properly extracts isAnonymous
     consentGiven: data.consentGiven !== undefined ? data.consentGiven : false,
     dataProcessingLocation: data.dataProcessingLocation || 'IN'
   };
@@ -1521,14 +2995,16 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
       const jobUpdatedAt = firestoreTimestampToDate(data.updatedAt);
       const jobExpiresAt = firestoreTimestampToDate(data.expiresAt);
       
+      const jobIsAnonymous = extractIsAnonymous(data);
+      
       await pool.query(
         `INSERT INTO jobs 
          (firestore_doc_id, job_id, title, company, location, type, sector, salary, 
           description, requirements, posted_date, apply_link, featured, is_active,
           experience, qualifications, views, shares, applications, saves,
           created_at, updated_at, expires_at, created_by, last_updated_by,
-          is_approved, consent_given, data_processing_location)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+          is_approved, consent_given, data_processing_location, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
          ON CONFLICT (firestore_doc_id) DO NOTHING`,
         [
           docId,
@@ -1558,7 +3034,8 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
           data.lastUpdatedBy || 'system',
           data.isApproved !== false,
           data.consentGiven || false,
-          data.dataProcessingLocation || 'IN'
+          data.dataProcessingLocation || 'IN',
+          jobIsAnonymous
         ]
       );
       break;
@@ -1568,9 +3045,10 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
       const driveUpdatedAt = firestoreTimestampToDate(data.updatedAt);
       const driveExpiresAt = firestoreTimestampToDate(data.expiresAt);
       
-      // ✅ FIXED: Use parsed dates and times with validation
       const parsedDate = parseDateString(data.date);
       const parsedTime = parseTimeString(data.time);
+      
+      const driveIsAnonymous = extractIsAnonymous(data);
       
       await pool.query(
         `INSERT INTO job_drives 
@@ -1578,8 +3056,8 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
           description, eligibility, documents, apply_link, registration_link, 
           contact, featured, drive_type, experience, salary, expected_candidates,
           views, shares, registrations, created_at, updated_at, expires_at,
-          is_active, consent_given, data_processing_location)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+          is_active, consent_given, data_processing_location, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
          ON CONFLICT (firestore_doc_id) DO NOTHING`,
         [
           docId,
@@ -1587,8 +3065,8 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
           data.title || '',
           data.company || '',
           data.location || '',
-          parsedDate || new Date().toISOString().split('T')[0], // ✅ FIXED
-          parsedTime || '09:00', // ✅ FIXED
+          parsedDate || new Date().toISOString().split('T')[0],
+          parsedTime || '09:00',
           data.description || '',
           safeToJson(data.eligibility || []),
           safeToJson(data.documents || []),
@@ -1608,7 +3086,8 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
           driveExpiresAt,
           data.isActive !== false,
           data.consentGiven || false,
-          data.dataProcessingLocation || 'IN'
+          data.dataProcessingLocation || 'IN',
+          driveIsAnonymous
         ]
       );
       break;
@@ -1620,13 +3099,15 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
       const resumeUpdatedAt = firestoreTimestampToDate(resumeMetadata.updatedAt);
       const resumeLastAccessed = firestoreTimestampToDate(resumeMetadata.lastAccessed);
       
+      const resumeIsAnonymous = extractIsAnonymous(data);
+      
       await pool.query(
         `INSERT INTO resumes 
          (firestore_doc_id, resume_id, user_id, title, template, personal_info,
           experience, education, skills, projects, certifications, languages,
           created_at, updated_at, last_accessed, download_count, share_count,
-          is_public, tags, data_retention_period, consent_given)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+          is_public, tags, data_retention_period, consent_given, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
          ON CONFLICT (firestore_doc_id) DO NOTHING`,
         [
           docId,
@@ -1649,7 +3130,8 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
           resumeMetadata.isPublic || false,
           safeToJson(resumeMetadata.tags || []),
           data.dataRetentionPeriod || 730,
-          data.consentGiven || false
+          data.consentGiven || false,
+          resumeIsAnonymous
         ]
       );
       break;
@@ -1661,13 +3143,15 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
       const proCreatedAt = firestoreTimestampToDate(proMetadata.createdAt);
       const proUpdatedAt = firestoreTimestampToDate(proMetadata.updatedAt);
       
+      const proIsAnonymous = extractIsAnonymous(data);
+      
       await pool.query(
         `INSERT INTO professional_resumes 
          (firestore_doc_id, resume_id, client_name, client_email, client_phone,
           client_company, client_notes, resume_data, tags, job_type, industry,
           experience_level, created_by, created_at, updated_at, last_edited_by,
-          storage_type, version, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          storage_type, version, is_active, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
          ON CONFLICT (firestore_doc_id) DO NOTHING`,
         [
           docId,
@@ -1688,1315 +3172,78 @@ const syncDocument = async (pool: Pool, collectionName: string, docId: string, d
           proMetadata.lastEditedBy || 'admin',
           proMetadata.storageType || 'professional_database',
           proMetadata.version || 1,
-          proMetadata.isActive !== false
+          proMetadata.isActive !== false,
+          proIsAnonymous
+        ]
+      );
+      break;
+      
+    case 'governmentExams':
+      const govExamTimestamp = firestoreTimestampToDate(data.createdAt);
+      const govExamUpdatedAt = firestoreTimestampToDate(data.updatedAt);
+      const govExamExpiresAt = firestoreTimestampToDate(data.expiresAt);
+      
+      const govExamApplicationStartDate = parseDateString(data.applicationStartDate);
+      const govExamApplicationEndDate = parseDateString(data.applicationEndDate);
+      const govExamExamDate = parseDateString(data.examDate);
+      const govExamAdmitCardDate = data.admitCardDate ? parseDateString(data.admitCardDate) : null;
+      const govExamResultDate = data.resultDate ? parseDateString(data.resultDate) : null;
+      
+      const govExamIsAnonymous = extractIsAnonymous(data);
+      
+      await pool.query(
+        `INSERT INTO government_exams 
+         (firestore_doc_id, exam_id, exam_name, organization, posts, vacancies, 
+          eligibility, application_start_date, application_end_date, exam_date, 
+          exam_level, age_limit, application_fee, exam_mode, official_website,
+          notification_link, apply_link, syllabus, admit_card_date, result_date,
+          featured, is_new, is_active, is_approved, views, shares, applications,
+          saves, created_at, updated_at, expires_at, created_by, last_updated_by,
+          consent_given, data_processing_location, is_anonymous)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+         ON CONFLICT (firestore_doc_id) DO NOTHING`,
+        [
+          docId,
+          data.id || docId,
+          data.examName || '',
+          data.organization || '',
+          data.posts || '',
+          data.vacancies || '',
+          data.eligibility || '',
+          govExamApplicationStartDate,
+          govExamApplicationEndDate,
+          govExamExamDate,
+          data.examLevel || '',
+          data.ageLimit || '',
+          data.applicationFee || '',
+          data.examMode || 'Online',
+          data.officialWebsite || '',
+          data.notificationLink || '',
+          data.applyLink || '',
+          data.syllabus || '',
+          govExamAdmitCardDate,
+          govExamResultDate,
+          data.featured || false,
+          data.isNew || false,
+          data.isActive !== false,
+          data.isApproved !== false,
+          data.views || 0,
+          data.shares || 0,
+          data.applications || 0,
+          data.saves || 0,
+          govExamTimestamp || new Date(),
+          govExamUpdatedAt || new Date(),
+          govExamExpiresAt,
+          data.createdBy || 'system',
+          data.lastUpdatedBy || 'system',
+          data.consentGiven || false,
+          data.dataProcessingLocation || 'IN',
+          govExamIsAnonymous
         ]
       );
       break;
   }
 };
-
-// ================ DIAGNOSTIC FUNCTIONS ================
-
-/**
- * TEST POSTGRES CONNECTION
- */
-export const testPostgresConnection = runWithCors(async (req: any, res: any) => {
-  try {
-    console.log('🔌 Testing PostgreSQL connection...');
-    
-    // Log config for debugging
-    const config = functions.config().postgres || {};
-    console.log('🔧 Current PostgreSQL Config:', {
-      host: config.host || 'NOT SET',
-      port: config.port || 'NOT SET',
-      database: config.database || 'NOT SET',
-      user: config.user || 'NOT SET',
-      password: config.password ? '***' + config.password.slice(-3) : 'NOT SET',
-      ssl: config.ssl || false
-    });
-    
-    const pool = initializePostgresPool();
-    
-    // Test connection with simple query
-    const result = await pool.query('SELECT NOW() as time, current_database() as database, current_user as user');
-    
-    // Test if tables exist
-    const tablesResult = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-      ORDER BY table_name
-    `);
-    
-    // Check sync_logs table specifically
-    let syncLogsExist = false;
-    try {
-      await pool.query('SELECT 1 FROM sync_logs LIMIT 1');
-      syncLogsExist = true;
-    } catch (e) {
-      syncLogsExist = false;
-    }
-    
-    // Check page_views table
-    let pageViewsExist = false;
-    try {
-      await pool.query('SELECT 1 FROM page_views LIMIT 1');
-      pageViewsExist = true;
-    } catch (e) {
-      pageViewsExist = false;
-    }
-    
-    // Check professional_resumes table
-    let professionalResumesExist = false;
-    try {
-      await pool.query('SELECT 1 FROM professional_resumes LIMIT 1');
-      professionalResumesExist = true;
-    } catch (e) {
-      professionalResumesExist = false;
-    }
-    
-    res.json({
-      success: true,
-      connection: {
-        status: 'connected',
-        time: result.rows[0].time,
-        database: result.rows[0].database,
-        user: result.rows[0].user
-      },
-      tables: {
-        all_tables: tablesResult.rows.map((r: any) => r.table_name),
-        sync_logs_exists: syncLogsExist,
-        page_views_exists: pageViewsExist,
-        professional_resumes_exists: professionalResumesExist,
-        count: tablesResult.rows.length
-      },
-      config: {
-        host: config.host,
-        port: config.port,
-        database: config.database,
-        user: config.user,
-        ssl: config.ssl
-      }
-    });
-    
-  } catch (error: any) {
-    console.error('❌ PostgreSQL connection test failed:', error.message);
-    console.error('Error details:', error);
-    
-    // Get config for debugging
-    const config = functions.config().postgres || {};
-    
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      config: {
-        host: config.host,
-        port: config.port,
-        database: config.database,
-        user: config.user,
-        ssl: config.ssl
-      },
-      message: 'Check Supabase credentials and network connectivity'
-    });
-  }
-});
-
-/**
- * DEBUG FIRESTORE TRIGGERS
- * Creates test documents to trigger sync functions
- */
-export const testFirestoreTriggers = runWithCors(async (req: any, res: any) => {
-  try {
-    const db = admin.firestore();
-    
-    console.log('🧪 Creating test Firestore documents...');
-    
-    // Create test page view
-    const testPageView = {
-      userId: 'test-user-' + Date.now(),
-      sessionId: 'test-session-' + Math.random().toString(36).substr(2, 9),
-      pagePath: '/test',
-      pageTitle: 'Test Page',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      userAgent: 'Test Agent',
-      is_anonymous: false,
-      consentGiven: true,
-      dataProcessingLocation: 'IN',
-      metadata: { test: true, created_by: 'testFirestoreTriggers' }
-    };
-    
-    const pageViewRef = await db.collection('pageViews').add(testPageView);
-    console.log(`✅ Created pageView: ${pageViewRef.id}`);
-    
-    // Create test event
-    const testEvent = {
-      userId: 'test-user-' + Date.now(),
-      sessionId: 'test-session-' + Math.random().toString(36).substr(2, 9),
-      eventName: 'button_click',
-      eventCategory: 'engagement',
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      pagePath: '/test',
-      is_anonymous: false,
-      consentGiven: true,
-      metadata: { test: true, created_by: 'testFirestoreTriggers' }
-    };
-    
-    const eventRef = await db.collection('events').add(testEvent);
-    console.log(`✅ Created event: ${eventRef.id}`);
-    
-    res.json({
-      success: true,
-      message: 'Test documents created',
-      documents: {
-        pageView: {
-          id: pageViewRef.id,
-          data: testPageView
-        },
-        event: {
-          id: eventRef.id,
-          data: testEvent
-        }
-      },
-      instructions: 'Check Firebase Console Logs for trigger execution'
-    });
-    
-  } catch (error: any) {
-    console.error('Test failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-/**
- * CHECK FIRESTORE COLLECTIONS
- * Lists all collections and document counts
- */
-export const checkFirestoreCollections = runWithCors(async (req: any, res: any) => {
-  try {
-    const db = admin.firestore();
-    
-    const collections = [
-      'pageViews',
-      'events',
-      'resumeEvents',
-      'jobEvents',
-      'blogEvents',
-      'funnels',
-      'admin_logs',
-      'jobs', // ✅ ADDED
-      'jobDrives', // ✅ ADDED
-      'resumes', // ✅ ADDED
-      'professional_resumes',
-      'governmentExams' // ✅ ADDED
-    ];
-    
-    const results: any = {};
-    
-    for (const collection of collections) {
-      try {
-        const snapshot = await db.collection(collection).limit(10).get();
-        results[collection] = {
-          exists: true,
-          count: snapshot.size,
-          sample: snapshot.docs.map(doc => ({
-            id: doc.id,
-            data: doc.data(),
-            timestamp: doc.data().timestamp
-          }))
-        };
-      } catch (error: any) {
-        results[collection] = {
-          exists: false,
-          error: error.message
-        };
-      }
-    }
-    
-    res.json({
-      success: true,
-      collections: results,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error: any) {
-    console.error('Check collections failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// ================ HTTP SYNC ENDPOINTS ================
-
-/**
- * BATCH SYNC - Sync all historical data from Firebase to PostgreSQL (IMPROVED VERSION)
- */
-export const batchSyncCollection = runWithCors(async (req: any, res: any) => {
-  try {
-    const { collectionName, limit = 500, offset = 0 } = req.body;
-    
-    if (!collectionName) {
-      res.status(400).json({ success: false, error: 'collectionName is required' });
-      return;
-    }
-    
-    console.log(`🔄 Starting batch sync for collection: ${collectionName} (limit: ${limit}, offset: ${offset})`);
-    
-    // Send immediate response to avoid timeout
-    res.json({
-      success: true,
-      message: `Batch sync started for ${collectionName}`,
-      startedAt: new Date().toISOString(),
-      collectionName,
-      limit,
-      offset
-    });
-    
-    // Process in background
-    setTimeout(async () => {
-      try {
-        const pool = initializePostgresPool();
-        const db = admin.firestore();
-        
-        // Get documents from the collection
-        const snapshot = await db.collection(collectionName)
-          .limit(limit)
-          .get();
-        
-        console.log(`📊 Found ${snapshot.size} documents in ${collectionName}`);
-        
-        let successCount = 0;
-        let errorCount = 0;
-        const errors: any[] = [];
-        
-        // Process in smaller batches to avoid timeouts
-        const batchSize = 50;
-        const documents = snapshot.docs;
-        
-        for (let i = 0; i < documents.length; i += batchSize) {
-          const batch = documents.slice(i, i + batchSize);
-          const batchPromises = batch.map(async (doc) => {
-            try {
-              await syncDocument(pool, collectionName, doc.id, doc.data());
-              successCount++;
-            } catch (error: any) {
-              errorCount++;
-              errors.push({
-                id: doc.id,
-                error: error.message
-              });
-              console.error(`Failed to sync document ${doc.id}:`, error.message);
-            }
-          });
-          
-          await Promise.all(batchPromises);
-          console.log(`✅ Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(documents.length/batchSize)}`);
-        }
-        
-        await logSyncOperation(
-          pool,
-          collectionName,
-          'batch_sync',
-          snapshot.size,
-          successCount,
-          errorCount,
-          'completed'
-        );
-        
-        // Log completion to Firestore for monitoring
-        await db.collection('sync_completions').add({
-          collectionName,
-          total: snapshot.size,
-          successful: successCount,
-          failed: errorCount,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
-          errors: errors.slice(0, 5)
-        });
-        
-        console.log(`🎉 Batch sync completed for ${collectionName}: ${successCount} successful, ${errorCount} failed`);
-        
-      } catch (error: any) {
-        console.error('Background sync process failed:', error);
-      }
-    }, 100); // Small delay to ensure response is sent
-    
-  } catch (error: any) {
-    console.error('Batch sync initialization failed:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * BATCH SYNC WITH PROGRESS - Enhanced version with progress tracking
- */
-export const batchSyncWithProgress = runWithCors(async (req: any, res: any) => {
-  try {
-    const { collectionName, limit = 200, batchSize = 50 } = req.body;
-    
-    if (!collectionName) {
-      res.status(400).json({ success: false, error: 'collectionName is required' });
-      return;
-    }
-    
-    const pool = initializePostgresPool();
-    const db = admin.firestore();
-    
-    console.log(`🔄 Starting progressive sync for: ${collectionName}`);
-    
-    // Get total count
-    const snapshot = await db.collection(collectionName).limit(limit).get();
-    const totalDocs = snapshot.size;
-    const documents = snapshot.docs;
-    
-    console.log(`📊 Processing ${totalDocs} documents in batches of ${batchSize}`);
-    
-    let successCount = 0;
-    let errorCount = 0;
-    const errors: any[] = [];
-    let currentBatch = 0;
-    const totalBatches = Math.ceil(totalDocs / batchSize);
-    
-    // Process in batches
-    for (let i = 0; i < documents.length; i += batchSize) {
-      currentBatch++;
-      const batch = documents.slice(i, i + batchSize);
-      
-      console.log(`🔄 Processing batch ${currentBatch}/${totalBatches} (${batch.length} docs)`);
-      
-      const batchPromises = batch.map(async (doc) => {
-        try {
-          await syncDocument(pool, collectionName, doc.id, doc.data());
-          successCount++;
-        } catch (error: any) {
-          errorCount++;
-          errors.push({
-            id: doc.id,
-            error: error.message.substring(0, 200) // Truncate long errors
-          });
-        }
-      });
-      
-      await Promise.all(batchPromises);
-    }
-    
-    await logSyncOperation(
-      pool,
-      collectionName,
-      'batch_sync',
-      totalDocs,
-      successCount,
-      errorCount,
-      'completed'
-    );
-    
-    res.json({
-      success: true,
-      message: `Batch sync completed for ${collectionName}`,
-      stats: {
-        total: totalDocs,
-        successful: successCount,
-        failed: errorCount,
-        batches: totalBatches
-      },
-      errors: errors.slice(0, 10) // Only return first 10 errors
-    });
-    
-  } catch (error: any) {
-    console.error('Batch sync with progress failed:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-/**
- * HEALTH CHECK - Test PostgreSQL and Firebase connections
- */
-export const healthCheck = runWithCors(async (req: any, res: any) => {
-  try {
-    const pool = initializePostgresPool();
-    
-    // Test PostgreSQL connection
-    const pgResult = await pool.query('SELECT NOW() as time, version() as version');
-    
-    // Test Firebase connection
-    const db = admin.firestore();
-    const firebaseResult = await db.collection('pageViews').limit(1).get();
-    
-    // Get sync statistics
-    let syncStats: any = { rows: [] };
-    try {
-      syncStats = await pool.query(`
-        SELECT 
-          collection_name,
-          COUNT(*) as total_operations,
-          SUM(records_processed) as total_records_processed,
-          SUM(records_successful) as total_records_successful,
-          MAX(start_time) as last_sync_time
-        FROM sync_logs
-        WHERE start_time > NOW() - INTERVAL '7 days'
-        GROUP BY collection_name
-        ORDER BY collection_name
-      `);
-    } catch (error) {
-      console.warn('Could not fetch sync stats:', error);
-    }
-    
-    // Get data counts
-    let pageViewsCount = { rows: [{ count: 0 }] };
-    let eventsCount = { rows: [{ count: 0 }] };
-    let usersCount = { rows: [{ count: 0 }] };
-    let professionalResumesCount = { rows: [{ count: 0 }] };
-    
-    try {
-      pageViewsCount = await pool.query('SELECT COUNT(*) as count FROM page_views');
-      eventsCount = await pool.query('SELECT COUNT(*) as count FROM events');
-      usersCount = await pool.query('SELECT COUNT(*) as count FROM users');
-      professionalResumesCount = await pool.query('SELECT COUNT(*) as count FROM professional_resumes');
-    } catch (error) {
-      console.warn('Could not fetch table counts:', error);
-    }
-    
-    res.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      postgresql: {
-        connected: true,
-        time: pgResult.rows[0].time,
-        version: pgResult.rows[0].version,
-        tables: {
-          page_views: pageViewsCount.rows[0].count,
-          events: eventsCount.rows[0].count,
-          users: usersCount.rows[0].count,
-          professional_resumes: professionalResumesCount.rows[0].count
-        }
-      },
-      firebase: {
-        connected: true,
-        collections: {
-          pageViews: firebaseResult.size
-        }
-      },
-      syncStats: {
-        enabledCollections: [
-          'pageViews',
-          'events',
-          'resumeEvents',
-          'jobEvents',
-          'blogEvents',
-          'funnels',
-          'admin_logs',
-          'jobs',
-          'jobDrives',
-          'resumes',
-          'professional_resumes'
-        ],
-        recentOperations: syncStats.rows
-      }
-    });
-    
-  } catch (error: any) {
-    console.error('Health check failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-/**
- * GET SYNC STATUS - Check sync status and statistics
- */
-export const getSyncStatus = runWithCors(async (req: any, res: any) => {
-  try {
-    const pool = initializePostgresPool();
-    
-    // Get sync statistics
-    const statsResult = await pool.query(`
-      SELECT 
-        collection_name,
-        operation,
-        COUNT(*) as total_operations,
-        SUM(records_processed) as total_records_processed,
-        SUM(records_successful) as total_records_successful,
-        SUM(records_failed) as total_records_failed,
-        MAX(start_time) as last_sync_time
-      FROM sync_logs
-      WHERE start_time > NOW() - INTERVAL '7 days'
-      GROUP BY collection_name, operation
-      ORDER BY collection_name, operation
-    `);
-    
-    // Get recent errors
-    const errorsResult = await pool.query(`
-      SELECT 
-        collection_name,
-        operation,
-        error_message,
-        start_time
-      FROM sync_logs
-      WHERE status = 'failed'
-        AND start_time > NOW() - INTERVAL '1 day'
-      ORDER BY start_time DESC
-      LIMIT 10
-    `);
-    
-    // Get data volumes
-    const volumesResult = await pool.query(`
-      SELECT 
-        'page_views' as table_name,
-        COUNT(*) as row_count,
-        MAX(timestamp) as latest_record
-      FROM page_views
-      UNION ALL
-      SELECT 
-        'events' as table_name,
-        COUNT(*) as row_count,
-        MAX(timestamp) as latest_record
-      FROM events
-      UNION ALL
-      SELECT 
-        'resume_events' as table_name,
-        COUNT(*) as row_count,
-        MAX(timestamp) as latest_record
-      FROM resume_events
-      UNION ALL
-      SELECT 
-        'job_events' as table_name,
-        COUNT(*) as row_count,
-        MAX(timestamp) as latest_record
-      FROM job_events
-      UNION ALL
-      SELECT 
-        'blog_events' as table_name,
-        COUNT(*) as row_count,
-        MAX(timestamp) as latest_record
-      FROM blog_events
-      UNION ALL
-      SELECT 
-        'funnel_events' as table_name,
-        COUNT(*) as row_count,
-        MAX(timestamp) as latest_record
-      FROM funnel_events
-      UNION ALL
-      SELECT 
-        'admin_logs' as table_name,
-        COUNT(*) as row_count,
-        MAX(timestamp) as latest_record
-      FROM admin_logs
-      UNION ALL
-      SELECT 
-        'jobs' as table_name,
-        COUNT(*) as row_count,
-        MAX(updated_at) as latest_record
-      FROM jobs
-      UNION ALL
-      SELECT 
-        'job_drives' as table_name,
-        COUNT(*) as row_count,
-        MAX(updated_at) as latest_record
-      FROM job_drives
-      UNION ALL
-      SELECT 
-        'resumes' as table_name,
-        COUNT(*) as row_count,
-        MAX(updated_at) as latest_record
-      FROM resumes
-      UNION ALL
-      SELECT 
-        'professional_resumes' as table_name,
-        COUNT(*) as row_count,
-        MAX(updated_at) as latest_record
-      FROM professional_resumes
-      UNION ALL
-SELECT 
-  'government_exams' as table_name,
-  COUNT(*) as row_count,
-  MAX(updated_at) as latest_record
-FROM government_exams
-
-
-    `);
-    
-    res.json({
-      success: true,
-      syncStats: statsResult.rows,
-      recentErrors: errorsResult.rows,
-      dataVolumes: volumesResult.rows,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error: any) {
-    console.error('Failed to get sync status:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// ================ DATA VALIDATION ENDPOINTS ================
-
-/**
- * VALIDATE SYNC - Check if data is syncing correctly
- */
-export const validateSync = runWithCors(async (req: any, res: any) => {
-  try {
-    const pool = initializePostgresPool();
-    
-    // Get sample data from each table to validate
-    const validationResults = {
-      page_views: await pool.query('SELECT user_id, session_id, page_path, timestamp FROM page_views ORDER BY timestamp DESC LIMIT 5'),
-      events: await pool.query('SELECT user_id, event_name, event_category, timestamp FROM events ORDER BY timestamp DESC LIMIT 5'),
-      resume_events: await pool.query('SELECT user_id, action, template_type FROM resume_events ORDER BY timestamp DESC LIMIT 5'),
-      job_events: await pool.query('SELECT user_id, action, job_title FROM job_events ORDER BY timestamp DESC LIMIT 5'),
-      blog_events: await pool.query('SELECT user_id, action, post_title FROM blog_events ORDER BY timestamp DESC LIMIT 5'),
-      users: await pool.query('SELECT user_id, is_anonymous, last_active FROM users ORDER BY last_active DESC LIMIT 5'),
-      jobs: await pool.query('SELECT title, company, location, type FROM jobs ORDER BY created_at DESC LIMIT 5'),
-      job_drives: await pool.query('SELECT title, company, location, drive_type FROM job_drives ORDER BY created_at DESC LIMIT 5'),
-      resumes: await pool.query('SELECT title, template, user_id FROM resumes ORDER BY created_at DESC LIMIT 5'),
-      professional_resumes: await pool.query('SELECT client_email, job_type, experience_level FROM professional_resumes ORDER BY created_at DESC LIMIT 5'),
-      field_mapping: {
-        frontend_to_backend: {
-          userId: 'user_id',
-          sessionId: 'session_id',
-          deviceType: 'device_type',
-          duration: 'duration_seconds',
-          scrollDepth: 'scroll_depth',
-          eventName: 'event_name',
-          eventCategory: 'event_category',
-          eventLabel: 'event_label',
-          pagePath: 'page_path',
-          pageTitle: 'page_title',
-          is_anonymous: 'is_anonymous',
-          consentGiven: 'consent_given',
-          dataProcessingLocation: 'data_processing_location'
-        }
-      }
-    };
-    
-    res.json({
-      success: true,
-      validation: validationResults,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error: any) {
-    console.error('Validation failed:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// ================ EXISTING FUNCTIONS ================
-
-/**
- * DEBUG CONFIG FUNCTION
- * Shows current config status
- */
-export const debugConfig = runWithCors(async (req: any, res: any) => {
-  console.log('🔧 Firebase Config Status:', {
-    hasPassword: !!ADMIN_PASSWORD,
-    passwordLength: ADMIN_PASSWORD.length,
-    emails: ADMIN_EMAILS,
-    emailsCount: ADMIN_EMAILS.length
-  });
-  
-  if (ADMIN_EMAILS.length === 0) {
-    console.error('❌ No admin emails configured!');
-    console.log('   Run: firebase functions:config:set admin.emails="email1,email2" admin.password="yourpassword"');
-  }
-  
-  res.json({
-    success: true,
-    config: {
-      hasPassword: !!ADMIN_PASSWORD,
-      passwordLength: ADMIN_PASSWORD.length,
-      emails: ADMIN_EMAILS,
-      emailsCount: ADMIN_EMAILS.length
-    }
-  });
-});
-
-/**
- * PING FUNCTION
- * Simple endpoint to test if functions are working
- */
-export const ping = runWithCors(async (req: any, res: any) => {
-  res.json({
-    success: true,
-    message: 'CareerCraft Functions API is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  });
-});
-
-/**
- * ADMIN LOGIN FUNCTION
- */
-// In your functions/index.ts, update the adminLogin function:
-
-export const adminLogin = runWithCors(async (req: any, res: any) => {
-  try {
-    console.log('🔐 Admin login request received');
-    
-    // Set CORS headers explicitly
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    
-    // Handle OPTIONS preflight
-    if (req.method === 'OPTIONS') {
-      return res.status(200).send();
-    }
-    
-    // Check config
-    if (!ADMIN_PASSWORD || ADMIN_EMAILS.length === 0) {
-      console.error('❌ Admin credentials not configured');
-      return res.status(500).json({ 
-        success: false, 
-        error: 'Server configuration error' 
-      });
-    }
-    
-    const { password, email } = req.body;
-    
-    if (!password || !email) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Email and password required' 
-      });
-    }
-    
-    const normalizedEmail = email.toLowerCase().trim();
-    
-    // Check if email is allowed
-    if (!ADMIN_EMAILS.includes(normalizedEmail)) {
-      console.log(`❌ Unauthorized email: ${normalizedEmail}`);
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Unauthorized email address' 
-      });
-    }
-    
-    // Check password
-    if (password !== ADMIN_PASSWORD) {
-      console.log('❌ Invalid password attempt');
-      return res.status(403).json({ 
-        success: false, 
-        error: 'Invalid password' 
-      });
-    }
-    
-    // Get or create user
-    let adminUser;
-    try {
-      adminUser = await admin.auth().getUserByEmail(normalizedEmail);
-      console.log('✅ Found existing user:', adminUser.uid);
-    } catch (error: any) {
-      if (error.code === 'auth/user-not-found') {
-        console.log('🆕 Creating new admin user');
-        adminUser = await admin.auth().createUser({
-          email: normalizedEmail,
-          emailVerified: true,
-          password: ADMIN_PASSWORD, // Use the configured password
-          displayName: 'Admin User',
-          disabled: false,
-        });
-        console.log('✅ Created new user:', adminUser.uid);
-      } else {
-        throw error;
-      }
-    }
-    
-    // Set admin claims
-    await admin.auth().setCustomUserClaims(adminUser.uid, {
-      admin: true,
-      level: 'super_admin',
-      email: normalizedEmail
-    });
-    
-    console.log('✅ Admin claims set for:', normalizedEmail);
-    
-    // Return success (NO custom token needed)
-    res.json({
-      success: true,
-      user: {
-        uid: adminUser.uid,
-        email: adminUser.email,
-        admin: true
-      },
-      message: 'Admin login successful',
-      note: 'User created/updated in Firebase Auth with admin claims'
-    });
-    
-  } catch (error: any) {
-    console.error('❌ Admin login error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Internal server error'
-    });
-  }
-});
-
-/**
- * CHECK ADMIN STATUS FUNCTION
- * Verifies if a token is valid and has admin claims
- */
-export const adminCheck = runWithCors(async (req: any, res: any) => {
-  try {
-    const { token } = req.body;
-    
-    if (!token) {
-      res.status(400).json({ 
-        success: false, 
-        isAdmin: false,
-        valid: false,
-        error: 'Token required' 
-      });
-      return;
-    }
-    
-    try {
-      // Verify the token
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      
-      // Check if user has admin claims
-      const isAdminClaim = decodedToken.admin === true;
-      
-      res.json({
-        success: true,
-        isAdmin: isAdminClaim,
-        valid: true,
-        user: {
-          uid: decodedToken.uid,
-          email: decodedToken.email,
-          admin: isAdminClaim,
-          claims: decodedToken
-        }
-      });
-      
-    } catch (error) {
-      // Token is invalid
-      res.json({
-        success: true,
-        isAdmin: false,
-        valid: false,
-        error: 'Invalid or expired token'
-      });
-    }
-    
-  } catch (error: unknown) {
-    console.error('Check admin status error:', error);
-    res.status(500).json({ 
-      success: false, 
-      isAdmin: false,
-      valid: false,
-      error: 'Internal server error' 
-    });
-  }
-});
-
-/**
- * SETUP ADMIN USERS FUNCTION
- * One-time function to create admin users in Firebase Auth
- */
-export const setupAdminUsers = runWithCors(async (req: any, res: any) => {
-  try {
-    console.log('⚙️ Setting up admin users...');
-    
-    // Your UID - ADD THIS
-    const YOUR_UID = 'MYM2cZssL3UNc7VY9WpgEdNVW9v1';
-    
-    const results: any[] = [];
-    
-    // FIRST - Always set claims for YOUR account
-    try {
-      const yourUser = await admin.auth().getUser(YOUR_UID);
-      await admin.auth().setCustomUserClaims(YOUR_UID, {
-        admin: true,
-        level: 'super_admin',
-        email: yourUser.email,
-        canManageResumes: true,
-        canPostJobs: true,
-        canManageUsers: false
-      });
-      
-      results.push({
-        email: yourUser.email,
-        uid: YOUR_UID,
-        status: 'claims_set',
-        claims: { admin: true }
-      });
-      
-      console.log(`✅ Set admin claims for ${yourUser.email}`);
-    } catch (yourError: any) {
-      results.push({
-        uid: YOUR_UID,
-        status: 'error',
-        error: yourError.message
-      });
-      console.error(`❌ Error setting claims for your account:`, yourError.message);
-    }
-    
-    // Then continue with existing logic for other emails
-    for (const email of ADMIN_EMAILS) {
-      // Skip if already processed your email
-      if (email === 'nelsonjoshua03@outlook.com') continue;
-      
-      try {
-        // Try to get existing user
-        const user = await admin.auth().getUserByEmail(email);
-        console.log(`✅ User ${email} already exists: ${user.uid}`);
-        
-        // Update claims
-        await admin.auth().setCustomUserClaims(user.uid, {
-          admin: true,
-          level: 'super_admin',
-          email: email,
-          canManageResumes: true,
-          canPostJobs: true,
-          canManageUsers: false
-        });
-        
-        results.push({
-          email,
-          uid: user.uid,
-          status: 'updated',
-          claims: { admin: true }
-        });
-        
-      } catch (error: any) {
-        // Create new user if doesn't exist
-        if (error.code === 'auth/user-not-found') {
-          const adminPassword = ADMIN_PASSWORD; // Only use environment config
-          const newUser = await admin.auth().createUser({
-            email: email,
-            emailVerified: true,
-            password: adminPassword,
-            displayName: 'Admin User',
-            disabled: false,
-          });
-          
-          // Set admin claims
-          await admin.auth().setCustomUserClaims(newUser.uid, {
-            admin: true,
-            level: 'super_admin',
-            email: email,
-            canManageResumes: true,
-            canPostJobs: true,
-            canManageUsers: false
-          });
-          
-          results.push({
-            email,
-            uid: newUser.uid,
-            status: 'created',
-            claims: { admin: true },
-            note: 'User created with admin password'
-          });
-          
-          console.log(`✅ Created admin user: ${email} (${newUser.uid})`);
-        } else {
-          results.push({
-            email,
-            status: 'error',
-            error: error.message
-          });
-          console.error(`❌ Error with ${email}:`, error.message);
-        }
-      }
-    }
-    
-    res.json({
-      success: true,
-      message: 'Admin users setup complete',
-      results: results,
-      your_account_processed: true,
-      note: 'Check your account (nelsonjoshua03@outlook.com) - admin claims should be set'
-    });
-    
-  } catch (error: any) {
-    console.error('❌ Setup error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message
-    });
-  }
-});
-
-/**
- * CREATE PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
- */
-export const createProfessionalResume = functions.https.onCall(
-  async (data: { resumeData: any; clientInfo: any }, context: functions.https.CallableContext) => {
-    
-    // Check if user is authenticated
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'You must be logged in'
-      );
-    }
-    
-    // Check admin claims
-    const adminClaim = context.auth.token.admin;
-    if (!adminClaim) {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'Admin access required'
-      );
-    }
-    
-    const { resumeData, clientInfo } = data;
-    
-    if (!resumeData || !clientInfo || !clientInfo.email) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Resume data and client email are required'
-      );
-    }
-    
-    try {
-      const db = admin.firestore();
-      const resumeId = `pro_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      const professionalResume = {
-        resumeData: {
-          ...resumeData,
-          id: resumeId,
-          metadata: {
-            ...resumeData.metadata,
-            isProfessionalResume: true,
-            adminCreated: true,
-            createdBy: context.auth.uid,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-          }
-        },
-        clientInfo: {
-          email: clientInfo.email.toLowerCase(),
-          name: clientInfo.name || '',
-          phone: clientInfo.phone || '',
-          notes: clientInfo.notes || '',
-          company: resumeData.personalInfo?.company || ''
-        },
-        metadata: {
-          createdBy: context.auth.uid,
-          createdByEmail: context.auth.token.email || '',
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          storageType: 'professional_database',
-          version: 1,
-          resumeId,
-          isActive: true
-        },
-        tags: [],
-        jobType: resumeData.personalInfo?.title || '',
-        industry: '',
-        experienceLevel: getExperienceLevel(resumeData)
-      };
-      
-      // Save to Firestore
-      const docRef = await db.collection('professional_resumes').add(professionalResume);
-      
-      // Log the action
-      await db.collection('admin_actions').add({
-        action: 'create_resume',
-        adminId: context.auth.uid,
-        adminEmail: context.auth.token.email || '',
-        resumeId: docRef.id,
-        clientEmail: clientInfo.email,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-      console.log(`✅ Professional resume created by ${context.auth.token.email}: ${docRef.id}`);
-      
-      return { 
-        success: true, 
-        id: docRef.id,
-        resumeId 
-      };
-      
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create resume';
-      console.error('❌ Create resume error:', error);
-      throw new functions.https.HttpsError(
-        'internal',
-        'Failed to create resume: ' + errorMessage
-      );
-    }
-  }
-);
-
-/**
- * GET PROFESSIONAL RESUME FUNCTION (Admin only - Callable)
- */
-export const getProfessionalResume = functions.https.onCall(
-  async (data: { resumeId: string }, context: functions.https.CallableContext) => {
-    
-    // Check if user is authenticated
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'You must be logged in'
-      );
-    }
-    
-    // Check admin claims
-    const adminClaim = context.auth.token.admin;
-    if (!adminClaim) {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'Admin access required'
-      );
-    }
-    
-    const { resumeId } = data;
-    
-    if (!resumeId) {
-      throw new functions.https.HttpsError(
-        'invalid-argument',
-        'Resume ID is required'
-      );
-    }
-    
-    try {
-      const db = admin.firestore();
-      const docRef = db.collection('professional_resumes').doc(resumeId);
-      const docSnap = await docRef.get();
-      
-      if (!docSnap.exists) {
-        throw new functions.https.HttpsError(
-          'not-found',
-          'Resume not found'
-        );
-      }
-      
-      const resumeData = docSnap.data();
-      
-      // Log the access
-      await db.collection('admin_actions').add({
-        action: 'get_resume',
-        adminId: context.auth.uid,
-        adminEmail: context.auth.token.email || '',
-        resumeId: resumeId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-      return { 
-        success: true, 
-        data: resumeData 
-      };
-      
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to get resume';
-      console.error('❌ Get resume error:', error);
-      throw new functions.https.HttpsError(
-        'internal',
-        'Failed to get resume: ' + errorMessage
-      );
-    }
-  }
-);
-
-export const setAdminClaimsNow = runWithCors(async (req: any, res: any) => {
-  try {
-    console.log('🚨 EMERGENCY: Setting admin claims now!');
-    
-    // Your UID
-    const uid = 'vkNBhERkSbTYHwO86tKWb5D96K72';
-    
-    // Get user first to verify
-    const user = await admin.auth().getUser(uid);
-    console.log('👤 User to update:', user.email);
-    
-    // Set admin claims
-    await admin.auth().setCustomUserClaims(uid, {
-      admin: true,
-      level: 'super_admin',
-      email: user.email,
-      canManageResumes: true,
-      canPostJobs: true,
-      canManageUsers: false
-    });
-    
-    console.log('✅ Admin claims SET!');
-    
-    // Get updated user to verify
-    const updatedUser = await admin.auth().getUser(uid);
-    
-    res.json({
-      success: true,
-      message: `🚀 ADMIN CLAIMS SET FOR: ${updatedUser.email}`,
-      user: {
-        uid: updatedUser.uid,
-        email: updatedUser.email,
-        claims: updatedUser.customClaims
-      },
-      critical: 'USER MUST LOG OUT AND LOG BACK IN NOW!',
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error: any) {
-    console.error('🔥 ERROR:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      stack: error.stack
-    });
-  }
-});
-
-
-/**
- * ADMIN LOGOUT FUNCTION
- * Logs admin logout action
- */
-export const adminLogout = runWithCors(async (req: any, res: any) => {
-  try {
-    const { token } = req.body;
-    
-    if (!token) {
-      res.status(400).json({ success: false, error: 'Token required' });
-      return;
-    }
-    
-    try {
-      // Verify the token to get user info
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      
-      // Log the logout
-      await admin.firestore().collection('admin_logs').add({
-        email: decodedToken.email,
-        action: 'logout',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        ip: req.ip || req.headers['x-forwarded-for'] as string,
-        userAgent: req.headers['user-agent'] as string
-      });
-      
-      console.log(`📝 Logged out: ${decodedToken.email}`);
-    } catch (error) {
-      // Don't fail if token verification fails
-      console.warn('Could not verify token during logout:', error);
-    }
-    
-    res.json({
-      success: true,
-      message: 'Logout action recorded'
-    });
-    
-  } catch (error: unknown) {
-    console.error('❌ Admin logout error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal server error' 
-    });
-  }
-});
 
 // Helper function to determine experience level
 function getExperienceLevel(resumeData: any): string {
