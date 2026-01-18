@@ -1,39 +1,74 @@
 {
   
   "posts": [
-   
-{
-  "id": 49,
-  "slug": "proven-job-search-strategies-2026",
-  "title": "10 Proven Job Search Strategies in 2026 (That Beat Online Applications)",
-  "excerpt": "Stop relying only on job portals. Discover ten practical job search strategies in 2026 — from networking and recruiter outreach to resume optimization, personal branding, and strategic job alerts.",
-  "category": "career-advice",
-  "date": "2026-01-17",
-  "readTime": "12 min read",
-  "author": "CareerCraft Insights Team",
-  "authorBio": "CareerCraft's expert insights team provides practical job search strategies and career growth tips tailored for the Indian job market in 2026.",
-  "contentFile": "proven-job-search-strategies-2026.md",
+    {
+  "id": 50,
+  "slug": "how-to-land-ai-jobs-in-2026-resume-strategy",
+  "title": "How to Land AI Jobs in 2026: Resume Strategies That Beat ATS and Impress Recruiters",
+  "excerpt": "AI job applications surged 300% in 2025. We reveal the resume frameworks, ATS-optimization secrets, and skill articulation strategies that get candidates hired in LLM, automation, and generative AI roles.",
+  "category": "career-strategy",
+  "date": "2026-01-19",
+  "readTime": "10 min read",
+  "author": "CareerCraft AI Hiring Lab",
+  "authorBio": "CareerCraft's AI Hiring Lab tracks recruitment trends across 500+ tech companies, decoding what gets candidates hired in machine learning, LLM, and automation roles in India's competitive 2026 job market.",
+  "contentFile": "how-to-land-ai-jobs-2026-resume-strategy.md",
   "seo": {
-    "metaTitle": "Job Search Strategies 2026 | Beat Job Portals | Networking & Resume Tips India",
-    "metaDescription": "Explore 10 proven job search strategies that outperform online applications. Learn networking, recruiter outreach, resume keyword tricks, LinkedIn tips, job alerts, and more for the 2026 job market in India.",
+    "metaTitle": "Land AI Jobs 2026 | ATS-Optimized Resume Guide | LLM & Automation Careers",
+    "metaDescription": "Step-by-step guide to building ATS-friendly resumes for AI jobs in 2026. Learn keyword optimization for LLM roles, automation positions, and how to showcase generative AI projects to land interviews.",
     "keywords": [
-      "job search 2026 India",
-      "job hunt strategies",
-      "resume keywords India",
-      "LinkedIn tips job search",
-      "networking for jobs",
-      "remote jobs India 2026",
-      "job alerts sites India",
-      "professional branding India",
-      "recruiter outreach strategy",
-      "ATS resume optimization",
-      "offline job search tips",
-      "job search plan India",
-      "career advice India",
-      "interview preparation 2026"
+      "ATS resume for AI jobs 2026",
+      "LLM job application strategy India",
+      "generative AI resume keywords",
+      "machine learning resume optimization",
+      "AI career transition guide 2026",
+      "automation engineer resume template",
+      "tech resume builder ATS friendly",
+      "AI project showcase portfolio",
+      "NLP computer vision job search",
+      "Pune Bangalore AI jobs 2026",
+      "resume skills for AI product roles",
+      "beat applicant tracking system AI",
+      "career growth in artificial intelligence",
+      "free resume builder for tech jobs",
+      "professional resume templates India"
     ]
   }
 },
+
+    {
+  "id": 49,
+  "slug": "ai-product-intern-2026-future-of-llm-automation",
+  "title": "The AI Product Intern of 2026: Your Launchpad into LLMs and Intelligent Automation",
+  "excerpt": "The AI Product Intern role is evolving into a critical career accelerator. We explore why this role at Amber is a future-proof opportunity, the skills that will define its growth in 2026, and how to build the perfect project portfolio to land it.",
+  "category": "career-opportunities",
+  "date": "2026-01-18",
+  "readTime": "8 min read",
+  "author": "CareerCraft AI Careers Team",
+  "authorBio": "The AI Careers Team at CareerCraft analyzes high-growth tech roles, providing actionable insights and skill roadmaps for professionals navigating the AI-driven job market of 2026.",
+  "contentFile": "ai-product-intern-2026-future-of-llm-automation.md",
+  "seo": {
+    "metaTitle": "AI Product Intern Role 2026 | LLM Automation Career Path | Pune Tech Jobs India",
+    "metaDescription": "Explore the AI Product Intern role at Amber: a 2026 career guide on LLMs, intelligent automation, required skills, project portfolio building, and growth trajectory in India's AI job market.",
+    "keywords": [
+      "AI Product Intern 2026 India",
+      "LLM automation career path",
+      "generative AI jobs Pune",
+      "AI internship for tier-1 colleges",
+      "machine learning product management",
+      "build AI project portfolio",
+      "career in intelligent automation",
+      "NLP and computer vision jobs",
+      "AI skills for product development",
+      "future of AI jobs India 2026",
+      "tech career growth strategies",
+      "resume for AI internships India",
+      "AI-driven product management",
+      "Pune tech startup jobs 2026"
+    ]
+  }
+},
+   
+
     {
   "id": 48,
   "slug": "layoffs-restructuring-survival-guide-2026",
