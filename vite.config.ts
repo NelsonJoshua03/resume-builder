@@ -4,35 +4,68 @@ import { resolve } from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      // Optimize React for production
+      jsxRuntime: 'automatic',
+    })
+  ],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
     },
   },
-  // CRITICAL: Exclude Firebase from optimization
   optimizeDeps: {
-    exclude: ['firebase', 'firebase/app', 'firebase/firestore', 'firebase/analytics', 'firebase/auth']
+    exclude: [
+      'firebase',
+      'firebase/app',
+      'firebase/firestore',
+      'firebase/analytics',
+      'firebase/auth',
+      'firebase/functions',
+      'firebase-admin'
+    ],
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom'
+    ]
   },
   build: {
-    sourcemap: true,
+    sourcemap: false,
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: false,
+        drop_console: true,
+        drop_debugger: true,
       },
     },
     rollupOptions: {
       output: {
-        assetFileNames: 'assets/[name]-[hash][extname]',
-        chunkFileNames: 'assets/[name]-[hash].js',
+        manualChunks(id) {
+          // Simple chunk splitting
+          if (id.includes('node_modules')) {
+            if (id.includes('firebase')) {
+              return 'vendor-firebase'
+            }
+            if (id.includes('react')) {
+              return 'vendor-react'
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons'
+            }
+            return 'vendor'
+          }
+        },
         entryFileNames: 'assets/[name]-[hash].js',
-      }
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
+      },
     },
-    outDir: 'dist',
-    emptyOutDir: true,
+    chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true,
+    target: 'es2020',
   },
-  publicDir: 'public',
   server: {
     port: 3001,
     host: true,

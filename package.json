@@ -19,7 +19,10 @@
     "firebase:status": "firebase projects:list",
     "firebase:use": "firebase use careercraft-36711",
     "clean": "rimraf dist",
-    "fresh": "npm run clean && npm install"
+    "fresh": "npm run clean && npm install",
+    "build:prod": "NODE_ENV=production vite build --mode production",
+    "preview:prod": "vite preview --port 3001 --host",
+    "optimize": "npm run clean && npm install --legacy-peer-deps && npm run build:prod"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -51,13 +54,9 @@
     "rimraf": "^6.0.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
-    "@types/html2canvas": "^0.5.35",
-    "@types/jspdf": "^1.3.3",
     "@types/node": "^20.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/react-syntax-highlighter": "^15.5.13",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.1",
     "@vitejs/plugin-react": "^4.3.3",
@@ -65,12 +64,11 @@
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
-    "globals": "^16.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "terser": "^5.46.0",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.39.1",
-    "vite": "^4.5.3"
+    "vite": "^4.5.14"
   },
   "description": "CareerCraft.in - India's premier career platform for resume building and job search",
   "repository": {

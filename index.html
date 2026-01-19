@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Content Security Policy - UPDATED FOR BACKEND CONNECTIVITY -->
+    <!-- Content Security Policy - UPDATED FOR PERFORMANCE -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
                    script-src 'self' 'unsafe-inline' 'unsafe-eval'
@@ -36,6 +36,81 @@
                            https://us-central1-careercraft-36711.cloudfunctions.net
                            https://us-central1-careercraft-36711.cloudfunctions.net/*;
                    form-action 'self' https:;">
+    
+    <!-- CRITICAL CSS (inline to avoid render blocking) -->
+    <style>
+      /* Minimal critical CSS */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      html, body {
+        width: 100%;
+        min-height: 100vh;
+        overflow-x: hidden;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      #root {
+        width: 100%;
+        min-height: 100vh;
+      }
+      
+      /* Critical loading screen */
+      .critical-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-align: center;
+        z-index: 9999;
+        transition: opacity 0.3s ease;
+      }
+      
+      .loading-spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top: 3px solid #ffffff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* System font stack for immediate text display */
+      .font-loading {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+    </style>
+    
+    <!-- RESOURCE HINTS (Critical connections) -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://firebase.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://firebase.googleapis.com">
+    
+    <!-- ASYNC FONT LOADING with font-display: swap -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    </noscript>
     
     <!-- REMOVED: Admin password from frontend -->
     <!-- Admin authentication is now handled via backend Firebase Cloud Functions -->
@@ -210,147 +285,7 @@
     <meta property="twitter:description" content="Create professional ATS-optimized resumes for Indian job market. Find latest fresher job openings across India." />
     <meta property="twitter:image" content="https://careercraft.in/og/careercraft-homepage-preview.jpg" />
     
-    <!-- Hide debug logs in production -->
-    <script>
-      // Hide debug logs in production (show only on localhost)
-      window.DEBUG_MODE = window.location.hostname.includes('localhost') || 
-                         window.location.hostname.includes('127.0.0.1') ||
-                         window.location.search.includes('debug=true');
-      
-      // Override console methods for production
-      (function() {
-        const originalLog = console.log;
-        const originalInfo = console.info;
-        const originalDebug = console.debug;
-        const originalWarn = console.warn;
-        const originalError = console.error;
-        
-        // Only show debug logs in debug mode
-        console.log = function(...args) {
-          if (window.DEBUG_MODE || !args[0]?.includes?.('Firebase') && !args[0]?.includes?.('Backend')) {
-            originalLog.apply(console, args);
-          }
-        };
-        
-        console.info = function(...args) {
-          if (window.DEBUG_MODE || !args[0]?.includes?.('Firebase') && !args[0]?.includes?.('Backend')) {
-            originalInfo.apply(console, args);
-          }
-        };
-        
-        console.debug = function(...args) {
-          if (window.DEBUG_MODE) {
-            originalDebug.apply(console, args);
-          }
-        };
-        
-        // Always show errors and warnings
-        console.warn = originalWarn;
-        console.error = originalError;
-      })();
-    </script>
-    
-    <!-- Firebase Configuration (Production) - UPDATED -->
-    <script type="module">
-      // Import Firebase modules
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-      import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js';
-      import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-      import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-      import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
-
-      // Your web app's Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU",
-        authDomain: "careercraft-36711.firebaseapp.com",
-        projectId: "careercraft-36711",
-        storageBucket: "careercraft-36711.firebasestorage.app",
-        messagingSenderId: "455791585830",
-        appId: "1:455791585830:web:6fd2f3ee52efd8cf4514e7",
-        measurementId: "G-WSKZJDJW77"
-      };
-
-      // Initialize Firebase
-      try {
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const firestore = getFirestore(app);
-        const auth = getAuth(app);
-        const functions = getFunctions(app, 'us-central1');
-        
-        // Set global variables for app to use
-        window.firebaseApp = app;
-        window.firebaseAnalytics = analytics;
-        window.firebaseFirestore = firestore;
-        window.firebaseAuth = auth;
-        window.firebaseFunctions = functions;
-        window.httpsCallable = httpsCallable;
-        
-        // Check GDPR consent
-        const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
-        if (!hasConsent && window.DEBUG_MODE) {
-          console.log('GDPR consent not given, Firebase analytics disabled');
-        }
-        
-        if (window.DEBUG_MODE) {
-          console.log('Firebase initialized with Cloud Functions support');
-        }
-        
-        // Store backend URL globally
-        window.BACKEND_URL = 'https://us-central1-careercraft-36711.cloudfunctions.net';
-        
-        // Test backend connection on load
-        setTimeout(() => {
-          window.testBackendConnection();
-        }, 2000);
-        
-      } catch (error) {
-        if (window.DEBUG_MODE) {
-          console.error('Firebase initialization failed:', error);
-        }
-      }
-    </script>
-
-    <!-- Google Analytics - DUAL TRACKING -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      
-      // Track for https://careercraft.in
-      gtag('config', 'G-SW5M9YN8L5', {
-        'allow_google_signals': false,
-        'allow_ad_personalization_signals': false,
-        'cookie_domain': 'auto',
-        'cookie_flags': 'SameSite=None;Secure',
-        'linker': {
-          'domains': ['careercraft.in', 'www.careercraft.in']
-        }
-      });
-      
-      // Track for https://www.careercraft.in
-      gtag('config', 'G-WSKZJDJWJW', {
-        'allow_google_signals': false,
-        'allow_ad_personalization_signals': false,
-        'cookie_domain': 'auto',
-        'cookie_flags': 'SameSite=None;Secure',
-        'linker': {
-          'domains': ['careercraft.in', 'www.careercraft.in']
-        }
-      });
-      
-      if (window.DEBUG_MODE) {
-        console.log('Google Analytics initialized');
-      }
-    </script>
-    
-    <!-- Preload critical resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Hide debug logs in production - MOVED TO BOTTOM -->
     
     <!-- Additional SEO Meta Tags -->
     <meta name="language" content="EN">
@@ -364,75 +299,11 @@
     <!-- Basic favicon fallback -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
     
-    <!-- Preload Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
     <!-- Performance optimization -->
     <link rel="preconnect" href="https://raw.githubusercontent.com">
     <link rel="dns-prefetch" href="https://raw.githubusercontent.com">
     <link rel="preconnect" href="https://us-central1-careercraft-36711.cloudfunctions.net">
     <link rel="dns-prefetch" href="https://us-central1-careercraft-36711.cloudfunctions.net">
-    
-    <style>
-      /* Ensure proper width on all browsers */
-      * {
-        box-sizing: border-box;
-      }
-      
-      html, body {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        overflow-x: hidden;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      
-      #root {
-        width: 100%;
-        min-height: 100vh;
-        overflow-x: hidden;
-      }
-      
-      /* Improve scrolling */
-      body {
-        scroll-behavior: smooth;
-      }
-      
-      /* Loading animation */
-      .loading-spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 2px solid #f3f3f3;
-        border-top: 2px solid #2563eb;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      
-      /* Better focus styles for accessibility */
-      :focus {
-        outline: 2px solid #2563eb;
-        outline-offset: 2px;
-      }
-      
-      :focus:not(:focus-visible) {
-        outline: none;
-      }
-      
-      /* Responsive improvements */
-      @media (max-width: 768px) {
-        html {
-          font-size: 14px;
-        }
-      }
-    </style>
     
     <!-- Progressive Web App meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -443,7 +314,7 @@
     <!-- Apple touch icon -->
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
   </head>
-  <body>
+  <body class="font-loading">
     <!-- Google Tag Manager (noscript) -->
     <noscript>
       <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NOSCRIPT" 
@@ -452,312 +323,266 @@
     </noscript>
     
     <div id="root">
-      <!-- Loading screen with backend status -->
-      <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div style="text-align: center; color: white; padding: 2rem;">
-          <div class="loading-spinner" style="width: 40px; height: 40px; margin: 0 auto 1rem;"></div>
-          <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">CareerCraft India</h1>
+      <!-- Critical loading screen (removed after app loads) -->
+      <div class="critical-loading">
+        <div style="text-align: center; padding: 2rem;">
+          <div class="loading-spinner"></div>
+          <h1 style="font-size: 1.5rem; margin: 1rem 0;">CareerCraft India</h1>
           <p style="opacity: 0.8;">Loading your career journey...</p>
-          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 1rem; display: none;" id="firebase-status">Initializing Firebase...</p>
-          <p style="font-size: 0.8rem; opacity: 0.6; margin-top: 0.5rem; display: none;" id="backend-status">Checking backend services...</p>
-          <p style="font-size: 0.7rem; opacity: 0.5; margin-top: 0.5rem; display: none;" id="backend-url">Backend URL: https://us-central1-careercraft-36711.cloudfunctions.net</p>
         </div>
       </div>
     </div>
     
-    <!-- Vite will inject the script here -->
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Vite will inject the script here - DEFER FOR PERFORMANCE -->
+    <script type="module" src="/src/main.tsx" defer></script>
     
-    <!-- Firebase & Backend Debug Script - UPDATED (Hidden logs) -->
+    <!-- CRITICAL PERFORMANCE SCRIPT (loads immediately) -->
     <script>
-      // Global backend URL
-      window.BACKEND_URL = 'https://us-central1-careercraft-36711.cloudfunctions.net';
+      // Performance monitoring - load immediately
+      window.__PERFORMANCE_START = performance.now();
+      window.__FIREBASE_LOADED = false;
+      window.__BACKEND_READY = false;
       
-      // Test backend connection function
-      window.testBackendConnection = async function() {
-        if (window.DEBUG_MODE) {
-          console.log('Testing backend connection...');
-        }
+      // Set debug mode
+      window.DEBUG_MODE = window.location.hostname.includes('localhost') || 
+                         window.location.hostname.includes('127.0.0.1') ||
+                         window.location.search.includes('debug=true');
+      
+      // Function to load non-critical resources
+      function loadDeferredResources() {
+        // Load Font Awesome only when needed (non-critical)
+        const faLink = document.createElement('link');
+        faLink.rel = 'stylesheet';
+        faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+        faLink.crossOrigin = 'anonymous';
+        faLink.referrerPolicy = 'no-referrer';
+        document.head.appendChild(faLink);
         
-        const backendStatusElement = document.getElementById('backend-status');
-        const backendUrlElement = document.getElementById('backend-url');
-        
-        if (backendStatusElement && window.DEBUG_MODE) {
-          backendStatusElement.textContent = 'Testing backend connection...';
-          backendStatusElement.style.color = '#fbbf24';
-        }
-        
-        try {
-          // Test 1: ping endpoint (GET)
-          const pingResponse = await fetch(`${window.BACKEND_URL}/ping`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-          });
+        // Load Google Analytics after critical render (non-critical)
+        if (!window.DEBUG_MODE) {
+          const gaScript = document.createElement('script');
+          gaScript.async = true;
+          gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-SW5M9YN8L5';
+          document.head.appendChild(gaScript);
           
-          const pingData = await pingResponse.json();
-          if (window.DEBUG_MODE) {
-            console.log('Ping response:', pingData);
-          }
-          
-          // Test 2: debug config endpoint (GET)
-          const debugResponse = await fetch(`${window.BACKEND_URL}/debugConfig`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-          const debugData = await debugResponse.json();
-          if (window.DEBUG_MODE) {
-            console.log('Debug config:', debugData);
-          }
-          
-          // Test 3: admin login with test credentials (POST)
-          if (window.DEBUG_MODE) {
-            console.log('Testing admin login with placeholder credentials...');
-          }
-          const loginResponse = await fetch(`${window.BACKEND_URL}/adminLogin`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({ 
-              email: 'test@test.com', 
-              password: 'test123' 
-            })
-          });
-          
-          const loginData = await loginResponse.json();
-          if (window.DEBUG_MODE) {
-            console.log('Admin login test response:', loginData);
-          }
-          
-          // Update status
-          if (backendStatusElement && window.DEBUG_MODE) {
-            if (pingResponse.ok && debugResponse.ok) {
-              backendStatusElement.textContent = 'Backend: Connected';
-              backendStatusElement.style.color = '#4ade80';
-            } else {
-              backendStatusElement.textContent = 'Backend: Partial connection';
-              backendStatusElement.style.color = '#fbbf24';
-            }
-          }
-          
-          return { 
-            success: true, 
-            ping: pingData,
-            debug: debugData,
-            login: loginData
-          };
-          
-        } catch (error) {
-          if (window.DEBUG_MODE) {
-            console.error('Backend connection failed:', error);
-          }
-          
-          if (backendStatusElement && window.DEBUG_MODE) {
-            backendStatusElement.textContent = 'Backend: Connection failed';
-            backendStatusElement.style.color = '#f87171';
-          }
-          
-          return { 
-            success: false, 
-            error: error.message,
-            note: 'Check Firebase Functions deployment and CORS configuration'
-          };
-        }
-      };
-
-      // Admin test function for development
-      window.testAdminLogin = async function(email = 'nelsonjoshua03@outlook.com', password = 'rtyiubvc5674@N') {
-        if (window.DEBUG_MODE) {
-          console.log('Testing admin login with credentials:', email);
-        }
-        
-        try {
-          const response = await fetch(`${window.BACKEND_URL}/adminLogin`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-          });
-          
-          const data = await response.json();
-          if (window.DEBUG_MODE) {
-            console.log('Admin login test:', data);
-          }
-          
-          if (response.ok) {
-            if (window.DEBUG_MODE) {
-              alert(`Admin login successful!\n\nUser: ${data.user?.email}\nUID: ${data.user?.uid}\n\nCheck console for details.`);
-            }
-            return { success: true, data };
-          } else {
-            if (window.DEBUG_MODE) {
-              alert(`Admin login failed: ${data.error || response.statusText}`);
-            }
-            return { success: false, status: response.status, data };
-          }
-          
-        } catch (error) {
-          if (window.DEBUG_MODE) {
-            console.error('Admin login test error:', error);
-            alert(`Network error: ${error.message}\n\nCheck:\n1. Firebase Functions deployment\n2. CORS configuration\n3. Internet connection`);
-          }
-          return { success: false, error: error.message };
-        }
-      };
-
-      // Check backend connection on load
-      setTimeout(() => {
-        window.testBackendConnection().then(result => {
-          if (window.DEBUG_MODE) {
-            console.log('Backend test result:', result);
-          }
-          
-          // Update URL element
-          const backendUrlElement = document.getElementById('backend-url');
-          if (backendUrlElement && window.DEBUG_MODE) {
-            backendUrlElement.textContent = `Backend: ${window.BACKEND_URL}`;
-            backendUrlElement.style.color = result.success ? '#4ade80' : '#f87171';
-          }
-        });
-      }, 1500);
-
-      // Firebase initialization status
-      setTimeout(() => {
-        const statusElement = document.getElementById('firebase-status');
-        if (statusElement && window.DEBUG_MODE) {
-          if (window.firebaseApp) {
-            statusElement.textContent = 'Firebase: Initialized';
-            statusElement.style.color = '#4ade80';
-          } else {
-            statusElement.textContent = 'Firebase: Initialization failed';
-            statusElement.style.color = '#f87171';
-          }
-        }
-      }, 1000);
-
-      // Performance monitoring
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          const perfData = window.performance.timing;
-          const loadTime = perfData.loadEventEnd - perfData.navigationStart;
-          
-          if (typeof window.gtag !== 'undefined') {
-            window.gtag('event', 'timing_complete', {
-              'name': 'page_load',
-              'value': loadTime,
-              'event_category': 'Performance',
-              'send_to': 'G-SW5M9YN8L5'
+          gaScript.onload = function() {
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-SW5M9YN8L5', {
+              'allow_google_signals': false,
+              'allow_ad_personalization_signals': false,
+              'cookie_flags': 'SameSite=None;Secure'
             });
             
-            window.gtag('event', 'timing_complete', {
-              'name': 'page_load',
-              'value': loadTime,
-              'event_category': 'Performance',
-              'send_to': 'G-WSKZJDJW77'
+            // Track second property
+            gtag('config', 'G-WSKZJDJWJW', {
+              'allow_google_signals': false,
+              'allow_ad_personalization_signals': false,
+              'cookie_flags': 'SameSite=None;Secure'
             });
-          }
-        }, 0);
-      });
+          };
+        }
+      }
       
-      // Error tracking
+      // Initialize minimal Firebase for critical functions (Firestore/Functions)
+      function initCriticalFirebase() {
+        // Load only critical Firebase modules immediately
+        const firebaseScript = document.createElement('script');
+        firebaseScript.type = 'module';
+        firebaseScript.textContent = `
+          import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+          import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+          import { getFunctions } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
+          
+          const firebaseConfig = {
+            apiKey: "AIzaSyBZn_ORun-6J558JMFjTaKHJGcoshwVJPU",
+            authDomain: "careercraft-36711.firebaseapp.com",
+            projectId: "careercraft-36711",
+            storageBucket: "careercraft-36711.firebasestorage.app",
+            messagingSenderId: "455791585830",
+            appId: "1:455791585830:web:6fd2f3ee52efd8cf4514e7",
+            measurementId: "G-WSKZJDJW77"
+          };
+          
+          try {
+            const app = initializeApp(firebaseConfig);
+            const firestore = getFirestore(app);
+            const functions = getFunctions(app, 'us-central1');
+            
+            // Store globally for React app to use
+            window.firebaseApp = app;
+            window.firebaseFirestore = firestore;
+            window.firebaseFunctions = functions;
+            window.__FIREBASE_LOADED = true;
+            
+            if (window.DEBUG_MODE) {
+              console.log('🔥 Firebase critical services loaded');
+            }
+            
+            // Test backend connection
+            setTimeout(() => {
+              fetch('https://us-central1-careercraft-36711.cloudfunctions.net/ping', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+              })
+              .then(res => {
+                window.__BACKEND_READY = res.ok;
+                if (window.DEBUG_MODE) {
+                  console.log('✅ Backend ping successful');
+                }
+              })
+              .catch(err => {
+                if (window.DEBUG_MODE) {
+                  console.warn('⚠️ Backend ping failed:', err.message);
+                }
+              });
+            }, 500);
+            
+          } catch (error) {
+            if (window.DEBUG_MODE) {
+              console.error('Firebase critical init failed:', error);
+            }
+          }
+        `;
+        document.head.appendChild(firebaseScript);
+      }
+      
+      // Remove loading screen when app is ready
+      function removeLoadingScreen() {
+        const loadingScreen = document.querySelector('.critical-loading');
+        if (loadingScreen) {
+          loadingScreen.style.opacity = '0';
+          setTimeout(() => {
+            loadingScreen.style.display = 'none';
+          }, 300);
+        }
+      }
+      
+      // Initialize when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          // 1. Start loading critical Firebase services
+          initCriticalFirebase();
+          
+          // 2. Load deferred resources after 1 second
+          setTimeout(loadDeferredResources, 1000);
+          
+          // 3. Remove loading screen after 3 seconds max
+          setTimeout(removeLoadingScreen, 3000);
+          
+          // 4. Track performance
+          window.__DOM_LOADED = performance.now();
+          if (window.DEBUG_MODE) {
+            console.log('🚀 DOM loaded in', (window.__DOM_LOADED - window.__PERFORMANCE_START).toFixed(0), 'ms');
+          }
+        });
+      } else {
+        // DOM already loaded
+        initCriticalFirebase();
+        setTimeout(loadDeferredResources, 1000);
+        setTimeout(removeLoadingScreen, 3000);
+      }
+      
+      // Global error handling for performance monitoring
       window.addEventListener('error', function(e) {
         if (typeof window.gtag !== 'undefined') {
           window.gtag('event', 'exception', {
             'description': e.error?.message || 'Unknown error',
-            'fatal': false,
-            'send_to': 'G-SW5M9YN8L5'
-          });
-          
-          window.gtag('event', 'exception', {
-            'description': e.error?.message || 'Unknown error',
-            'fatal': false,
-            'send_to': 'G-WSKZJDJW77'
+            'fatal': false
           });
         }
       });
-
-      // Debug info (only in debug mode)
+    </script>
+    
+    <!-- FIREBASE ANALYTICS & AUTH (non-critical - loaded after main content) -->
+    <script type="module" defer>
+      // Load non-critical Firebase modules after main content
       setTimeout(() => {
-        if (window.DEBUG_MODE) {
-          console.log('=== CareerCraft Debug Info ===');
-          console.log('URL:', window.location.href);
-          console.log('Hostname:', window.location.hostname);
-          console.log('Environment:', window.location.hostname.includes('localhost') ? 'development' : 'production');
-          console.log('Firebase App:', window.firebaseApp ? 'Loaded' : 'Not loaded');
-          console.log('Firebase Functions:', window.firebaseFunctions ? 'Loaded' : 'Not loaded');
-          console.log('Firebase Auth:', window.firebaseAuth ? 'Loaded' : 'Not loaded');
-          console.log('GDPR Consent:', localStorage.getItem('gdpr_consent') || 'Not set');
-          console.log('Admin Token:', localStorage.getItem('careercraft_admin_token') ? 'Set' : 'Not set');
-          console.log('LocalStorage Admin:', localStorage.getItem('is_admin') || 'Not logged in');
-          console.log('Backend URL:', window.BACKEND_URL);
-          console.log('============================');
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.textContent = `
+          import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+          import { getAnalytics } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js';
           
-          // Quick admin test for development
-          if (window.location.hostname.includes('localhost')) {
-            console.log('Development mode detected');
-            console.log('Use window.testAdminLogin() to test admin login');
-            console.log('Use window.testBackendConnection() to test backend');
-            console.log('Admin email: nelsonjoshua03@outlook.com');
-            console.log('Admin password: rtyiubvc5674@N');
+          if (window.firebaseApp) {
+            try {
+              // Initialize analytics (non-critical)
+              const analytics = getAnalytics(window.firebaseApp);
+              window.firebaseAnalytics = analytics;
+              
+              // Initialize auth (non-critical)
+              const auth = getAuth(window.firebaseApp);
+              window.firebaseAuth = auth;
+              
+              if (window.DEBUG_MODE) {
+                console.log('📊 Firebase analytics & auth loaded');
+              }
+              
+              // Check GDPR consent for analytics
+              const hasConsent = localStorage.getItem('gdpr_consent') === 'accepted';
+              if (!hasConsent && window.DEBUG_MODE) {
+                console.log('GDPR consent not given, analytics disabled');
+              }
+              
+            } catch (error) {
+              if (window.DEBUG_MODE) {
+                console.warn('Firebase non-critical modules failed:', error);
+              }
+            }
           }
-        }
-      }, 2000);
-      
-      // SEO Enhancement: Track page loads
-      window.addEventListener('DOMContentLoaded', function() {
-        if (typeof window.gtag !== 'undefined') {
-          const pageTitle = document.title;
-          const pageUrl = window.location.href;
-          const pagePath = window.location.pathname;
-          
-          window.gtag('event', 'page_view', {
-            page_title: pageTitle,
-            page_location: pageUrl,
-            page_path: pagePath,
-            send_to: 'G-SW5M9YN8L5'
-          });
-        }
-      });
-
-      // Simple CORS test function
-      window.corsTest = function() {
-        if (window.DEBUG_MODE) {
-          console.log('Running CORS test...');
-        }
-        
-        // Test with different methods
-        const endpoints = [
-          { method: 'GET', url: `${window.BACKEND_URL}/ping` },
-          { method: 'GET', url: `${window.BACKEND_URL}/debugConfig` },
-          { 
-            method: 'POST', 
-            url: `${window.BACKEND_URL}/adminLogin`,
-            body: JSON.stringify({ email: 'test@test.com', password: 'test' })
-          }
-        ];
-        
-        endpoints.forEach(async (endpoint) => {
-          try {
-            const response = await fetch(endpoint.url, {
-              method: endpoint.method,
-              headers: { 'Content-Type': 'application/json' },
-              body: endpoint.body
-            });
+        `;
+        document.head.appendChild(script);
+      }, 2000); // Delay to prioritize main content
+    </script>
+    
+    <!-- WEB VITALS TRACKING (non-critical) -->
+    <script src="https://unpkg.com/web-vitals@3/dist/web-vitals.attribution.iife.js" defer></script>
+    <script defer>
+      // Track Core Web Vitals after page is interactive
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          if ('webVitals' in window) {
+            // Send to Google Analytics
+            const sendToGoogleAnalytics = ({ name, value, id }) => {
+              if (typeof window.gtag !== 'undefined') {
+                window.gtag('event', name, {
+                  event_category: 'Web Vitals',
+                  event_label: id,
+                  value: Math.round(name === 'CLS' ? value * 1000 : value),
+                  non_interaction: true,
+                });
+              }
+            };
             
+            webVitals.getCLS(sendToGoogleAnalytics);
+            webVitals.getFID(sendToGoogleAnalytics);
+            webVitals.getLCP(sendToGoogleAnalytics);
+            webVitals.getFCP(sendToGoogleAnalytics);
+            webVitals.getTTFB(sendToGoogleAnalytics);
+            
+            // Log in debug mode
             if (window.DEBUG_MODE) {
-              console.log(`${endpoint.method} ${endpoint.url}: ${response.status}`);
-            }
-          } catch (error) {
-            if (window.DEBUG_MODE) {
-              console.error(`${endpoint.method} ${endpoint.url}: ${error.message}`);
+              const logWebVital = ({ name, value, rating }) => {
+                console.log(`📊 ${name}:`, value.toFixed(2), `(${rating})`);
+              };
+              webVitals.getCLS(logWebVital);
+              webVitals.getFID(logWebVital);
+              webVitals.getLCP(logWebVital);
+              webVitals.getFCP(logWebVital);
+              webVitals.getTTFB(logWebVital);
             }
           }
-        });
-      };
+          
+          // Final performance log
+          if (window.DEBUG_MODE) {
+            const loadTime = performance.now() - window.__PERFORMANCE_START;
+            console.log('🏁 Page fully loaded in', loadTime.toFixed(0), 'ms');
+            console.log('Firebase loaded:', window.__FIREBASE_LOADED);
+            console.log('Backend ready:', window.__BACKEND_READY);
+          }
+        }, 1000);
+      });
     </script>
     
     <!-- SEO Enhancement: Breadcrumb navigation for Google -->
@@ -848,65 +673,22 @@
     }
     </script>
     
-    <!-- Backend troubleshooting guide -->
+    <!-- DEBUG & TROUBLESHOOTING (only in debug mode) -->
     <script>
-      // Troubleshooting function
-      window.troubleshootBackend = function() {
-        const issues = [];
-        
-        // Check CORS
-        if (!window.BACKEND_URL) {
-          issues.push('BACKEND_URL is not defined');
-        }
-        
-        // Check if functions are reachable
-        fetch(`${window.BACKEND_URL}/ping`)
-          .then(res => {
-            if (!res.ok) issues.push(`/ping endpoint returned ${res.status}`);
-          })
-          .catch(err => {
-            issues.push(`Cannot reach /ping: ${err.message}`);
-          });
-        
-        // Check CSP
-        const csp = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
-        if (csp && !csp.content.includes('us-central1-careercraft-36711.cloudfunctions.net')) {
-          issues.push('CSP is blocking Cloud Functions');
-        }
-        
-        // Display issues
-        if (issues.length > 0 && window.DEBUG_MODE) {
-          console.log('Backend Issues Found:');
-          issues.forEach(issue => console.log(issue));
-          alert('Backend issues found. Check console for details.');
-        } else if (window.DEBUG_MODE) {
-          console.log('No backend issues detected');
-          alert('Backend appears to be configured correctly.');
-        }
-        
-        return issues;
-      };
-      
-      // Add troubleshooting button in dev mode
-      if (window.location.hostname.includes('localhost') && window.DEBUG_MODE) {
+      if (window.location.hostname.includes('localhost')) {
         window.addEventListener('load', () => {
           setTimeout(() => {
-            const troubleshootBtn = document.createElement('button');
-            troubleshootBtn.textContent = 'Troubleshoot Backend';
-            troubleshootBtn.style.position = 'fixed';
-            troubleshootBtn.style.bottom = '20px';
-            troubleshootBtn.style.right = '20px';
-            troubleshootBtn.style.zIndex = '9999';
-            troubleshootBtn.style.padding = '10px 15px';
-            troubleshootBtn.style.background = '#2563eb';
-            troubleshootBtn.style.color = 'white';
-            troubleshootBtn.style.border = 'none';
-            troubleshootBtn.style.borderRadius = '5px';
-            troubleshootBtn.style.cursor = 'pointer';
-            troubleshootBtn.style.fontSize = '12px';
-            troubleshootBtn.onclick = window.troubleshootBackend;
-            document.body.appendChild(troubleshootBtn);
-          }, 3000);
+            console.log('=== CareerCraft Debug Info ===');
+            console.log('URL:', window.location.href);
+            console.log('Environment:', window.location.hostname.includes('localhost') ? 'development' : 'production');
+            console.log('Firebase loaded:', !!window.firebaseApp);
+            console.log('Firestore loaded:', !!window.firebaseFirestore);
+            console.log('Functions loaded:', !!window.firebaseFunctions);
+            console.log('Analytics loaded:', !!window.firebaseAnalytics);
+            console.log('Auth loaded:', !!window.firebaseAuth);
+            console.log('Backend URL: https://us-central1-careercraft-36711.cloudfunctions.net');
+            console.log('============================');
+          }, 2000);
         });
       }
     </script>
