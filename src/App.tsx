@@ -51,10 +51,10 @@ const CreateResumeOnlinePage = lazy(() => import('./components/seo-pages/CreateR
 
 // Analytics Dashboard Components (Admin only - lazy load)
 const AnalyticsDashboard = lazy(() => import('./components/AnalyticsDashboard'));
-const LocalAnalyticsDashboard = lazy(() => import('./components/LocalAnalyticsDashboard'));
-const DailyAnalyticsDashboard = lazy(() => import('./components/DailyAnalyticsDashboard'));
-const ComprehensiveAnalyticsDashboard = lazy(() => import('./components/ComprehensiveAnalyticsDashboard'));
-const FirebaseAnalyticsDashboardComponent = lazy(() => import('./components/FirebaseAnalyticsDashboardComponent'));
+
+
+
+
 
 // Professional Resume Admin Components
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
@@ -253,49 +253,13 @@ function App() {
                   } 
                 />
                 
-                <Route 
-                  path="/admin/daily-analytics" 
-                  element={
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <AdminProtectedRoute>
-                        <DailyAnalyticsDashboard />
-                      </AdminProtectedRoute>
-                    </Suspense>
-                  } 
-                />
                 
-                <Route 
-                  path="/local-analytics" 
-                  element={
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <AdminProtectedRoute>
-                        <LocalAnalyticsDashboard />
-                      </AdminProtectedRoute>
-                    </Suspense>
-                  } 
-                />
                 
-                <Route 
-                  path="/admin/comprehensive-analytics" 
-                  element={
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <AdminProtectedRoute>
-                        <ComprehensiveAnalyticsDashboard />
-                      </AdminProtectedRoute>
-                    </Suspense>
-                  } 
-                />
                 
-                <Route 
-                  path="/admin/firebase-analytics" 
-                  element={
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <AdminProtectedRoute>
-                        <FirebaseAnalyticsDashboardComponent />
-                      </AdminProtectedRoute>
-                    </Suspense>
-                  } 
-                />
+                
+               
+                
+                  
                 
                 <Route 
                   path="/admin/job-posting" 
