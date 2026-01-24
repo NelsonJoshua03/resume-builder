@@ -1,4 +1,4 @@
-// src/utils/jobFilters.ts - UPDATED
+// src/utils/jobFilters.ts - UPDATED WITH SAFE ACCESS FIXES
 import { JobData } from '../firebase/jobService';
 
 export interface JobFilters {
@@ -97,83 +97,111 @@ export const getTechnicalSectorsFromFresherSelection = (selectedFresherSectors: 
   return Array.from(technicalSectors);
 };
 
+// SAFE ACCESS HELPER FUNCTIONS
+const safeString = (value: any): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return value.toString();
+  return '';
+};
+
+const safeArray = (arr: any[] | undefined): any[] => {
+  return Array.isArray(arr) ? arr : [];
+};
+
 /**
- * Main filtering function that applies all filters to jobs
+ * Main filtering function that applies all filters to jobs - FIXED WITH SAFE ACCESS
  */
 export const filterJobs = (
   jobs: JobData[],
   filters: JobFilters
 ): JobData[] => {
+  // Early return if no jobs
+  if (!jobs || jobs.length === 0) {
+    return [];
+  }
+
   let filteredJobs = [...jobs];
 
-  // NEW: Filter by multiple job titles (enhanced filter)
+  // FILTER 1: Enhanced job titles filter
   if (filters.jobTitles && filters.jobTitles.length > 0) {
-    filteredJobs = filteredJobs.filter(job =>
-      filters.jobTitles!.some(title => 
-        job.title.toLowerCase().includes(title.toLowerCase())
-      )
-    );
+    filteredJobs = filteredJobs.filter(job => {
+      const jobTitle = safeString(job.title);
+      return filters.jobTitles!.some(title => 
+        jobTitle.toLowerCase().includes(safeString(title).toLowerCase())
+      );
+    });
   }
 
-  // Filter by multiple sectors
+  // FILTER 2: Multiple sectors filter (with fresher-friendly mapping)
   if (filters.sectors && filters.sectors.length > 0) {
     const technicalSectors = getTechnicalSectorsFromFresherSelection(filters.sectors);
-    filteredJobs = filteredJobs.filter(job =>
-      technicalSectors.some(sector =>
-        job.sector.toLowerCase().includes(sector.toLowerCase()) ||
-        sector.toLowerCase().includes(job.sector.toLowerCase())
-      )
-    );
+    filteredJobs = filteredJobs.filter(job => {
+      const jobSector = safeString(job.sector);
+      return technicalSectors.some(sector =>
+        jobSector.toLowerCase().includes(safeString(sector).toLowerCase()) ||
+        safeString(sector).toLowerCase().includes(jobSector.toLowerCase())
+      );
+    });
   }
 
-  // Filter by job type
+  // FILTER 3: Job type filter
   if (filters.type && filters.type !== 'all') {
-    filteredJobs = filteredJobs.filter(job =>
-      job.type.toLowerCase() === filters.type!.toLowerCase()
-    );
+    filteredJobs = filteredJobs.filter(job => {
+      const jobType = safeString(job.type);
+      return jobType.toLowerCase() === safeString(filters.type).toLowerCase();
+    });
   }
 
-  // Filter by multiple locations (case-insensitive, partial match)
+  // FILTER 4: Multiple locations filter
   if (filters.locations && filters.locations.length > 0) {
-    filteredJobs = filteredJobs.filter(job =>
-      filters.locations!.some(location =>
-        job.location.toLowerCase().includes(location.toLowerCase().trim()) ||
-        location.toLowerCase().trim().includes(job.location.toLowerCase())
-      )
-    );
+    filteredJobs = filteredJobs.filter(job => {
+      const jobLocation = safeString(job.location);
+      return filters.locations!.some(location =>
+        jobLocation.toLowerCase().includes(safeString(location).toLowerCase().trim()) ||
+        safeString(location).toLowerCase().trim().includes(jobLocation.toLowerCase())
+      );
+    });
   }
 
-  // Filter by experience level
+  // FILTER 5: Experience level filter
   if (filters.experience && filters.experience !== 'all') {
     filteredJobs = filteredJobs.filter(job => {
-      const jobExp = job.experience || 'Not specified';
+      const jobExp = safeString(job.experience || 'Not specified');
       return normalizeExperience(jobExp) === normalizeExperience(filters.experience!);
     });
   }
 
-  // Filter by featured status
+  // FILTER 6: Featured status filter
   if (filters.featured !== undefined) {
     filteredJobs = filteredJobs.filter(job =>
       job.featured === filters.featured
     );
   }
 
-  // Filter by active status
+  // FILTER 7: Active status filter
   if (filters.isActive !== undefined) {
     filteredJobs = filteredJobs.filter(job =>
       job.isActive === filters.isActive
     );
   }
 
-  // Search by term (title, company, or description)
+  // FILTER 8: Search term filter
   if (filters.searchTerm && filters.searchTerm.trim() !== '') {
-    const searchTerm = filters.searchTerm.toLowerCase().trim();
-    filteredJobs = filteredJobs.filter(job =>
-      job.title.toLowerCase().includes(searchTerm) ||
-      job.company.toLowerCase().includes(searchTerm) ||
-      job.description.toLowerCase().includes(searchTerm) ||
-      (job.requirements?.some(req => req.toLowerCase().includes(searchTerm)) || false)
-    );
+    const searchTerm = safeString(filters.searchTerm).toLowerCase().trim();
+    filteredJobs = filteredJobs.filter(job => {
+      const jobTitle = safeString(job.title).toLowerCase();
+      const jobCompany = safeString(job.company).toLowerCase();
+      const jobDescription = safeString(job.description).toLowerCase();
+      const jobRequirements = safeArray(job.requirements);
+      
+      return (
+        jobTitle.includes(searchTerm) ||
+        jobCompany.includes(searchTerm) ||
+        jobDescription.includes(searchTerm) ||
+        jobRequirements.some(req => safeString(req).toLowerCase().includes(searchTerm))
+      );
+    });
   }
 
   return filteredJobs;
@@ -184,7 +212,7 @@ export const filterJobs = (
  */
 const normalizeExperience = (experience: string): string => {
   if (!experience) return 'Not specified';
-  const exp = experience.toLowerCase().trim();
+  const exp = safeString(experience).toLowerCase().trim();
   
   // Map variations to standard formats
   if (exp.includes('fresher') || exp.includes('0-1') || exp.includes('entry') || exp.includes('0 to 1')) {
@@ -233,8 +261,9 @@ export const sortJobsByDate = (jobs: JobData[]): JobData[] => {
 export const getUniqueJobTitles = (jobs: JobData[]): string[] => {
   const titles = new Set<string>();
   jobs.forEach(job => {
-    if (job.title && job.title.trim() !== '') {
-      titles.add(job.title);
+    const title = safeString(job.title);
+    if (title && title.trim() !== '') {
+      titles.add(title);
     }
   });
   return Array.from(titles).sort();
@@ -246,9 +275,10 @@ export const getUniqueJobTitles = (jobs: JobData[]): string[] => {
 export const getUniqueLocations = (jobs: JobData[]): string[] => {
   const locations = new Set<string>();
   jobs.forEach(job => {
-    if (job.location && job.location.trim() !== '') {
+    const location = safeString(job.location);
+    if (location && location.trim() !== '') {
       // Clean up location strings
-      const cleanLocation = job.location.split(',')[0].trim();
+      const cleanLocation = location.split(',')[0].trim();
       if (cleanLocation) {
         locations.add(cleanLocation);
       }
@@ -278,7 +308,7 @@ export const paginateJobs = (
 export const getUniqueExperienceLevels = (jobs: JobData[]): string[] => {
   const experiences = new Set<string>();
   jobs.forEach(job => {
-    const exp = job.experience || 'Not specified';
+    const exp = safeString(job.experience || 'Not specified');
     experiences.add(normalizeExperience(exp));
   });
   
@@ -303,8 +333,9 @@ export const getUniqueExperienceLevels = (jobs: JobData[]): string[] => {
 export const getUniqueSectors = (jobs: JobData[]): string[] => {
   const sectors = new Set<string>();
   jobs.forEach(job => {
-    if (job.sector && job.sector.trim() !== '') {
-      sectors.add(job.sector);
+    const sector = safeString(job.sector);
+    if (sector && sector.trim() !== '') {
+      sectors.add(sector);
     }
   });
   return Array.from(sectors).sort();
@@ -316,8 +347,9 @@ export const getUniqueSectors = (jobs: JobData[]): string[] => {
 export const getUniqueJobTypes = (jobs: JobData[]): string[] => {
   const types = new Set<string>();
   jobs.forEach(job => {
-    if (job.type && job.type.trim() !== '') {
-      types.add(job.type);
+    const type = safeString(job.type);
+    if (type && type.trim() !== '') {
+      types.add(type);
     }
   });
   return Array.from(types).sort();
@@ -330,7 +362,8 @@ export const getJobStats = (jobs: JobData[]) => {
   const stats = {
     totalJobs: jobs.length,
     activeJobs: jobs.filter(job => job.isActive !== false).length,
-    remoteJobs: jobs.filter(job => job.type === 'Remote' || job.location.toLowerCase().includes('remote')).length,
+    remoteJobs: jobs.filter(job => job.type === 'Remote' || 
+      safeString(job.location).toLowerCase().includes('remote')).length,
     featuredJobs: jobs.filter(job => job.featured).length,
     todayJobs: jobs.filter(job => {
       const jobDate = new Date(job.postedDate || job.createdAt || new Date());
@@ -345,25 +378,25 @@ export const getJobStats = (jobs: JobData[]) => {
 
   // Count by experience
   jobs.forEach(job => {
-    const exp = normalizeExperience(job.experience || 'Not specified');
+    const exp = normalizeExperience(safeString(job.experience || 'Not specified'));
     stats.jobsByExperience[exp] = (stats.jobsByExperience[exp] || 0) + 1;
   });
 
   // Count by sector
   jobs.forEach(job => {
-    const sector = job.sector || 'Not specified';
+    const sector = safeString(job.sector || 'Not specified');
     stats.jobsBySector[sector] = (stats.jobsBySector[sector] || 0) + 1;
   });
 
   // Count by type
   jobs.forEach(job => {
-    const type = job.type || 'Not specified';
+    const type = safeString(job.type || 'Not specified');
     stats.jobsByType[type] = (stats.jobsByType[type] || 0) + 1;
   });
 
   // Count by location
   jobs.forEach(job => {
-    const location = job.location || 'Not specified';
+    const location = safeString(job.location || 'Not specified');
     stats.jobsByLocation[location] = (stats.jobsByLocation[location] || 0) + 1;
   });
 
@@ -392,13 +425,13 @@ export const advancedSearch = (
   if (criteria.keywords && criteria.keywords.length > 0) {
     filteredJobs = filteredJobs.filter(job => {
       return criteria.keywords!.some(keyword => {
-        const keywordLower = keyword.toLowerCase();
+        const keywordLower = safeString(keyword).toLowerCase();
         return (
-          job.title.toLowerCase().includes(keywordLower) ||
-          job.company.toLowerCase().includes(keywordLower) ||
-          job.description.toLowerCase().includes(keywordLower) ||
-          job.requirements?.some(req => req.toLowerCase().includes(keywordLower)) ||
-          job.sector.toLowerCase().includes(keywordLower)
+          safeString(job.title).toLowerCase().includes(keywordLower) ||
+          safeString(job.company).toLowerCase().includes(keywordLower) ||
+          safeString(job.description).toLowerCase().includes(keywordLower) ||
+          safeArray(job.requirements).some(req => safeString(req).toLowerCase().includes(keywordLower)) ||
+          safeString(job.sector).toLowerCase().includes(keywordLower)
         );
       });
     });
@@ -407,7 +440,7 @@ export const advancedSearch = (
   // Salary filter
   if (criteria.minSalary !== undefined || criteria.maxSalary !== undefined) {
     filteredJobs = filteredJobs.filter(job => {
-      const salaryMatch = job.salary.match(/\d+/g);
+      const salaryMatch = safeString(job.salary).match(/\d+/g);
       if (!salaryMatch) return false;
 
       const salaryNumbers = salaryMatch.map(num => parseInt(num));
@@ -425,7 +458,7 @@ export const advancedSearch = (
   if (criteria.locations && criteria.locations.length > 0) {
     filteredJobs = filteredJobs.filter(job => {
       return criteria.locations!.some(location =>
-        job.location.toLowerCase().includes(location.toLowerCase())
+        safeString(job.location).toLowerCase().includes(safeString(location).toLowerCase())
       );
     });
   }
@@ -433,21 +466,21 @@ export const advancedSearch = (
   // Multiple sectors filter
   if (criteria.sectors && criteria.sectors.length > 0) {
     filteredJobs = filteredJobs.filter(job =>
-      criteria.sectors!.includes(job.sector)
+      criteria.sectors!.includes(safeString(job.sector))
     );
   }
 
   // Multiple types filter
   if (criteria.types && criteria.types.length > 0) {
     filteredJobs = filteredJobs.filter(job =>
-      criteria.types!.includes(job.type)
+      criteria.types!.includes(safeString(job.type))
     );
   }
 
   // Experience ranges filter
   if (criteria.experienceRanges && criteria.experienceRanges.length > 0) {
     filteredJobs = filteredJobs.filter(job => {
-      const jobExp = normalizeExperience(job.experience || 'Not specified');
+      const jobExp = normalizeExperience(safeString(job.experience || 'Not specified'));
       return criteria.experienceRanges!.some(range =>
         normalizeExperience(range) === jobExp
       );
@@ -478,35 +511,35 @@ export const getSearchSuggestions = (
   limit: number = 5
 ): Array<{ type: 'title' | 'company' | 'location' | 'sector'; value: string }> => {
   if (!query.trim()) return [];
-  const queryLower = query.toLowerCase();
+  const queryLower = safeString(query).toLowerCase();
   const suggestions = new Set<string>();
   const result: Array<{ type: 'title' | 'company' | 'location' | 'sector'; value: string }> = [];
   
   // Search in titles
   jobs.forEach(job => {
-    if (job.title.toLowerCase().includes(queryLower)) {
-      suggestions.add(job.title);
+    if (safeString(job.title).toLowerCase().includes(queryLower)) {
+      suggestions.add(safeString(job.title));
     }
   });
   
   // Search in companies
   jobs.forEach(job => {
-    if (job.company.toLowerCase().includes(queryLower)) {
-      suggestions.add(job.company);
+    if (safeString(job.company).toLowerCase().includes(queryLower)) {
+      suggestions.add(safeString(job.company));
     }
   });
   
   // Search in locations
   jobs.forEach(job => {
-    if (job.location.toLowerCase().includes(queryLower)) {
-      suggestions.add(job.location);
+    if (safeString(job.location).toLowerCase().includes(queryLower)) {
+      suggestions.add(safeString(job.location));
     }
   });
   
   // Search in sectors
   jobs.forEach(job => {
-    if (job.sector.toLowerCase().includes(queryLower)) {
-      suggestions.add(job.sector);
+    if (safeString(job.sector).toLowerCase().includes(queryLower)) {
+      suggestions.add(safeString(job.sector));
     }
   });
   
@@ -514,18 +547,18 @@ export const getSearchSuggestions = (
   Array.from(suggestions).slice(0, limit).forEach(value => {
     // Determine type
     const jobWithValue = jobs.find(job =>
-      job.title === value ||
-      job.company === value ||
-      job.location === value ||
-      job.sector === value
+      safeString(job.title) === value ||
+      safeString(job.company) === value ||
+      safeString(job.location) === value ||
+      safeString(job.sector) === value
     );
 
     if (jobWithValue) {
       let type: 'title' | 'company' | 'location' | 'sector' = 'title';
-      if (jobWithValue.title === value) type = 'title';
-      else if (jobWithValue.company === value) type = 'company';
-      else if (jobWithValue.location === value) type = 'location';
-      else if (jobWithValue.sector === value) type = 'sector';
+      if (safeString(jobWithValue.title) === value) type = 'title';
+      else if (safeString(jobWithValue.company) === value) type = 'company';
+      else if (safeString(jobWithValue.location) === value) type = 'location';
+      else if (safeString(jobWithValue.sector) === value) type = 'sector';
       
       result.push({ type, value });
     }

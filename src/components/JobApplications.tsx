@@ -1,4 +1,4 @@
-// src/pages/JobApplications.tsx - UPDATED WITH JOB DETAILS LINKS
+// src/pages/JobApplications.tsx - UPDATED WITHOUT ENHANCED FILTER DIALOG POPUP
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -63,7 +63,6 @@ import {
 } from 'lucide-react';
 
 // Import components
-import EnhancedFilterDialog, { EnhancedFilterData } from '../components/EnhancedFilterDialog';
 import JobCard from '../components/JobCard';
 import JobFiltersSidebar from '../components/JobFiltersSidebar';
 import ShareJobModal from '../components/ShareJobModal';
@@ -109,20 +108,16 @@ const JobApplications: React.FC = () => {
   const [showMobileFilters, setShowMobileFilters] = useState<boolean>(false);
   const [showMobileAnalytics, setShowMobileAnalytics] = useState<boolean>(false);
   
-  // Enhanced Filter Dialog State
-  const [showEnhancedFilterDialog, setShowEnhancedFilterDialog] = useState<boolean>(false);
-  const [availableJobTitles, setAvailableJobTitles] = useState<string[]>([]);
-  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
-  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
-  
-  // Enhanced Filter Data State
-  const [enhancedFilterData, setEnhancedFilterData] = useState<EnhancedFilterData>({
+  // Enhanced Filter Data State (kept for filter functionality but no dialog popup)
+  const [enhancedFilterData, setEnhancedFilterData] = useState({
     jobTitles: [],
     experience: 'all'
   });
   
-  // Track if dialog has been shown before
-  const [hasSeenDialogBefore, setHasSeenDialogBefore] = useState<boolean>(false);
+  // Keep available data for filters
+  const [availableJobTitles, setAvailableJobTitles] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
 
   const [analytics, setAnalytics] = useState({
     topCities: [] as {city: string; count: number}[],
@@ -178,10 +173,6 @@ const JobApplications: React.FC = () => {
 
       const saved = JSON.parse(localStorage.getItem('saved_jobs') || '[]');
       setSavedJobs(saved);
-      
-      // Check if user has seen the dialog before
-      const hasSeen = localStorage.getItem('has_seen_enhanced_filter_dialog') === 'true';
-      setHasSeenDialogBefore(hasSeen);
     }
   }, [trackFirebaseEvent]);
 
@@ -278,13 +269,6 @@ const JobApplications: React.FC = () => {
         trackButtonClick('notification_shown_jobs', 'system', '/job-applications');
       }
       
-      // Show enhanced filter dialog for first-time visitors
-      if (!hasSeenDialogBefore && jobsWithPages.length > 0) {
-        setTimeout(() => {
-          setShowEnhancedFilterDialog(true);
-        }, 1500);
-      }
-      
     } catch (error) {
       console.error('Error loading jobs:', error);
       const savedJobsData = JSON.parse(localStorage.getItem('manualJobs') || '[]') as Job[];
@@ -325,7 +309,7 @@ const JobApplications: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [jobsPerPage, trackGoogleButtonClick, trackButtonClick, hasSeenDialogBefore]);
+  }, [jobsPerPage, trackGoogleButtonClick, trackButtonClick]);
 
   // Handle refresh jobs function
   const handleRefreshJobs = useCallback(() => {
@@ -410,57 +394,6 @@ const JobApplications: React.FC = () => {
       console.error('Error loading analytics data:', error);
     }
   }, []);
-
-  // Enhanced Filter Dialog Functions
-  const openEnhancedFilterDialog = () => {
-    setShowEnhancedFilterDialog(true);
-    trackGoogleButtonClick('open_enhanced_filter_dialog', 'filter_dialog', 'job_applications');
-    trackButtonClick('open_enhanced_filter_dialog', 'filter_dialog', '/job-applications');
-  };
-
-  const closeEnhancedFilterDialog = () => {
-    setShowEnhancedFilterDialog(false);
-    // Mark as seen
-    localStorage.setItem('has_seen_enhanced_filter_dialog', 'true');
-    setHasSeenDialogBefore(true);
-  };
-
-  // Apply enhanced filters function
-  const applyEnhancedFilters = (filters: EnhancedFilterData) => {
-    // Store the enhanced filter data
-    setEnhancedFilterData(filters);
-    
-    // Also update the main experience filter if enhanced filter has experience set
-    if (filters.experience && filters.experience !== 'all') {
-      setSelectedExperience(filters.experience);
-    }
-    
-    setCurrentPage(1);
-    closeEnhancedFilterDialog();
-    
-    // Track filter application
-    trackGoogleButtonClick('apply_enhanced_filters', 'filter_dialog', 'job_applications');
-    trackButtonClick('apply_enhanced_filters', 'filter_dialog', '/job-applications');
-    
-    trackFirebaseEvent(
-      'enhanced_filters_applied',
-      'Job Search',
-      'dialog_filters_applied',
-      {
-        job_titles_count: filters.jobTitles.length,
-        experience: filters.experience,
-        user_id: localStorage.getItem('firebase_user_id') || 'anonymous',
-        eventValue: 1
-      }
-    );
-  };
-
-  const skipEnhancedFilters = () => {
-    closeEnhancedFilterDialog();
-    
-    trackGoogleButtonClick('skip_enhanced_filters', 'filter_dialog', 'job_applications');
-    trackButtonClick('skip_enhanced_filters', 'filter_dialog', '/job-applications');
-  };
 
   // Clear all filters including enhanced filters
   const clearAllFilters = () => {
@@ -585,25 +518,13 @@ const JobApplications: React.FC = () => {
 
   // Memoized filtered jobs - updated to include enhanced filters
   const filteredJobs = useMemo(() => {
-    // First filter by enhanced filters (job titles)
-    let enhancedFilteredJobs = jobs;
-    
-    // Apply job title filter from enhanced filters
-    if (enhancedFilterData.jobTitles.length > 0) {
-      enhancedFilteredJobs = enhancedFilteredJobs.filter(job =>
-        enhancedFilterData.jobTitles.some(title => 
-          job.title.toLowerCase().includes(title.toLowerCase())
-        )
-      );
-    }
-    
     // Get technical sectors from fresher-friendly selection
     const technicalSectors = selectedSectors.length > 0 ? 
       getTechnicalSectorsFromFresherSelection(selectedSectors) : 
       undefined;
     
-    // Apply main filters to enhanced-filtered jobs
-    const mainFilteredJobs = filterJobs(enhancedFilteredJobs, {
+    // Apply main filters
+    const mainFilteredJobs = filterJobs(jobs, {
       sectors: technicalSectors,
       type: selectedJobType !== 'all' ? selectedJobType : undefined,
       experience: selectedExperience !== 'all' ? selectedExperience : undefined,
@@ -612,7 +533,7 @@ const JobApplications: React.FC = () => {
     });
     
     return mainFilteredJobs;
-  }, [jobs, enhancedFilterData, selectedSectors, selectedJobType, selectedExperience, selectedLocations, searchTerm]);
+  }, [jobs, selectedSectors, selectedJobType, selectedExperience, selectedLocations, searchTerm]);
 
   // Memoized sorted filtered jobs
   const sortedFilteredJobs = useMemo(() => {
@@ -1375,18 +1296,6 @@ const JobApplications: React.FC = () => {
         </script>
       </Helmet>
 
-      {/* Enhanced Filter Dialog Component */}
-      <EnhancedFilterDialog
-        isOpen={showEnhancedFilterDialog}
-        onClose={closeEnhancedFilterDialog}
-        onApplyFilters={applyEnhancedFilters}
-        onSkip={skipEnhancedFilters}
-        availableJobTitles={availableJobTitles}
-        experienceOptions={experienceOptions}
-        firebaseConnected={firebaseConnected}
-        hasSeenDialogBefore={hasSeenDialogBefore}
-      />
-
       {showNotificationBanner && (
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4">
           <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
@@ -1573,13 +1482,6 @@ const JobApplications: React.FC = () => {
               Clear All Filters
             </button>
             <button
-              onClick={openEnhancedFilterDialog}
-              className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-1 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold hover:from-amber-600 hover:to-orange-600 transition-colors flex items-center gap-1 md:gap-2"
-            >
-              <ListFilter size={12} />
-              Open Enhanced Filters
-            </button>
-            <button
               onClick={() => {
                 if (jobs.length > 0) {
                   handleShareClick(jobs[0]);
@@ -1593,7 +1495,7 @@ const JobApplications: React.FC = () => {
           </div>
 
           {/* Active Filters Summary */}
-          {(selectedSectors.length > 0 || selectedLocations.length > 0 || searchTerm || selectedExperience !== 'all' || selectedJobType !== 'all' || enhancedFilterData.jobTitles.length > 0) && (
+          {(selectedSectors.length > 0 || selectedLocations.length > 0 || searchTerm || selectedExperience !== 'all' || selectedJobType !== 'all') && (
             <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3 max-w-3xl mx-auto">
               <p className="text-blue-100 mb-2 text-sm font-medium">Active Filters:</p>
               <div className="flex flex-wrap gap-2 justify-center">
@@ -1637,15 +1539,6 @@ const JobApplications: React.FC = () => {
                     <Briefcase size={10} />
                     {selectedJobType}
                     <button onClick={() => setSelectedJobType('all')} className="ml-1">
-                      <X size={10} />
-                    </button>
-                  </span>
-                )}
-                {enhancedFilterData.jobTitles.length > 0 && (
-                  <span className="bg-white/20 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                    <Sparkles size={10} />
-                    {enhancedFilterData.jobTitles.length} job titles
-                    <button onClick={() => setEnhancedFilterData({...enhancedFilterData, jobTitles: []})} className="ml-1">
                       <X size={10} />
                     </button>
                   </span>
@@ -1714,7 +1607,7 @@ const JobApplications: React.FC = () => {
               onJobTypeChange={handleJobTypeChange}
               onExperienceChange={handleExperienceChange}
               onCityFilter={handleCityFilter}
-              onOpenEnhancedFilterDialog={openEnhancedFilterDialog}
+              onOpenEnhancedFilterDialog={() => {}} // Empty function since we removed the dialog
               onDownloadCSV={downloadJobsCSV}
               onViewAnalyticsDashboard={viewAnalyticsDashboard}
             />
@@ -1741,11 +1634,6 @@ const JobApplications: React.FC = () => {
                     <p className="text-blue-700 text-xs mt-1">
                       <span className="font-semibold">Experience Filter:</span> {selectedExperience === 'all' ? 'All experience levels' : selectedExperience}
                     </p>
-                    {enhancedFilterData.jobTitles.length > 0 && (
-                      <p className="text-blue-700 text-xs mt-1">
-                        <span className="font-semibold">Enhanced Filter:</span> {enhancedFilterData.jobTitles.length} job titles selected
-                      </p>
-                    )}
                   </div>
                   <div className="text-xs md:text-sm text-blue-700 bg-blue-100 px-2 py-1 rounded-full mt-2 md:mt-0">
                     Updated: {new Date().toLocaleDateString('en-IN')}
@@ -1800,12 +1688,6 @@ const JobApplications: React.FC = () => {
                   {totalApplications} applications •
                   <Award size={12} />
                   {selectedExperience === 'all' ? 'All exp.' : selectedExperience}
-                  {enhancedFilterData.jobTitles.length > 0 && (
-                    <>
-                      • <Sparkles size={12} />
-                      {enhancedFilterData.jobTitles.length} enhanced filters
-                    </>
-                  )}
                 </div>
               </div>
               
@@ -1820,13 +1702,6 @@ const JobApplications: React.FC = () => {
                     >
                       <X size={14} />
                       Clear All Filters
-                    </button>
-                    <button 
-                      onClick={openEnhancedFilterDialog}
-                      className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2 rounded-lg hover:from-amber-600 hover:to-orange-600 transition-colors flex items-center gap-2"
-                    >
-                      <ListFilter size={14} />
-                      Open Enhanced Filters
                     </button>
                   </div>
                 </div>
@@ -1967,16 +1842,6 @@ const JobApplications: React.FC = () => {
                           </div>
                         </label>
                       ))}
-                      
-                      {availableSectors.length > 8 && (
-                        <button
-                          onClick={openEnhancedFilterDialog}
-                          className="w-full text-center text-blue-600 hover:text-blue-800 text-sm font-medium mt-2 flex items-center justify-center gap-1"
-                        >
-                          <Plus size={12} />
-                          View All Sectors
-                        </button>
-                      )}
                     </div>
                   </div>
 
@@ -2084,14 +1949,6 @@ const JobApplications: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                    
-                    <button
-                      onClick={openEnhancedFilterDialog}
-                      className="w-full text-center text-blue-600 hover:text-blue-800 text-sm font-medium mt-2 flex items-center justify-center gap-1"
-                    >
-                      <Briefcase size={12} />
-                      Enhanced Job Filters
-                    </button>
                   </div>
                 </div>
               )}
