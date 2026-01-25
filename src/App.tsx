@@ -52,10 +52,6 @@ const CreateResumeOnlinePage = lazy(() => import('./components/seo-pages/CreateR
 // Analytics Dashboard Components (Admin only - lazy load)
 const AnalyticsDashboard = lazy(() => import('./components/AnalyticsDashboard'));
 
-
-
-
-
 // Professional Resume Admin Components
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const ProfessionalResumeDashboard = lazy(() => import('./components/ProfessionalResumeDashboard'));
@@ -252,14 +248,6 @@ function App() {
                     </Suspense>
                   } 
                 />
-                
-                
-                
-                
-                
-               
-                
-                  
                 
                 <Route 
                   path="/admin/job-posting" 
