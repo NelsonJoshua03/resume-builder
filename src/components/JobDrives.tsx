@@ -1,6 +1,6 @@
-// src/components/JobDrives.tsx - UPDATED WITH FIREBASE INTEGRATION AND PROPER SORTING
+// src/components/JobDrives.tsx - UPDATED WITH DETAIL PAGE FUNCTIONALITY
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { firebaseDriveService } from '../firebase/driveService';
 import type { JobDriveData } from '../firebase/driveService';
@@ -29,7 +29,25 @@ import {
   Search,
   Users,
   Sparkles,
-  TrendingDown
+  TrendingDown,
+  BookOpen,
+  Briefcase,
+  FileText,
+  Award,
+  ChevronLeft,
+  ChevronRight,
+  Mail,
+  Phone,
+  Globe,
+  CheckCircle,
+  AlertCircle,
+  Info,
+  UserCheck,
+  FileCheck,
+  GraduationCap,
+  Target,
+  DollarSign,
+  Users as UsersIcon
 } from 'lucide-react';
 
 interface DriveFilters {
@@ -41,6 +59,8 @@ interface DriveFilters {
 }
 
 const JobDrives: React.FC = () => {
+  const { driveId } = useParams<{ driveId: string }>();
+  const navigate = useNavigate();
   const [drives, setDrives] = useState<JobDriveData[]>([]);
   const [selectedDrive, setSelectedDrive] = useState<JobDriveData | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -61,6 +81,8 @@ const JobDrives: React.FC = () => {
   const [featuredDrivesCount, setFeaturedDrivesCount] = useState(0);
   const [upcomingDrivesCount, setUpcomingDrivesCount] = useState(0);
   const [latestDrivesCount, setLatestDrivesCount] = useState(0);
+  const [showDetailPage, setShowDetailPage] = useState(false);
+  const [detailDrive, setDetailDrive] = useState<JobDriveData | null>(null);
 
   // Analytics hooks
   const { 
@@ -87,25 +109,82 @@ const JobDrives: React.FC = () => {
     trackUserFlow
   } = useFirebaseAnalytics();
 
+  // Check if we're viewing a detail page
+  useEffect(() => {
+    if (driveId) {
+      // We're viewing a detail page
+      loadDriveDetail(driveId);
+      setShowDetailPage(true);
+    } else {
+      setShowDetailPage(false);
+    }
+  }, [driveId]);
+
   // Track page view on mount
   useEffect(() => {
-    // Enhanced Analytics
-    trackDailyPageView('Job Drives', '/job-drives');
-    
-    // Firebase Analytics
-    trackFirebasePageView('/job-drives', 'Job Drives');
-    
-    // Track funnel entry
-    const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
-    trackFunnelStep('job_drives_funnel', 'page_viewed', 1, {
-      user_id: userId,
-      page_path: '/job-drives',
-      source: document.referrer || 'direct'
-    });
+    if (!showDetailPage) {
+      // Enhanced Analytics
+      trackDailyPageView('Job Drives', '/job-drives');
+      
+      // Firebase Analytics
+      trackFirebasePageView('/job-drives', 'Job Drives');
+      
+      // Track funnel entry
+      const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
+      trackFunnelStep('job_drives_funnel', 'page_viewed', 1, {
+        user_id: userId,
+        page_path: '/job-drives',
+        source: document.referrer || 'direct'
+      });
 
-    // Load drives from Firebase
-    loadDrivesFromFirebase();
-  }, []);
+      // Load drives from Firebase
+      loadDrivesFromFirebase();
+    }
+  }, [showDetailPage]);
+
+  // Load drive detail
+  const loadDriveDetail = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('🔄 Loading drive details from Firebase...');
+      const drive = await firebaseDriveService.getDrive(id);
+      
+      if (drive) {
+        setDetailDrive(drive);
+        
+        // Track drive detail view
+        const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
+        trackFirebaseEvent(
+          'job_drive_detail_viewed',
+          'Job Drives',
+          drive.id || 'unknown',
+          {
+            drive_id: drive.id,
+            drive_title: drive.title,
+            company: drive.company,
+            location: drive.location,
+            date: drive.date,
+            user_id: userId,
+            timestamp: new Date().toISOString()
+          }
+        );
+        
+        // Increment view count
+        if (drive.id) {
+          await firebaseDriveService.incrementViewCount(drive.id);
+        }
+      } else {
+        setError('Drive not found');
+      }
+    } catch (error) {
+      console.error('Error loading drive details:', error);
+      setError('Failed to load drive details');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Load drives from Firebase and sort by latest posted date
   const loadDrivesFromFirebase = async () => {
@@ -608,6 +687,347 @@ const JobDrives: React.FC = () => {
     }
   };
 
+  // Navigate to drive detail
+  const navigateToDriveDetail = (drive: JobDriveData) => {
+    if (drive.id) {
+      navigate(`/job-drives/${drive.id}`);
+    }
+  };
+
+  // Detail Page Component
+  const DriveDetailPage = () => {
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-gray-50 py-12">
+          <div className="container mx-auto px-4">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+              <p className="mt-4 text-gray-600">Loading drive details...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (error || !detailDrive) {
+      return (
+        <div className="min-h-screen bg-gray-50 py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                <AlertCircle className="text-red-500 mx-auto mb-4" size={48} />
+                <h2 className="text-2xl font-bold text-red-800 mb-2">Drive Not Found</h2>
+                <p className="text-red-700 mb-6">{error || 'The drive you are looking for does not exist.'}</p>
+                <Link
+                  to="/job-drives"
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors inline-block"
+                >
+                  Browse All Drives
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const drive = detailDrive;
+    const isToday = drive.date === new Date().toISOString().split('T')[0];
+    const isUpcoming = new Date(drive.date) > new Date() && !isToday;
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-600 to-emerald-500 text-white py-6">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-4">
+              <Link 
+                to="/job-drives"
+                className="flex items-center gap-2 text-green-100 hover:text-white text-sm"
+              >
+                <ChevronLeft size={16} />
+                Back to All Drives
+              </Link>
+              <button
+                onClick={() => handleShare(drive)}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition-colors text-sm"
+              >
+                <Share2 size={14} />
+                Share
+              </button>
+            </div>
+            
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">{drive.title}</h1>
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <div className="flex items-center gap-1">
+                <Building size={16} />
+                <span className="font-semibold">{drive.company}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <MapPin size={16} />
+                <span>{drive.location}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar size={16} />
+                <span>{formatDate(drive.date)}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock size={16} />
+                <span>{drive.time}</span>
+              </div>
+            </div>
+            
+            {/* Status badges */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {isToday && (
+                <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  TODAY
+                </span>
+              )}
+              {isUpcoming && (
+                <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  UPCOMING
+                </span>
+              )}
+              {drive.featured && (
+                <span className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  FEATURED
+                </span>
+              )}
+              {drive.driveType && (
+                <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  {drive.driveType}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Main Content */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <BookOpen size={20} className="text-green-600" />
+                  Drive Description
+                </h2>
+                <div className="prose max-w-none">
+                  {drive.description ? (
+                    <div className="text-gray-700 whitespace-pre-line">
+                      {drive.description}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No description provided.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Key Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Eligibility */}
+                {drive.eligibility && drive.eligibility.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                      <UserCheck size={18} className="text-blue-600" />
+                      Eligibility Criteria
+                    </h3>
+                    <ul className="space-y-2">
+                      {drive.eligibility.map((item, index) => (
+                        <li key={index} className="flex items-start">
+                          <CheckCircle size={16} className="text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-700">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Documents Required */}
+                {drive.documents && drive.documents.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                      <FileCheck size={18} className="text-purple-600" />
+                      Documents Required
+                    </h3>
+                    <ul className="space-y-2">
+                      {drive.documents.map((item, index) => (
+                        <li key={index} className="flex items-start">
+                          <FileText size={16} className="text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-700">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Key Skills and Knowledge Areas */}
+              {(drive.experience || drive.salary) && (
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <Target size={18} className="text-red-600" />
+                    Position Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {drive.experience && (
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                        <GraduationCap size={20} className="text-blue-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">Experience Required</p>
+                          <p className="font-semibold text-gray-800">{drive.experience}</p>
+                        </div>
+                      </div>
+                    )}
+                    {drive.salary && (
+                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <DollarSign size={20} className="text-green-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">Salary/Stipend</p>
+                          <p className="font-semibold text-gray-800">{drive.salary}</p>
+                        </div>
+                      </div>
+                    )}
+                    {drive.expectedCandidates && (
+                      <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
+                        <UsersIcon size={20} className="text-purple-600" />
+                        <div>
+                          <p className="text-sm text-gray-600">Expected Candidates</p>
+                          <p className="font-semibold text-gray-800">{drive.expectedCandidates}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Contact Information */}
+              {drive.contact && (
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <Phone size={18} className="text-green-600" />
+                    Contact Information
+                  </h3>
+                  <div className="space-y-2">
+                    {drive.contact.split('\n').map((line, index) => (
+                      <p key={index} className="text-gray-700">{line}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column - Sidebar */}
+            <div className="space-y-6">
+              {/* Apply Box */}
+              <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg p-6">
+                <h3 className="text-xl font-bold mb-3">Apply Now</h3>
+                <p className="mb-6">Register for this drive and get direct interview opportunity</p>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle size={20} className="text-green-300" />
+                    <span className="text-sm">Direct company interview</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle size={20} className="text-green-300" />
+                    <span className="text-sm">No registration fees</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle size={20} className="text-green-300" />
+                    <span className="text-sm">Walk-in registration available</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleRegisterClick(drive)}
+                  className="w-full bg-white text-green-600 font-bold py-3 rounded-lg mt-6 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ExternalLink size={18} />
+                  Register Now
+                </button>
+
+                <div className="mt-4 text-center">
+                  <p className="text-green-200 text-sm">
+                    <Info size={14} className="inline mr-1" />
+                    Registration ends {formatDate(drive.date)} at {drive.time}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Drive Stats</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Views:</span>
+                    <span className="font-semibold text-gray-800">{drive.views || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Registrations:</span>
+                    <span className="font-semibold text-gray-800">{drive.registrations || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Shares:</span>
+                    <span className="font-semibold text-gray-800">{drive.shares || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Posted:</span>
+                    <span className="font-semibold text-gray-800">
+                      {drive.createdAt ? getTimeAgo(drive.createdAt) : 'Recently'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Share Section */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Share this Drive</h3>
+                <div className="grid grid-cols-4 gap-3">
+                  <button
+                    onClick={shareOnFacebook}
+                    className="bg-[#1877F2] text-white p-3 rounded-lg hover:bg-[#166FE5] transition-colors flex flex-col items-center"
+                  >
+                    <Facebook size={20} />
+                    <span className="text-xs mt-1">Facebook</span>
+                  </button>
+                  <button
+                    onClick={shareOnTwitter}
+                    className="bg-black text-white p-3 rounded-lg hover:bg-gray-800 transition-colors flex flex-col items-center"
+                  >
+                    <Twitter size={20} />
+                    <span className="text-xs mt-1">Twitter/X</span>
+                  </button>
+                  <button
+                    onClick={shareOnWhatsApp}
+                    className="bg-[#25D366] text-white p-3 rounded-lg hover:bg-[#20b857] transition-colors flex flex-col items-center"
+                  >
+                    <MessageCircle size={20} />
+                    <span className="text-xs mt-1">WhatsApp</span>
+                  </button>
+                  <button
+                    onClick={shareOnLinkedIn}
+                    className="bg-[#0A66C2] text-white p-3 rounded-lg hover:bg-[#0959a6] transition-colors flex flex-col items-center"
+                  >
+                    <Linkedin size={20} />
+                    <span className="text-xs mt-1">LinkedIn</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render detail page if viewing a specific drive
+  if (showDetailPage) {
+    return <DriveDetailPage />;
+  }
+
+  // Main listing page
   return (
     <>
       {/* Enhanced SEO Implementation */}
@@ -1019,6 +1439,7 @@ const JobDrives: React.FC = () => {
                         onRegister={handleRegisterClick}
                         expandedDrives={expandedDrives}
                         toggleExpandDrive={toggleExpandDrive}
+                        onViewDetail={navigateToDriveDetail}
                       />
                     ))}
                   </div>
@@ -1179,19 +1600,21 @@ const JobDrives: React.FC = () => {
   );
 };
 
-// Drive Card Component
+// Drive Card Component - Updated with detail view functionality
 const DriveCard: React.FC<{ 
   drive: JobDriveData; 
   onShare: (drive: JobDriveData) => void; 
   onRegister: (drive: JobDriveData) => void;
   expandedDrives: Record<string, boolean>;
   toggleExpandDrive: (driveId: string, e?: React.MouseEvent) => void;
+  onViewDetail: (drive: JobDriveData) => void;
 }> = ({ 
   drive, 
   onShare, 
   onRegister,
   expandedDrives,
   toggleExpandDrive,
+  onViewDetail,
 }) => {
   const { trackJobDriveView } = useEnhancedAnalytics();
   const { trackButtonClick: trackGoogleButtonClick, trackExternalLink } = useGoogleAnalytics();
@@ -1201,16 +1624,32 @@ const DriveCard: React.FC<{
   const isToday = drive.date === new Date().toISOString().split('T')[0];
   const isExpanded = expandedDrives[drive.id || ''] || false;
 
-  const handleDetailsClick = () => {
-    trackGoogleButtonClick('view_drive_details', 'drive_card', 'job_drives');
-    trackFirebaseButtonClick('view_drive_details', 'drive_card', '/job-drives');
+  const handleViewDetail = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onViewDetail(drive);
     
-    if (drive.applyLink && drive.applyLink.startsWith('http')) {
-      trackExternalLink('Drive Details', drive.applyLink, 'job_drives');
-    }
+    trackGoogleButtonClick('view_drive_detail', 'drive_card', 'job_drives');
+    trackFirebaseButtonClick('view_drive_detail', 'drive_card', '/job-drives');
+    
+    const userId = localStorage.getItem('firebase_user_id') || 'anonymous';
+    trackFirebaseEvent(
+      'job_drive_detail_navigation',
+      'Job Drives',
+      drive.id || 'unknown',
+      {
+        drive_id: drive.id,
+        drive_title: drive.title,
+        company: drive.company,
+        user_id: userId,
+        timestamp: new Date().toISOString()
+      }
+    );
   };
 
-  const handleRegister = () => {
+  const handleRegister = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     onRegister(drive);
   };
 
@@ -1313,7 +1752,10 @@ const DriveCard: React.FC<{
   };
 
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 relative">
+    <div 
+      className="bg-white rounded-lg shadow hover:shadow-md transition-all duration-200 border border-gray-200 relative cursor-pointer hover:border-green-300"
+      onClick={handleViewDetail}
+    >
       {/* NEW badge for recently posted drives */}
       {isNewDrive() && (
         <div className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10">
@@ -1423,7 +1865,10 @@ const DriveCard: React.FC<{
         {/* Action Buttons */}
         <div className="flex gap-2">
           <button
-            onClick={(e) => toggleExpandDrive(drive.id || '', e)}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleExpandDrive(drive.id || '', e);
+            }}
             className="flex-1 bg-gray-100 text-gray-700 py-1.5 rounded text-xs font-medium hover:bg-gray-200 transition-colors flex items-center justify-center"
           >
             <Eye size={12} className="mr-1" />
@@ -1523,17 +1968,12 @@ const DriveCard: React.FC<{
                 <Share2 size={12} className="mr-1" />
                 Share
               </button>
-              {drive.applyLink && (
-                <a
-                  href={drive.applyLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={handleDetailsClick}
-                  className="flex-1 bg-blue-600 text-white py-1.5 rounded text-xs font-medium hover:bg-blue-700 transition-colors flex items-center justify-center"
-                >
-                  View Details
-                </a>
-              )}
+              <button
+                onClick={handleViewDetail}
+                className="flex-1 bg-blue-600 text-white py-1.5 rounded text-xs font-medium hover:bg-blue-700 transition-colors flex items-center justify-center"
+              >
+                View Full Details
+              </button>
             </div>
           </div>
         )}

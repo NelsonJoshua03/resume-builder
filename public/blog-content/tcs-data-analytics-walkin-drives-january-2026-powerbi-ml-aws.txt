@@ -1,0 +1,414 @@
+# TCS Data & Analytics Walk-in Drives January 2026: Power BI, Machine Learning & AWS Data Engineering Roles
+
+*Last Updated: January 20, 2026*
+
+Tata Consultancy Services (TCS) is conducting specialized walk-in drives for data and analytics professionals in Hyderabad and Kolkata. These opportunities cater to experienced professionals (5-12 years) looking to work with cutting-edge data technologies.
+
+## 📍 Opportunity #1: Power BI Developer
+
+### Key Details:
+- **Company:** Tata Consultancy Services (TCS)
+- **Date:** January 28, 2026 (Wednesday)
+- **Location:** Hyderabad (On-site)
+- **Experience:** 5 - 12 years
+- **Role:** Power BI Developer
+- **Drive Type:** Weekday Walk-in Drive
+- **Applicants:** 87 already applied
+
+### What They're Looking For:
+TCS wants Power BI developers who can bridge the gap between business requirements and technical implementation:
+
+#### Core Responsibilities:
+1. **Business Requirements Translation:**
+   - Convert business requirements into technical specifications
+   - Estimate time needed for report development
+
+2. **Data Modeling:**
+   - Create relationships between data
+   - Develop tabular and multidimensional data models
+   - Understand dimensional modeling concepts
+
+3. **Visualization Development:**
+   - Create dashboards and interactive visual reports
+   - Develop custom charts and calculations
+   - Use filters and graphs effectively
+
+4. **Technical Implementation:**
+   - Perform DAX queries and functions
+   - Execute SQL queries for optimal results
+   - Document algorithms, parameters, models, and relations
+
+### Required Skills:
+- **Power BI Expertise:** Dashboard and report creation
+- **DAX Proficiency:** Queries and functions
+- **SQL Skills:** Querying and optimization
+- **Data Modeling:** Dimensional modeling concepts
+- **Communication:** Ability to communicate with both business and technical teams
+
+### Ideal Candidate Profile:
+- 5-12 years of Power BI development experience
+- Strong understanding of data visualization best practices
+- Experience with enterprise-level reporting solutions
+- Ability to handle complex data transformation requirements
+
+**Note:** This is a weekday walk-in drive (Wednesday), which is less common than weekend drives, making it potentially less crowded.
+
+---
+
+## 📍 Opportunity #2: Analytics Consultant (Machine Learning)
+
+### Key Details:
+- **Company:** Tata Consultancy Services (TCS)
+- **Date:** January 31, 2026 (Saturday)
+- **Time:** 9:30 AM - 1:00 PM
+- **Location:** Kolkata (On-site)
+- **Experience:** 5+ years
+- **Role:** Analytics Consultant (Machine Learning)
+- **Applicants:** 71 already applied
+
+### Must-Have Skills:
+1. **AI/ML Marketing Expertise:**
+   - Exposure to advanced analytics in marketing use cases
+   - Experience with AI/ML models for marketing applications
+
+2. **Cloud & Modern Architecture:**
+   - Experience with cloud platforms (AWS, Azure, GCP)
+   - Knowledge of modern data architectures (data lake, lakehouse)
+
+3. **Martech Implementation:**
+   - Experience with Martech tools (Adobe, Salesforce etc.)
+
+4. **Business Partnership:**
+   - Ability to align analytics solutions with business priorities
+   - Partner with marketing and technology stakeholders
+
+### Good-to-Have Skills:
+- **Data Management:**
+  - Master data management (MDM)
+  - Data governance frameworks
+  - Data quality management
+
+- **MarTech Stack:**
+  - Deep understanding of CRM, CDP, marketing automation
+  - Campaign management tools
+  - Digital analytics platforms
+
+- **Visualization Tools:**
+  - Power BI, Tableau, Qlik knowledge
+
+### Venue:
+TCS - Kolkata, Ecospace Business Park, Block 1B, Plot No. II/F/11, Action Area II, New Town, Kolkata, West Bengal 700160
+
+**Important Note:** "Only Walk-in Drive interested Candidates and Eligible Candidates can apply"
+
+---
+
+## 📍 Opportunity #3: AWS Data Engineer
+
+### Key Details:
+- **Company:** Tata Consultancy Services (TCS)
+- **Date:** January 28, 2026
+- **Location:** Hyderabad (On-site)
+- **Experience:** 5 - 12 years
+- **Role:** AWS Data Engineer
+- **Drive Type:** Weekday Walk-in Drive
+- **Applicants:** 14 already applied
+
+### Must-Have Technical Skills:
+- **AWS Services:**
+  - Glue (ETL service)
+  - Redshift (Data warehousing)
+  - S3 (Object storage)
+  - Lambda (Serverless computing)
+  - Step-functions/Airflow (Workflow orchestration)
+
+- **Programming:**
+  - PySpark and Python
+
+### Required Experience:
+1. **Implementation Expertise:**
+   - Hands-on experience implementing Data Lake & Data Warehouse
+   - Using defined tools and technologies
+
+2. **Architecture Knowledge:**
+   - Data Lake, Delta Lake and DW design & architecture
+   - Understanding of different data layers
+   - Audit mechanisms and Data Quality concepts
+
+3. **Data Processing:**
+   - Incremental data load handling
+   - CDC (Change Data Capture)
+   - Delta lake implementation
+
+4. **Data Modeling:**
+   - Star Schema
+   - Snowflake schema
+
+5. **Additional Knowledge:**
+   - Data governance tools (collibra, lake formation)
+   - CICD and DevOps tools experience
+
+### What Makes This Role Special:
+This role requires deep AWS data ecosystem knowledge with hands-on implementation experience. TCS is looking for engineers who can design and build complete data solutions on AWS.
+
+---
+
+## 🎯 Comparison of All Three Roles
+
+| Role | Location | Experience | Key Technologies | Interview Date |
+|------|----------|------------|------------------|----------------|
+| Power BI Developer | Hyderabad | 5-12 years | Power BI, DAX, SQL, Data Modeling | Jan 28 (Wed) |
+| Analytics Consultant | Kolkata | 5+ years | AI/ML, Cloud, Martech, BI Tools | Jan 31 (Sat) |
+| AWS Data Engineer | Hyderabad | 5-12 years | AWS Glue/Redshift/S3, PySpark, Python | Jan 28 (Wed) |
+
+**Key Insight:** Hyderabad has two opportunities on the same day (Jan 28), while Kolkata has a specialized AI/ML role on Jan 31.
+
+---
+
+## 🚀 Preparation Strategy for Each Role
+
+### For Power BI Developer Candidates:
+
+#### Technical Preparation:
+1. **Power BI Deep Dive:**
+   - Practice complex DAX calculations
+   - Master Power Query transformations
+   - Understand performance optimization
+
+2. **SQL Skills:**
+   - Complex joins and aggregations
+   - Query optimization techniques
+   - Stored procedures knowledge
+
+3. **Portfolio Development:**
+   - Prepare sample dashboards
+   - Document data modeling decisions
+   - Showcase visualization best practices
+
+#### Interview Preparation:
+- Prepare examples of converting business requirements to technical specs
+- Be ready to explain dimensional modeling concepts
+- Practice explaining complex data relationships
+
+### For Analytics Consultant (ML) Candidates:
+
+#### Technical Preparation:
+1. **AI/ML Marketing Use Cases:**
+   - Customer segmentation models
+   - Churn prediction algorithms
+   - Recommendation systems
+   - Marketing attribution models
+
+2. **Cloud Platform Knowledge:**
+   - AWS SageMaker/Azure ML Studio/GCP AI Platform
+   - Data storage and processing services
+   - Serverless computing options
+
+3. **Martech Stack:**
+   - CRM integration patterns
+   - CDP implementation experience
+   - Marketing automation workflows
+
+#### Business Preparation:
+- Prepare to discuss business impact of analytics projects
+- Practice explaining technical concepts to non-technical stakeholders
+- Understand marketing KPIs and metrics
+
+### For AWS Data Engineer Candidates:
+
+#### Technical Preparation:
+1. **AWS Services Mastery:**
+   - Glue job development and optimization
+   - Redshift cluster management and tuning
+   - S3 data lake architecture patterns
+   - Lambda function development
+
+2. **PySpark Expertise:**
+   - DataFrame operations
+   - Performance optimization
+   - Error handling and debugging
+
+3. **Architecture Design:**
+   - Data lake vs data warehouse design
+   - Incremental load strategies
+   - CDC implementation patterns
+
+#### Practical Preparation:
+- Prepare examples of end-to-end data pipeline implementation
+- Be ready to discuss data governance approaches
+- Practice explaining complex architectures simply
+
+---
+
+## 📊 Skill Overlap Analysis
+
+### Common Across All Roles:
+- **Data Understanding:** All roles require strong data comprehension
+- **Problem Solving:** Analytical thinking and solution design
+- **Communication:** Ability to explain technical concepts
+
+### Role-Specific Focus:
+- **Power BI:** Visualization, reporting, business communication
+- **Analytics Consultant:** Business strategy, AI/ML application
+- **AWS Data Engineer:** Infrastructure, pipeline development, optimization
+
+---
+
+## 💡 Interview Day Strategy
+
+### General Tips for All Candidates:
+1. **Documentation:** Carry all educational and employment documents
+2. **Timing:** Arrive 30-45 minutes early (TCS interviews can have queues)
+3. **Professionalism:** Dress in business formal attire
+4. **Research:** Know TCS's recent projects in your domain
+
+### For Hyderabad Candidates (Jan 28):
+- **Planning:** Two different roles available on same day
+- **Choice:** Assess which role matches your skills better
+- **Backup:** Consider applying for both if qualified
+
+### For Kolkata Candidates (Jan 31):
+- **Specialization:** This is a niche AI/ML marketing role
+- **Preparation:** Focus on business impact stories
+- **Differentiation:** Highlight unique MarTech experiences
+
+---
+
+## 📝 Required Documents Checklist
+
+### All TCS Candidates Must Carry:
+- [ ] Updated Resume (Multiple copies)
+- [ ] Educational Certificates (10th, 12th, Graduation, Post-graduation)
+- [ ] Previous Employment Documents (Appointment letters, experience letters)
+- [ ] Payslips (Last 3 months)
+- [ ] Government ID Proof (Aadhar, PAN, Passport)
+- [ ] Passport Size Photographs
+
+### Additional for Technical Roles:
+- [ ] Certifications (AWS, Microsoft, etc.)
+- [ ] Project portfolio or GitHub links
+- [ ] Reference letters from previous employers
+
+---
+
+## 🎯 Career Growth Paths
+
+### Power BI Developer at TCS:
+- **Entry Path:** Power BI Developer
+- **Growth Path:** Senior BI Developer → BI Architect → Analytics Manager
+- **Skills Development:** Data engineering, cloud platforms, advanced analytics
+
+### Analytics Consultant at TCS:
+- **Entry Path:** Analytics Consultant
+- **Growth Path:** Senior Consultant → Practice Lead → Analytics Director
+- **Skills Development:** Advanced ML, business strategy, client management
+
+### AWS Data Engineer at TCS:
+- **Entry Path:** AWS Data Engineer
+- **Growth Path:** Senior Data Engineer → Data Architect → Cloud Data Lead
+- **Skills Development:** Multi-cloud expertise, data governance, team leadership
+
+---
+
+## 🔗 Preparation Resources
+
+### Technical Learning:
+- **Power BI:** Microsoft Learn Power BI paths
+- **AWS:** AWS Skill Builder, AWS Certified Data Analytics specialty
+- **Machine Learning:** Coursera ML Specialization, fast.ai courses
+
+### Resume Building:
+Need help creating data-focused resumes?
+👉 **[Free Resume Builder](https://careercraft.in/free-resume-builder)**
+
+### Career Strategy:
+Learn about data career paths and interview strategies:
+👉 **[AI Jobs Resume Strategy](https://careercraft.in/blog/how-to-land-ai-jobs-in-2026-resume-strategy)**
+
+### Practice Platforms:
+- **SQL:** LeetCode, HackerRank
+- **Data Engineering:** Datacamp, Dataquest
+- **Case Studies:** Analytics Vidhya, Kaggle
+
+---
+
+## ⚠️ Important Considerations
+
+### Location Factors:
+- **Hyderabad:** Major IT hub with competitive market
+- **Kolkata:** Growing analytics center with cost advantages
+
+### Experience Level:
+- All roles require minimum 5 years experience
+- Senior roles require 8+ years for leadership positions
+- 12 years maximum experience considered
+
+### Weekday vs Weekend Drives:
+- **Weekday (Jan 28):** Potentially less crowded, working professionals may need to take leave
+- **Weekend (Jan 31):** More accessible but possibly more competitive
+
+---
+
+## 📈 Market Demand Analysis
+
+### Power BI Developers:
+- **Demand:** High across industries
+- **Salary Range:** Competitive based on experience
+- **Skills Premium:** DAX and SQL expertise valued
+
+### Analytics Consultants:
+- **Demand:** Growing with AI adoption
+- **Salary Range:** Premium for ML marketing expertise
+- **Skills Premium:** Cloud + MarTech combination rare
+
+### AWS Data Engineers:
+- **Demand:** Very high in cloud migration projects
+- **Salary Range:** Among highest in data roles
+- **Skills Premium:** Full-stack AWS data ecosystem knowledge
+
+---
+
+## 🎯 Final Preparation Checklist
+
+### 1 Week Before:
+- [ ] Update resume with relevant keywords
+- [ ] Review technical concepts
+- [ ] Practice mock interviews
+- [ ] Gather all required documents
+
+### 2 Days Before:
+- [ ] Confirm travel arrangements
+- [ ] Review company information
+- [ ] Prepare questions for interviewers
+- [ ] Get adequate rest
+
+### Day Before:
+- [ ] Organize documents in folder
+- [ ] Plan outfit
+- [ ] Charge devices
+- [ ] Set multiple alarms
+
+### Interview Day:
+- [ ] Eat light breakfast
+- [ ] Arrive early
+- [ ] Stay calm and confident
+- [ ] Be yourself
+
+---
+
+## 📞 TCS Recruitment Policies
+
+### Important Notes:
+1. **No Fees:** TCS does not charge any recruitment fees
+2. **Verification:** All credentials will be verified
+3. **Process:** Multiple rounds may be conducted same day
+4. **Timing:** Interviews may take several hours
+
+### Fraud Alert:
+TCS has clear warnings about recruitment fraud. Never pay any money for job applications. Report suspicious offers immediately.
+
+---
+
+*All information verified from TCS LinkedIn job postings. CareerCraft is not affiliated with Tata Consultancy Services. Verify details from official TCS career portal before attending.*
+
+**These specialized data roles offer excellent career growth opportunities with India's largest IT services company. Prepare well and showcase your unique data expertise!** 🚀

@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED WITH LAZY LOADING
+// src/App.tsx - UPDATED WITH LAZY LOADING AND JOB DRIVE DETAIL ROUTES
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -68,11 +68,6 @@ import { initializeFirebase } from './firebase/config';
 import { firebaseSyncService } from './firebase/syncService';
 import { anonymousTracking } from './firebase/anonymousTracking';
 
-// Preload critical components on hover
-const preloadComponent = (component: () => Promise<any>) => {
-  return component();
-};
-
 function App() {
   // Initialize Firebase on app start (no consent required)
   useEffect(() => {
@@ -140,12 +135,19 @@ function App() {
                     <EditResumePage />
                   </Suspense>
                 } />
+                
+                {/* Job Drives Routes - Updated with detail route */}
                 <Route path="/latest-walk-in-drives-india" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <JobDrives />
                   </Suspense>
                 } />
                 <Route path="/job-drives" element={<Navigate to="/latest-walk-in-drives-india" replace />} />
+                <Route path="/job-drives/:driveId" element={
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <JobDrives />
+                  </Suspense>
+                } />
                 
                 {/* Government Exams route */}
                 <Route path="/government-exams" element={
