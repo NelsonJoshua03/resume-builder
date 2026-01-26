@@ -23,7 +23,7 @@ export default defineConfig({
       'firebase/analytics',
       'firebase/auth',
       'firebase/functions',
-      'firebase/storage'
+      'firebase-admin'
     ],
     include: [
       'react',
@@ -43,67 +43,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Better chunk splitting
+          // Simple chunk splitting
           if (id.includes('node_modules')) {
-            // Split Firebase modules
             if (id.includes('firebase')) {
-              if (id.includes('firebase/app')) return 'vendor-firebase-core'
-              if (id.includes('firebase/firestore')) return 'vendor-firebase-firestore'
-              if (id.includes('firebase/auth')) return 'vendor-firebase-auth'
-              if (id.includes('firebase/analytics')) return 'vendor-firebase-analytics'
-              if (id.includes('firebase/functions')) return 'vendor-firebase-functions'
-              return 'vendor-firebase-other'
+              return 'vendor-firebase'
             }
-            
-            // Split React
-            if (id.includes('react-dom') || id.includes('react/')) {
+            if (id.includes('react')) {
               return 'vendor-react'
             }
-            
-            // Split React Router
-            if (id.includes('react-router')) {
-              return 'vendor-router'
-            }
-            
-            // Split UI libraries
             if (id.includes('lucide-react')) {
               return 'vendor-icons'
             }
-            if (id.includes('react-icons')) {
-              return 'vendor-icons'
-            }
-            
-            // Split PDF/Image libraries
-            if (id.includes('html2canvas') || id.includes('jspdf')) {
-              return 'vendor-pdf'
-            }
-            
-            // Split Markdown libraries
-            if (id.includes('react-markdown') || id.includes('rehype') || id.includes('remark')) {
-              return 'vendor-markdown'
-            }
-            
-            // Split syntax highlighter
-            if (id.includes('react-syntax-highlighter')) {
-              return 'vendor-syntax'
-            }
-            
-            // Split Tailwind/typography
-            if (id.includes('@tailwindcss')) {
-              return 'vendor-tailwind'
-            }
-            
-            // Everything else
-            return 'vendor-other'
-          }
-          
-          // Split your own code by route/page
-          if (id.includes('src/components/')) {
-            if (id.includes('seo-pages/')) return 'seo-pages'
-            if (id.includes('job-pages/')) return 'job-pages'
-            if (id.includes('/admin/')) return 'admin-pages'
-            if (id.includes('/blog/')) return 'blog-pages'
-            return 'components'
+            return 'vendor'
           }
         },
         entryFileNames: 'assets/[name]-[hash].js',
@@ -111,10 +62,9 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash][extname]',
       },
     },
-    chunkSizeWarningLimit: 500, // Lower warning limit to catch issues earlier
+    chunkSizeWarningLimit: 1000,
     cssCodeSplit: true,
     target: 'es2020',
-    reportCompressedSize: true,
   },
   server: {
     port: 3001,
