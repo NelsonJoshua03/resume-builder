@@ -4,15 +4,16 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { 
-        "distDir": "dist",
-        "installCommand": "npm install --legacy-peer-deps",
-        "buildCommand": "npm run build:prod"
+      "config": {
+        "distDir": "dist"
       }
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
-    
     {
       "src": "/job-drives",
       "dest": "/latest-walk-in-drives-india",
@@ -43,15 +44,8 @@
       "dest": "/latest-job-updates-india",
       "status": 301
     },
-    
-    
     {
       "src": "/builder",
-      "dest": "/free-resume-builder",
-      "status": 301
-    },
-    {
-      "src": "/builder/",
       "dest": "/free-resume-builder",
       "status": 301
     },
@@ -61,17 +55,7 @@
       "status": 301
     },
     {
-      "src": "/resume-builder/",
-      "dest": "/free-resume-builder",
-      "status": 301
-    },
-    {
       "src": "/cv-builder",
-      "dest": "/cv-maker-online",
-      "status": 301
-    },
-    {
-      "src": "/cv-builder/",
       "dest": "/cv-maker-online",
       "status": 301
     },
@@ -81,17 +65,7 @@
       "status": 301
     },
     {
-      "src": "/resume-creator/",
-      "dest": "/online-resume-maker",
-      "status": 301
-    },
-    {
       "src": "/make-resume",
-      "dest": "/create-resume-online",
-      "status": 301
-    },
-    {
-      "src": "/make-resume/",
       "dest": "/create-resume-online",
       "status": 301
     },
@@ -101,17 +75,7 @@
       "status": 301
     },
     {
-      "src": "/create-resume/",
-      "dest": "/create-resume-online",
-      "status": 301
-    },
-    {
       "src": "/resume-maker",
-      "dest": "/online-resume-maker",
-      "status": 301
-    },
-    {
-      "src": "/resume-maker/",
       "dest": "/online-resume-maker",
       "status": 301
     },
@@ -121,17 +85,7 @@
       "status": 301
     },
     {
-      "src": "/ats-resume/",
-      "dest": "/ats-resume-builder",
-      "status": 301
-    },
-    {
       "src": "/online-resume",
-      "dest": "/online-resume-maker",
-      "status": 301
-    },
-    {
-      "src": "/online-resume/",
       "dest": "/online-resume-maker",
       "status": 301
     },
@@ -141,17 +95,7 @@
       "status": 301
     },
     {
-      "src": "/professional-resume/",
-      "dest": "/professional-resume-builder",
-      "status": 301
-    },
-    {
       "src": "/fresher-resume",
-      "dest": "/resume-builder-for-freshers",
-      "status": 301
-    },
-    {
-      "src": "/fresher-resume/",
       "dest": "/resume-builder-for-freshers",
       "status": 301
     },
@@ -161,17 +105,7 @@
       "status": 301
     },
     {
-      "src": "/engineer-resume/",
-      "dest": "/resume-builder-for-engineers",
-      "status": 301
-    },
-    {
       "src": "/it-resume",
-      "dest": "/resume-builder-for-it-jobs",
-      "status": 301
-    },
-    {
-      "src": "/it-resume/",
       "dest": "/resume-builder-for-it-jobs",
       "status": 301
     },
@@ -181,17 +115,7 @@
       "status": 301
     },
     {
-      "src": "/developer-resume/",
-      "dest": "/resume-builder-for-developers",
-      "status": 301
-    },
-    {
       "src": "/free-cv-maker",
-      "dest": "/cv-maker-online",
-      "status": 301
-    },
-    {
-      "src": "/free-cv-maker/",
       "dest": "/cv-maker-online",
       "status": 301
     },
@@ -201,329 +125,50 @@
       "status": 301
     },
     {
-      "src": "/cv-creator/",
-      "dest": "/cv-maker-online",
-      "status": 301
-    },
-    
-    
-    {
-      "src": "/",
-      "headers": {
-        "cache-control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    
-    
-    {
-      "src": "/(about|privacy|terms|cookies|contact|fresh-graduate-guide)",
-      "headers": {
-        "cache-control": "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    
-    
-    {
-      "src": "/(free-resume-builder|ats-resume-builder|online-resume-maker|cv-maker-online|professional-resume-builder|resume-builder-for-freshers|resume-builder-for-engineers|resume-builder-for-it-jobs|resume-builder-for-developers|create-resume-online)",
-      "headers": {
-        "cache-control": "public, max-age=0, s-maxage=172800, stale-while-revalidate=604800",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    
-    
-    {
-      "src": "/(latest-job-updates-india|latest-walk-in-drives-india|government-exams|job-disciplines)",
-      "headers": {
-        "cache-control": "public, max-age=300, s-maxage=1800, stale-while-revalidate=86400",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    
-    
-    {
-      "src": "/blog",
-      "headers": {
-        "cache-control": "public, max-age=0, s-maxage=7200, stale-while-revalidate=86400",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    {
-      "src": "/blog/(.*)",
-      "headers": {
-        "cache-control": "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    
-    
-    {
-      "src": "/admin/(.*)",
-      "headers": {
-        "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
-        "x-vercel-cache": "PRIVATE"
-      }
-    },
-    
-    
-    {
-      "src": "/job-details/(.*)",
-      "headers": {
-        "cache-control": "public, max-age=600, s-maxage=3600, stale-while-revalidate=86400",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    
-    
-    {
-      "src": "/assets/(.*\\.js)",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable",
-        "x-vercel-cache": "HIT",
-        "vary": "Accept-Encoding"
-      }
-    },
-    
-    
-    {
-      "src": "/assets/(.*\\.css)",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable",
-        "x-vercel-cache": "HIT",
-        "vary": "Accept-Encoding"
-      }
-    },
-    
-    
-    {
-      "src": "/assets/(.*\\.(ico|svg|png|jpg|jpeg|gif|webp|avif))",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable",
-        "x-vercel-cache": "HIT"
-      }
-    },
-    
-    
-    {
-      "src": "/assets/(.*\\.(woff|woff2|ttf|eot))",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable",
-        "x-vercel-cache": "HIT",
-        "vary": "Accept-Encoding"
-      }
-    },
-    
-    
-    {
-      "src": "/images/(.*)",
-      "headers": {
-        "cache-control": "public, max-age=86400, stale-while-revalidate=604800",
-        "x-vercel-cache": "HIT"
-      }
-    },
-    
-   
-    {
-      "src": "/og/(.*)",
-      "headers": {
-        "cache-control": "public, max-age=86400, stale-while-revalidate=604800",
-        "x-vercel-cache": "HIT"
-      }
-    },
-    
-   
-    {
-      "src": "/(favicon\\.ico|apple-touch-icon\\.png|android-chrome-.*\\.png|favicon-.*\\.png)",
-      "headers": {
-        "cache-control": "public, max-age=86400",
-        "x-vercel-cache": "HIT"
-      }
-    },
-    
-   
-    {
-      "src": "/(manifest\\.json|service-worker\\.js|sw\\.js)",
-      "headers": {
-        "cache-control": "public, max-age=0, must-revalidate",
-        "x-vercel-cache": "PRIVATE",
-        "content-type": "application/json"
-      }
-    },
-    
-    
-    {
-      "src": "/(sitemap\\.xml|sitemap-index\\.xml|sitemap-.*\\.xml)",
-      "headers": {
-        "cache-control": "public, max-age=3600, stale-while-revalidate=86400",
-        "content-type": "application/xml; charset=utf-8",
-        "x-vercel-cache": "REVALIDATED"
-      }
-    },
-    {
-      "src": "/(robots\\.txt|ads\\.txt)",
-      "headers": {
-        "cache-control": "public, max-age=86400, stale-while-revalidate=604800",
-        "content-type": "text/plain; charset=utf-8",
-        "x-vercel-cache": "HIT"
-      }
-    },
-    
-    
-    {
-      "src": "/api/(.*)",
-      "headers": {
-        "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
-        "x-vercel-cache": "PRIVATE",
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "access-control-allow-headers": "Content-Type, Authorization"
-      }
-    },
-    
-   
-    {
-      "src": "/(.*)",
-      "dest": "/index.html",
-      "headers": {
-        "cache-control": "public, max-age=0, s-maxage=3600, must-revalidate",
-        "x-vercel-cache": "REVALIDATED",
-        "x-robots-tag": "index, follow, max-image-preview:large",
-        
-        
-        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-        "x-frame-options": "SAMEORIGIN",
-        "x-content-type-options": "nosniff",
-        "referrer-policy": "strict-origin-when-cross-origin",
-        "permissions-policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
-        
-       
-        "x-dns-prefetch-control": "on",
-        "x-download-options": "noopen",
-        "x-permitted-cross-domain-policies": "none",
-        
-       
-        "x-vercel-id": "::1::",
-        "x-vercel-cache": "REVALIDATED",
-        
-        
-        "vary": "Accept-Encoding",
-        
-        
-        "feature-policy": "camera 'none'; microphone 'none'; geolocation 'none'"
-      }
-    }
-  ],
-  
-  
-  "env": {
-    "NODE_ENV": "production",
-    "NODE_OPTIONS": "--max-old-space-size=4096"
-  },
-  
-  "regions": ["bom1"], 
-  
-  
-  "build": {
-    "env": {
-      "NODE_ENV": "production",
-      "NODE_OPTIONS": "--max-old-space-size=4096"
-    }
-  },
-  
-  
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 10,
-      "memory": 1024
-    }
-  },
-  
-  
-  "github": {
-    "enabled": false,
-    "silent": true
-  },
-  
-
-  "rewrites": [
-    {
-      "source": "/((?!api|assets|images|og|sitemap|robots|manifest|service-worker|sw|favicon).*)",
-      "destination": "/index.html"
-    }
-  ],
-  
- 
-  "redirects": [
-    {
-      "source": "/home",
+      "src": "/home",
       "destination": "/",
       "permanent": true
     },
     {
-      "source": "/index",
+      "src": "/index",
       "destination": "/",
       "permanent": true
     },
     {
-      "source": "/career",
+      "src": "/career",
       "destination": "/",
       "permanent": true
     },
     {
-      "source": "/jobs",
+      "src": "/jobs",
       "destination": "/latest-job-updates-india",
       "permanent": true
     },
     {
-      "source": "/resume",
+      "src": "/resume",
       "destination": "/free-resume-builder",
       "permanent": true
     },
     {
-      "source": "/cv",
+      "src": "/cv",
       "destination": "/cv-maker-online",
       "permanent": true
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
-  
-  
- "headers": [
-    {
-      "source": "/assets/(.*\\.(js|css))",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        },
-        {
-          "key": "Vary",
-          "value": "Accept-Encoding"
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.(ico|png|jpg|jpeg|gif|svg|webp|avif))",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400"
-        }
-      ]
-    },
-    {
-      "source": "/(.*\\.(woff|woff2|ttf|eot))",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
-      ]
-    }
-  ]
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "regions": ["bom1"],
+  "github": {
+    "enabled": true,
+    "silent": false
+  }
 }
