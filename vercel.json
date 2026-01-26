@@ -5,156 +5,21 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist",
-        "installCommand": "npm install --legacy-peer-deps",
-        "buildCommand": "npm run build:prod"
+        "distDir": "dist"
       }
-    },
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/job-drives",
-      "dest": "/latest-walk-in-drives-india",
-      "status": 301
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
     },
     {
-      "src": "/job-drives/(.*)",
-      "dest": "/latest-walk-in-drives-india",
-      "status": 301
-    },
-    {
-      "src": "/job-applications",
-      "dest": "/latest-job-updates-india",
-      "status": 301
-    },
-    {
-      "src": "/job-applications/(.*)",
-      "dest": "/latest-job-updates-india",
-      "status": 301
-    },
-    {
-      "src": "/latest-jobs-for-freshers-india",
-      "dest": "/latest-job-updates-india",
-      "status": 301
-    },
-    {
-      "src": "/latest-jobs-for-freshers-india/(.*)",
-      "dest": "/latest-job-updates-india",
-      "status": 301
-    },
-    {
-      "src": "/builder",
-      "dest": "/free-resume-builder",
-      "status": 301
-    },
-    {
-      "src": "/resume-builder",
-      "dest": "/free-resume-builder",
-      "status": 301
-    },
-    {
-      "src": "/cv-builder",
-      "dest": "/cv-maker-online",
-      "status": 301
-    },
-    {
-      "src": "/resume-creator",
-      "dest": "/online-resume-maker",
-      "status": 301
-    },
-    {
-      "src": "/make-resume",
-      "dest": "/create-resume-online",
-      "status": 301
-    },
-    {
-      "src": "/create-resume",
-      "dest": "/create-resume-online",
-      "status": 301
-    },
-    {
-      "src": "/resume-maker",
-      "dest": "/online-resume-maker",
-      "status": 301
-    },
-    {
-      "src": "/ats-resume",
-      "dest": "/ats-resume-builder",
-      "status": 301
-    },
-    {
-      "src": "/online-resume",
-      "dest": "/online-resume-maker",
-      "status": 301
-    },
-    {
-      "src": "/professional-resume",
-      "dest": "/professional-resume-builder",
-      "status": 301
-    },
-    {
-      "src": "/fresher-resume",
-      "dest": "/resume-builder-for-freshers",
-      "status": 301
-    },
-    {
-      "src": "/engineer-resume",
-      "dest": "/resume-builder-for-engineers",
-      "status": 301
-    },
-    {
-      "src": "/it-resume",
-      "dest": "/resume-builder-for-it-jobs",
-      "status": 301
-    },
-    {
-      "src": "/developer-resume",
-      "dest": "/resume-builder-for-developers",
-      "status": 301
-    },
-    {
-      "src": "/free-cv-maker",
-      "dest": "/cv-maker-online",
-      "status": 301
-    },
-    {
-      "src": "/cv-creator",
-      "dest": "/cv-maker-online",
-      "status": 301
-    },
-    {
-      "src": "/home",
-      "dest": "/",
-      "status": 301
-    },
-    {
-      "src": "/index",
-      "dest": "/",
-      "status": 301
-    },
-    {
-      "src": "/career",
-      "dest": "/",
-      "status": 301
-    },
-    {
-      "src": "/jobs",
-      "dest": "/latest-job-updates-india",
-      "status": 301
-    },
-    {
-      "src": "/resume",
-      "dest": "/free-resume-builder",
-      "status": 301
-    },
-    {
-      "src": "/cv",
-      "dest": "/cv-maker-online",
-      "status": 301
+      "src": "/(.*\\.(js|css|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|mp4|webm))",
+      "dest": "/$1"
     },
     {
       "src": "/api/(.*)",
@@ -164,13 +29,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "regions": ["bom1"],
-  "github": {
-    "enabled": true,
-    "silent": false
-  }
+  ]
 }

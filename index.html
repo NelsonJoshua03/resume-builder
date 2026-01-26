@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Content Security Policy - FIXED FOR VERCEL -->
+    <!-- REMOVE OR SIMPLIFY CSP TEMPORARILY -->
+    <!-- 
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
                    script-src 'self' 'unsafe-inline' 'unsafe-eval'
@@ -16,7 +17,7 @@
                            https://www.gstatic.com
                            https://*.gstatic.com
                            https://us-central1-careercraft-36711.cloudfunctions.net
-                           https://unpkg.com;  <!-- ADDED -->
+                           https://unpkg.com;
                    style-src 'self' 'unsafe-inline' 
                            https://cdnjs.cloudflare.com 
                            https://fonts.googleapis.com;
@@ -37,6 +38,16 @@
                            https://us-central1-careercraft-36711.cloudfunctions.net
                            https://us-central1-careercraft-36711.cloudfunctions.net/*;
                    form-action 'self' https:;">
+    -->
+    
+    <!-- SIMPLE CSP FOR NOW (Add back after deployment works) -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self' https:;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval' https:;
+                   style-src 'self' 'unsafe-inline' https:;
+                   img-src 'self' data: https: blob:;
+                   font-src 'self' https: data:;
+                   connect-src 'self' https: wss:;">
     
     <!-- CRITICAL CSS (inline to avoid render blocking) -->
     <style>
