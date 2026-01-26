@@ -1,4 +1,4 @@
-// src/App.tsx - UPDATED WITH LAZY LOADING AND JOB DRIVE DETAIL ROUTES
+// src/App.tsx - SIMPLIFIED WITH SINGLE JOB PAGE
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { ResumeProvider } from './components/ResumeContext';
@@ -18,7 +18,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 // Lazy components
 const ResumeBuilder = lazy(() => import("./components/ResumeBuilder"));
 const JobDisciplines = lazy(() => import("./components/JobDisciplines"));
-const JobApplications = lazy(() => import("./components/JobApplications"));
+const JobApplications = lazy(() => import("./components/JobApplications")); // SINGLE JOB PAGE
 const Blog = lazy(() => import("./components/Blog"));
 const BlogPost = lazy(() => import("./components/BlogPost"));
 const MechanicalEngineering = lazy(() => import("./components/job-pages/MechanicalEngineering"));
@@ -32,8 +32,6 @@ const AdminJobPosting = lazy(() => import("./components/AdminJobPosting"));
 const FreshGraduateGuide = lazy(() => import('./components/FreshGraduateGuide'));
 const JobDrives = lazy(() => import('./components/JobDrives'));
 const AdminJobDrives = lazy(() => import('./components/AdminJobDrives'));
-const GovernmentExams = lazy(() => import("./components/GovernmentExams"));
-const AdminGovernmentExams = lazy(() => import("./components/AdminGovernmentExams"));
 const EditResumePage = lazy(() => import('./components/EditResumePage'));
 const JobDetails = lazy(() => import("./components/JobDetails"));
 
@@ -97,6 +95,8 @@ function App() {
               <Routes>
                 {/* Main Pages */}
                 <Route path="/" element={<HomePage />} />
+                
+                {/* SINGLE JOB LISTINGS PAGE - All job URLs point here */}
                 <Route path="/latest-job-updates-india" element={
                   <Suspense fallback={<LoadingSpinner message="Loading jobs..." />}>
                     <JobApplications />
@@ -136,7 +136,7 @@ function App() {
                   </Suspense>
                 } />
                 
-                {/* Job Drives Routes - Updated with detail route */}
+                {/* Job Drives Routes */}
                 <Route path="/latest-walk-in-drives-india" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <JobDrives />
@@ -146,13 +146,6 @@ function App() {
                 <Route path="/job-drives/:driveId" element={
                   <Suspense fallback={<LoadingSpinner />}>
                     <JobDrives />
-                  </Suspense>
-                } />
-                
-                {/* Government Exams route */}
-                <Route path="/government-exams" element={
-                  <Suspense fallback={<LoadingSpinner />}>
-                    <GovernmentExams />
                   </Suspense>
                 } />
 
@@ -268,17 +261,6 @@ function App() {
                     <Suspense fallback={<LoadingSpinner />}>
                       <AdminProtectedRoute>
                         <AdminJobDrives />
-                      </AdminProtectedRoute>
-                    </Suspense>
-                  } 
-                />
-                
-                <Route 
-                  path="/admin/government-exams" 
-                  element={
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <AdminProtectedRoute>
-                        <AdminGovernmentExams />
                       </AdminProtectedRoute>
                     </Suspense>
                   } 

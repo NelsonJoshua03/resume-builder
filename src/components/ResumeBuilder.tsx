@@ -16,6 +16,33 @@ import { isAdmin } from '../utils/adminAuth';
 
 // Enhanced template configuration with unique styling for each template
 const TEMPLATES: TemplatesMap = {
+  ats: {
+    id: 'ats',
+    name: 'ATS Optimized',
+    background: 'bg-white',
+    textColor: 'text-gray-900',
+    accentColor: 'text-gray-800',
+    borderColor: 'border-gray-600',
+    buttonColor: 'bg-gray-800 hover:bg-gray-700',
+    headerBg: 'bg-gray-800',
+    headerText: 'text-white',
+    sectionBg: 'bg-gray-50',
+    description: 'Maximum ATS compatibility with clean, single-column layout',
+    layout: 'ats',
+    colors: {
+      primary: '#1f2937',
+      secondary: '#374151',
+      accent: '#6b7280',
+      background: '#ffffff',
+      text: '#111827'
+    },
+    formStyle: {
+      sectionBg: 'bg-white border border-gray-300 rounded-md',
+      headerColor: 'text-gray-900',
+      borderColor: 'border-gray-400',
+      accentColor: 'text-gray-700'
+    }
+  },
   creative: {
     id: 'creative',
     name: 'Creative',
@@ -119,33 +146,6 @@ const TEMPLATES: TemplatesMap = {
     },
     formStyle: {
       sectionBg: 'bg-gradient-to-br from-gray-100 to-blue-100 rounded-lg border border-gray-300',
-      headerColor: 'text-gray-900',
-      borderColor: 'border-gray-400',
-      accentColor: 'text-gray-700'
-    }
-  },
-  ats: {
-    id: 'ats',
-    name: 'ATS Optimized',
-    background: 'bg-white',
-    textColor: 'text-gray-900',
-    accentColor: 'text-gray-800',
-    borderColor: 'border-gray-600',
-    buttonColor: 'bg-gray-800 hover:bg-gray-700',
-    headerBg: 'bg-gray-800',
-    headerText: 'text-white',
-    sectionBg: 'bg-gray-50',
-    description: 'Maximum ATS compatibility with clean, single-column layout',
-    layout: 'ats',
-    colors: {
-      primary: '#1f2937',
-      secondary: '#374151',
-      accent: '#6b7280',
-      background: '#ffffff',
-      text: '#111827'
-    },
-    formStyle: {
-      sectionBg: 'bg-white border border-gray-300 rounded-md',
       headerColor: 'text-gray-900',
       borderColor: 'border-gray-400',
       accentColor: 'text-gray-700'
@@ -537,7 +537,7 @@ const ResumeBuilder = () => {
       });
       
       setTimeout(() => {
-        const currentTemplate = TEMPLATES[resumeData.selectedTemplate as keyof typeof TEMPLATES] || TEMPLATES.creative;
+        const currentTemplate = TEMPLATES[resumeData.selectedTemplate as keyof typeof TEMPLATES] || TEMPLATES.ats;
         setShowDownloadPrompt(true);
       }, 500);
     }
@@ -551,7 +551,7 @@ const ResumeBuilder = () => {
     trackFirebaseButtonClick('update_colors', 'color_customizer', '/builder');
   };
 
-  const currentTemplate = TEMPLATES[resumeData.selectedTemplate as keyof typeof TEMPLATES] || TEMPLATES.creative;
+  const currentTemplate = TEMPLATES[resumeData.selectedTemplate as keyof typeof TEMPLATES] || TEMPLATES.ats;
   const customColors = resumeData.customColors[resumeData.selectedTemplate] || currentTemplate.colors;
 
   const toggleMobilePreview = () => {

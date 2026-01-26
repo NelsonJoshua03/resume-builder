@@ -1,4 +1,4 @@
-// src/components/Layout.tsx - UPDATED: Simplified navigation
+// src/components/Layout.tsx - UPDATED: Removed Government Exams
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -53,7 +53,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <title>CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform</title>
         <meta name="title" content="CareerCraft.in - Free ATS Resume Builder & Job Portal | India's Career Platform" />
         <meta name="description" content="Create professional ATS-optimized resumes for Indian job market. Find latest job openings in IT, engineering, marketing sectors across India. Free resume builder with ATS templates." />
-        <meta name="keywords" content="resume builder India, ATS resume maker, job portal India, Indian job search, engineering jobs India, IT jobs India, fresher jobs India, free resume maker, CV builder India, career platform India, government exams, walk-in drives, experienced jobs India, senior jobs" />
+        <meta name="keywords" content="resume builder India, ATS resume maker, job portal India, Indian job search, engineering jobs India, IT jobs India, fresher jobs India, free resume maker, CV builder India, career platform India, walk-in drives, experienced jobs India, senior jobs" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <meta name="author" content="CareerCraft India" />
@@ -127,18 +127,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               
               {/* Navigation Menu - SIMPLIFIED */}
               <div className="hidden md:flex space-x-4 lg:space-x-6">
-                {/* Government Exams */}
-                <Link 
-                  to="/government-exams" 
-                  className={`font-medium transition-colors text-sm lg:text-base ${
-                    location.pathname.includes('/government-exams') 
-                      ? 'text-blue-600' 
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                >
-                  Government Exams
-                </Link>
-                
                 {/* Job Disciplines */}
                 <Link 
                   to="/job-disciplines" 
@@ -319,7 +307,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <h3 className="text-lg md:text-xl font-bold mb-3 md:mb-4">Quick Links</h3>
                 <ul className="space-y-1 md:space-y-2">
                   <li><Link to="/" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Home</Link></li>
-                  <li><Link to="/government-exams" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Government Exams</Link></li>
                   <li><Link to="/job-disciplines" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Job Disciplines</Link></li>
                   <li><Link to="/latest-job-updates-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Latest Jobs 2026</Link></li>
                   <li><Link to="/latest-walk-in-drives-india" className="text-gray-400 hover:text-white transition-colors text-sm md:text-base">Walk-in Drives</Link></li>
