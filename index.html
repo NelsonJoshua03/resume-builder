@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Content Security Policy - UPDATED FOR PERFORMANCE -->
+    <!-- Content Security Policy - FIXED FOR VERCEL -->
     <meta http-equiv="Content-Security-Policy" 
           content="default-src 'self' https:;
                    script-src 'self' 'unsafe-inline' 'unsafe-eval'
@@ -15,7 +15,8 @@
                            https://*.googleapis.com
                            https://www.gstatic.com
                            https://*.gstatic.com
-                           https://us-central1-careercraft-36711.cloudfunctions.net;
+                           https://us-central1-careercraft-36711.cloudfunctions.net
+                           https://unpkg.com;  <!-- ADDED -->
                    style-src 'self' 'unsafe-inline' 
                            https://cdnjs.cloudflare.com 
                            https://fonts.googleapis.com;
@@ -495,6 +496,56 @@
       });
     </script>
     
+    <!-- WEB VITALS TRACKING (MOVED BEFORE CSP VIOLATION) -->
+    <script>
+      // Load web-vitals from alternative source or remove if causing issues
+      setTimeout(function() {
+        if ('performance' in window && 'getEntriesByType' in performance) {
+          // Track Core Web Vitals manually if web-vitals script fails
+          const logWebVitals = () => {
+            const navTiming = performance.getEntriesByType('navigation')[0];
+            if (navTiming) {
+              const ttfb = navTiming.responseStart - navTiming.requestStart;
+              if (window.DEBUG_MODE) {
+                console.log('📊 TTFB:', ttfb.toFixed(2), 'ms');
+              }
+            }
+            
+            // Track LCP
+            new PerformanceObserver((entryList) => {
+              const entries = entryList.getEntries();
+              const lastEntry = entries[entries.length - 1];
+              if (window.DEBUG_MODE) {
+                console.log('📊 LCP:', lastEntry?.startTime?.toFixed(2) || 'N/A', 'ms');
+              }
+            }).observe({ type: 'largest-contentful-paint', buffered: true });
+            
+            // Track CLS
+            new PerformanceObserver((entryList) => {
+              for (const entry of entryList.getEntries()) {
+                if (window.DEBUG_MODE) {
+                  console.log('📊 CLS:', entry.value?.toFixed(4) || 'N/A');
+                }
+              }
+            }).observe({ type: 'layout-shift', buffered: true });
+          };
+          
+          // Run after page is fully loaded
+          window.addEventListener('load', () => {
+            setTimeout(logWebVitals, 1000);
+          });
+        }
+        
+        // Final performance log
+        if (window.DEBUG_MODE) {
+          const loadTime = performance.now() - window.__PERFORMANCE_START;
+          console.log('🏁 Page fully loaded in', loadTime.toFixed(0), 'ms');
+          console.log('Firebase loaded:', window.__FIREBASE_LOADED);
+          console.log('Backend ready:', window.__BACKEND_READY);
+        }
+      }, 1000);
+    </script>
+    
     <!-- FIREBASE ANALYTICS & AUTH (non-critical - loaded after main content) -->
     <script type="module" defer>
       // Load non-critical Firebase modules after main content
@@ -534,55 +585,6 @@
         `;
         document.head.appendChild(script);
       }, 2000); // Delay to prioritize main content
-    </script>
-    
-    <!-- WEB VITALS TRACKING (non-critical) -->
-    <script src="https://unpkg.com/web-vitals@3/dist/web-vitals.attribution.iife.js" defer></script>
-    <script defer>
-      // Track Core Web Vitals after page is interactive
-      window.addEventListener('load', function() {
-        setTimeout(function() {
-          if ('webVitals' in window) {
-            // Send to Google Analytics
-            const sendToGoogleAnalytics = ({ name, value, id }) => {
-              if (typeof window.gtag !== 'undefined') {
-                window.gtag('event', name, {
-                  event_category: 'Web Vitals',
-                  event_label: id,
-                  value: Math.round(name === 'CLS' ? value * 1000 : value),
-                  non_interaction: true,
-                });
-              }
-            };
-            
-            webVitals.getCLS(sendToGoogleAnalytics);
-            webVitals.getFID(sendToGoogleAnalytics);
-            webVitals.getLCP(sendToGoogleAnalytics);
-            webVitals.getFCP(sendToGoogleAnalytics);
-            webVitals.getTTFB(sendToGoogleAnalytics);
-            
-            // Log in debug mode
-            if (window.DEBUG_MODE) {
-              const logWebVital = ({ name, value, rating }) => {
-                console.log(`📊 ${name}:`, value.toFixed(2), `(${rating})`);
-              };
-              webVitals.getCLS(logWebVital);
-              webVitals.getFID(logWebVital);
-              webVitals.getLCP(logWebVital);
-              webVitals.getFCP(logWebVital);
-              webVitals.getTTFB(logWebVital);
-            }
-          }
-          
-          // Final performance log
-          if (window.DEBUG_MODE) {
-            const loadTime = performance.now() - window.__PERFORMANCE_START;
-            console.log('🏁 Page fully loaded in', loadTime.toFixed(0), 'ms');
-            console.log('Firebase loaded:', window.__FIREBASE_LOADED);
-            console.log('Backend ready:', window.__BACKEND_READY);
-          }
-        }, 1000);
-      });
     </script>
     
     <!-- SEO Enhancement: Breadcrumb navigation for Google -->
