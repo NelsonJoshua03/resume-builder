@@ -5,7 +5,9 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist"
+        "distDir": "dist",
+        "installCommand": "npm install --legacy-peer-deps",
+        "buildCommand": "npm run build:prod"
       }
     },
     {
@@ -126,33 +128,33 @@
     },
     {
       "src": "/home",
-      "destination": "/",
-      "permanent": true
+      "dest": "/",
+      "status": 301
     },
     {
       "src": "/index",
-      "destination": "/",
-      "permanent": true
+      "dest": "/",
+      "status": 301
     },
     {
       "src": "/career",
-      "destination": "/",
-      "permanent": true
+      "dest": "/",
+      "status": 301
     },
     {
       "src": "/jobs",
-      "destination": "/latest-job-updates-india",
-      "permanent": true
+      "dest": "/latest-job-updates-india",
+      "status": 301
     },
     {
       "src": "/resume",
-      "destination": "/free-resume-builder",
-      "permanent": true
+      "dest": "/free-resume-builder",
+      "status": 301
     },
     {
       "src": "/cv",
-      "destination": "/cv-maker-online",
-      "permanent": true
+      "dest": "/cv-maker-online",
+      "status": 301
     },
     {
       "src": "/api/(.*)",
