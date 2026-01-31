@@ -1,4 +1,4 @@
-// src/components/AdminJobPosting.tsx - COMPLETE UPDATED VERSION WITH AUTHENTICATION AND JOB DETAILS LINK
+// src/components/AdminJobPosting.tsx - COMPLETE UPDATED VERSION WITH BATCH LINK OPERATIONS
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -12,7 +12,7 @@ import {
   Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle, 
   Database, WifiOff, GraduationCap, Award, DollarSign, Calendar,
   BookOpen, Users, TrendingUp, Eye, Briefcase, MapPin, Building,
-  LogIn, LogOut, Shield, Lock, UserCheck, ExternalLink
+  LogIn, LogOut, Shield, Lock, UserCheck, ExternalLink, Link as LinkIcon
 } from 'lucide-react';
 
 interface Job {
@@ -1003,7 +1003,114 @@ const AdminJobPosting: React.FC = () => {
       trackButtonClick('copy_job_link', 'job_management', 'admin_job_posting');
     }).catch(err => {
       console.error('Failed to copy link: ', err);
+      alert('Failed to copy link. Please try again.');
     });
+  };
+
+  // ================= OPTION 1 + OPTION 2: BATCH LINK OPERATIONS =================
+
+  // 1. Copy all job links to clipboard
+  const copyAllJobLinks = () => {
+    if (manualJobs.length === 0) {
+      alert('No jobs to copy links from.');
+      return;
+    }
+    
+    const allLinks = manualJobs.map(job => {
+      return `${window.location.origin}/job-details/${job.id} - ${job.title} at ${job.company}`;
+    }).join('\n\n');
+    
+    navigator.clipboard.writeText(allLinks).then(() => {
+      alert(`✅ Copied ${manualJobs.length} job links to clipboard!\n\nYou can paste them anywhere (Excel, Notepad, etc.)`);
+      trackButtonClick('copy_all_job_links', 'job_management', 'admin_job_posting');
+      trackFirebaseEvent('all_job_links_copied', 'Admin', 'batch_operations', {
+        job_count: manualJobs.length,
+        admin_email: authStatus.email
+      });
+    }).catch(err => {
+      console.error('Failed to copy links: ', err);
+      alert('Failed to copy links. Please try again.');
+    });
+  };
+
+  // 2. Download all job links as CSV/TXT file
+  const downloadAllJobLinks = () => {
+    if (manualJobs.length === 0) {
+      alert('No jobs to download links from.');
+      return;
+    }
+    
+    // CSV format with headers
+    const csvContent = [
+      ['Job ID', 'Job Title', 'Company', 'Location', 'Job Type', 'Experience', 'Job Details URL'],
+      ...manualJobs.map(job => [
+        job.id,
+        `"${job.title}"`,
+        `"${job.company}"`,
+        `"${job.location}"`,
+        `"${job.type}"`,
+        `"${job.experience || 'Not specified'}"`,
+        `${window.location.origin}/job-details/${job.id}`
+      ])
+    ].map(row => row.join(',')).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `careercraft-job-links-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`📥 Downloaded ${manualJobs.length} job links as CSV file!\n\nFile includes: Job ID, Title, Company, Location, Type, Experience, and URL`);
+    trackButtonClick('download_all_job_links', 'job_management', 'admin_job_posting');
+    trackFirebaseEvent('all_job_links_downloaded', 'Admin', 'batch_operations', {
+      job_count: manualJobs.length,
+      format: 'csv',
+      admin_email: authStatus.email
+    });
+  };
+
+  // 3. Get all job links as array (for programmatic use)
+  const getAllJobLinks = (): Array<{id: string, title: string, company: string, link: string}> => {
+    return manualJobs.map(job => ({
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      link: `${window.location.origin}/job-details/${job.id}`
+    }));
+  };
+
+  // 4. Display all job links in console
+  const displayAllJobLinks = () => {
+    if (manualJobs.length === 0) {
+      alert('No jobs to display.');
+      return;
+    }
+    
+    console.log('=== ALL JOB DETAILS LINKS ===');
+    console.log(`Total Jobs: ${manualJobs.length}`);
+    console.log('=============================');
+    
+    manualJobs.forEach((job, index) => {
+      console.log(`${index + 1}. ${job.title}`);
+      console.log(`   Company: ${job.company}`);
+      console.log(`   Location: ${job.location}`);
+      console.log(`   Type: ${job.type}`);
+      console.log(`   Experience: ${job.experience || 'Not specified'}`);
+      console.log(`   URL: ${window.location.origin}/job-details/${job.id}`);
+      console.log(`   ID: ${job.id}`);
+      console.log('---');
+    });
+    
+    // Also copy to clipboard
+    const linksList = manualJobs.map(job => 
+      `${job.title} - ${window.location.origin}/job-details/${job.id}`
+    ).join('\n');
+    
+    alert(`📊 Total ${manualJobs.length} jobs.\n\nCheck browser console (F12) for full details.\n\nFirst 3 jobs:\n${linksList.split('\n').slice(0, 3).join('\n')}`);
   };
 
   return (
@@ -1906,17 +2013,94 @@ Any Graduate..."
                 </button>
               </div>
 
+              {/* ========== OPTION 2: BATCH LINK OPERATIONS SECTION ========== */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <LinkIcon size={18} className="text-blue-600" />
+                  <h4 className="font-semibold text-blue-800">🔗 Get All Job Links At Once</h4>
+                </div>
+                <p className="text-blue-700 text-sm mb-3">
+                  Batch operations for managing all job details page links
+                </p>
+                
+                <div className="space-y-2">
+                  <button
+                    onClick={copyAllJobLinks}
+                    disabled={manualJobs.length === 0}
+                    className={`w-full text-sm font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-2 ${
+                      manualJobs.length > 0 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700' 
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <Copy size={14} />
+                    Copy All Job Links ({manualJobs.length})
+                  </button>
+                  
+                  <button
+                    onClick={downloadAllJobLinks}
+                    disabled={manualJobs.length === 0}
+                    className={`w-full text-sm font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-2 ${
+                      manualJobs.length > 0 
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700' 
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    <Download size={14} />
+                    Download All Links (CSV)
+                  </button>
+                  
+                  <div className="text-xs text-blue-600 mt-2 p-2 bg-blue-100 rounded">
+                    <p className="font-medium mb-1">📋 What you get:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>All job details page URLs</li>
+                      <li>Job titles and company names</li>
+                      <li>Locations and job types</li>
+                      <li>Experience requirements</li>
+                      <li>Format: CSV for Excel/Sheets</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               {/* Preview and Existing Jobs */}
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-bold text-gray-800">Latest Jobs ({manualJobs.length})</h3>
                   <div className="flex gap-2">
+                    {/* ========== OPTION 1: QUICK ACCESS BUTTONS ========== */}
+                    <button
+                      onClick={copyAllJobLinks}
+                      disabled={manualJobs.length === 0}
+                      className={`text-sm font-medium flex items-center gap-1 ${
+                        manualJobs.length > 0 
+                          ? 'text-blue-600 hover:text-blue-800' 
+                          : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                      title="Copy all job links"
+                    >
+                      <Copy size={14} />
+                      Copy Links
+                    </button>
+                    <button
+                      onClick={downloadAllJobLinks}
+                      disabled={manualJobs.length === 0}
+                      className={`text-sm font-medium flex items-center gap-1 ${
+                        manualJobs.length > 0 
+                          ? 'text-green-600 hover:text-green-800' 
+                          : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                      title="Download all job links"
+                    >
+                      <Download size={14} />
+                      Download Links
+                    </button>
                     <button
                       onClick={exportJobs}
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      title="Export all latest jobs"
+                      title="Export all latest jobs as JSON"
                     >
-                      Export
+                      Export JSON
                     </button>
                     <button
                       onClick={clearAllJobs}
