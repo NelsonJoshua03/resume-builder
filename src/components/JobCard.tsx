@@ -1,4 +1,4 @@
-// src/components/JobCard.tsx - UPDATED VERSION
+// src/components/JobCard.tsx - UPDATED VERSION WITH SVG ERROR FIX
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -114,7 +114,7 @@ const JobCard: React.FC<JobCardProps> = ({
     }
   };
 
-  // Handle undefined arrays safely
+  // Handle undefined arrays safely - FIXED WITH PROPER TYPING
   const requirements = Array.isArray(job.requirements) ? job.requirements : [];
   const qualifications = Array.isArray(job.qualifications) ? job.qualifications : [];
 
@@ -126,6 +126,9 @@ const JobCard: React.FC<JobCardProps> = ({
   const truncatedDescription = job.description.length > maxDescriptionLength 
     ? `${job.description.substring(0, maxDescriptionLength)}...` 
     : job.description;
+
+  // Ensure experience has a valid value
+  const experienceDisplay = job.experience || 'Experience not specified';
 
   return (
     <div className={`bg-white rounded-xl shadow-lg border hover:shadow-xl transition-all duration-300 ${featured ? 'border-amber-200 border-2' : 'border-gray-200'}`}>
@@ -201,12 +204,14 @@ const JobCard: React.FC<JobCardProps> = ({
           </span>
           <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
             <Award size={12} />
-            {job.experience || 'Experience not specified'}
+            {experienceDisplay}
           </span>
-          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-            <DollarSign size={12} />
-            {job.salary || 'Salary not disclosed'}
-          </span>
+          {job.salary && (
+            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+              <DollarSign size={12} />
+              {job.salary || 'Salary not disclosed'}
+            </span>
+          )}
           <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
             <Clock size={12} />
             {formatDate(job.postedDate)}

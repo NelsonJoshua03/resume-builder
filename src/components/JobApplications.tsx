@@ -928,7 +928,7 @@ const JobApplications: React.FC = () => {
         `"${job.type}"`,
         `"${job.sector}"`,
         `"${job.experience || 'Not specified'}"`,
-        `"${job.salary}"`,
+        `"${job.salary || ''}"`,
         `"${job.postedDate}"`,
         `"${job.applyLink}"`,
         job.views || 0,
@@ -1037,6 +1037,9 @@ const JobApplications: React.FC = () => {
       const postedDate = job.postedDate || new Date().toISOString().split('T')[0];
       const validThrough = new Date(new Date(postedDate).getTime() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
+      // Fix the salary.replace() error by checking if salary exists
+      const salaryValue = job.salary ? job.salary.replace(/[^0-9]/g, '') : '0';
+      
       return {
         "@context": "https://schema.org",
         "@type": "JobPosting",
@@ -1060,15 +1063,17 @@ const JobApplications: React.FC = () => {
             "addressCountry": "IN"
           }
         },
-        "baseSalary": {
-          "@type": "MonetaryAmount",
-          "currency": "INR",
-          "value": {
-            "@type": "QuantitativeValue",
-            "value": job.salary.replace(/[^0-9]/g, ''),
-            "unitText": "MONTH"
+        ...(salaryValue !== '0' && {
+          "baseSalary": {
+            "@type": "MonetaryAmount",
+            "currency": "INR",
+            "value": {
+              "@type": "QuantitativeValue",
+              "value": salaryValue,
+              "unitText": "MONTH"
+            }
           }
-        },
+        }),
         "applicantLocationRequirements": {
           "@type": "Country",
           "name": "India"
