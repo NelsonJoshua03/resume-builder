@@ -1,4 +1,4 @@
-// src/components/AdminJobPosting.tsx - COMPLETE UPDATED VERSION WITH AUTHENTICATION
+// src/components/AdminJobPosting.tsx - COMPLETE UPDATED VERSION WITH AUTHENTICATION AND JOB DETAILS LINK
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -12,7 +12,7 @@ import {
   Zap, Copy, Download, Upload, Trash2, Clock, AlertCircle, 
   Database, WifiOff, GraduationCap, Award, DollarSign, Calendar,
   BookOpen, Users, TrendingUp, Eye, Briefcase, MapPin, Building,
-  LogIn, LogOut, Shield, Lock, UserCheck
+  LogIn, LogOut, Shield, Lock, UserCheck, ExternalLink
 } from 'lucide-react';
 
 interface Job {
@@ -987,6 +987,22 @@ const AdminJobPosting: React.FC = () => {
         lines.push(qualification);
       }
       return lines.join('\n');
+    });
+  };
+
+  // Function to get job details page link
+  const getJobDetailsLink = (jobId: string): string => {
+    return `/job-details/${jobId}`;
+  };
+
+  // Function to copy job details link
+  const copyJobDetailsLink = (jobId: string) => {
+    const jobLink = `${window.location.origin}${getJobDetailsLink(jobId)}`;
+    navigator.clipboard.writeText(jobLink).then(() => {
+      alert('Job details link copied to clipboard!');
+      trackButtonClick('copy_job_link', 'job_management', 'admin_job_posting');
+    }).catch(err => {
+      console.error('Failed to copy link: ', err);
     });
   };
 
@@ -1980,6 +1996,26 @@ Any Graduate..."
                               <p className="text-xs text-gray-400 mt-1">
                                 Added: {manualJob.addedTimestamp ? new Date(manualJob.addedTimestamp).toLocaleDateString('en-IN') : 'Recently'}
                               </p>
+                              {/* JOB DETAILS LINK */}
+                              <div className="flex gap-2 mt-2">
+                                <Link
+                                  to={getJobDetailsLink(manualJob.id)}
+                                  target="_blank"
+                                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                  onClick={() => trackButtonClick('view_job_details', 'job_management', 'admin_job_posting')}
+                                >
+                                  <ExternalLink size={10} />
+                                  View Job Details
+                                </Link>
+                                <button
+                                  onClick={() => copyJobDetailsLink(manualJob.id)}
+                                  className="text-xs text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                                  title="Copy job details link"
+                                >
+                                  <Copy size={10} />
+                                  Copy Link
+                                </button>
+                              </div>
                             </div>
                             <button
                               onClick={() => deleteJob(manualJob.id)}
